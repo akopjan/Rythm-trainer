@@ -186,10 +186,10 @@ for (const worklet of [false, true]) await check(`${worklet ? 'AudioWorklet' : '
   const evidence = {ok: noRouteTo(source, app.api.getMaster()) && !connected(source, destination) && connected(processor, silent) && close(silent.gain.value, 0) && connected(silent, destination), microphoneEdges: source.connections.length, monitorGain: silent.gain.value};app.api.stop();return evidence;
 });
 
-await check('With reference mode off the ordinary browser AEC request and capability upgrade remain', async () => {
+await check('With delay tracking off browser AEC remains requested while mandatory reference isolation stays routed', async () => {
   const app = createApp(undefined, {worklet: true});app.api.applySettings({referenceSync: false});await app.api.start();
   const request = app.micRequests[0].audio, config = outputConfiguration(app), constraints = app.streams[0].track.constraints;
-  const evidence = {ok: app.api.state.running && request.echoCancellation === true && config?.enabled === false && constraints.some(value => value.echoCancellation === 'all'), requestedAEC: request.echoCancellation, config};app.api.stop();return evidence;
+  const evidence = {ok: app.api.state.running && request.echoCancellation === true && config?.enabled === true && config?.trackDelay === false && config?.routed === true && connected(app.api.getMaster(), app.api.getProcessor(), 1) && constraints.some(value => value.echoCancellation === 'all'), requestedAEC: request.echoCancellation, config};app.api.stop();return evidence;
 });
 
 await check('A browser retaining AEC cannot enable raw acoustic subtraction or overwrite the correction', async () => {
@@ -218,11 +218,12 @@ await check('An acoustic microphone correction never shifts keyboard attacks or 
   const evidence = {ok: close(hit.error, 20, .001) && hit.correctionMs === 0 && hit.step === 2 && app.api.state.adaptive.samples.length === 0, hit: {...hit}, learnerSamples: app.api.state.adaptive.samples.length};app.api.stop();return evidence;
 });
 
-await check('Reference preparation excludes provisional echo attacks without blocking notes after the wait', async () => {
+await check('Unproven DSP onsets stay excluded after the preparation timeout while isolated instrument notes remain scoreable', async () => {
   const app = createApp(undefined, {worklet: true});await app.api.start();
-  const until = app.api.state.reference.waitUntil;app.api.addHit(app.api.state.epoch + 1, 'mic');const provisionalCount = app.api.state.count;
-  app.api.getContext().currentTime = until + .3;app.api.addHit(until + .3, 'mic');
-  const evidence = {ok: until > app.api.state.epoch && provisionalCount === 0 && app.api.state.count === 1, waitSeconds: until - app.api.state.epoch, provisionalCount, laterCount: app.api.state.count};app.api.stop();return evidence;
+  const until = app.api.state.reference.waitUntil;app.api.handleDSP({type: 'onset', id: app.api.state.token, time: app.api.state.epoch + 1, level: .2});const provisionalCount = app.api.state.count;
+  app.api.getContext().currentTime = until + .3;app.api.handleDSP({type: 'onset', id: app.api.state.token, time: until + .3, level: .2});const afterTimeoutCount = app.api.state.count;
+  app.api.handleDSP({type: 'analysis-state', id: app.api.state.token, time: until + .3, status: 'ready'});app.api.handleDSP({type: 'onset', id: app.api.state.token, time: until + .3, level: .2, source: 'instrument', isolated: true});
+  const evidence = {ok: until > app.api.state.epoch && provisionalCount === 0 && afterTimeoutCount === 0 && app.api.state.count === 1, waitSeconds: until - app.api.state.epoch, provisionalCount, afterTimeoutCount, provenInstrumentCount: app.api.state.count};app.api.stop();return evidence;
 });
 
 for (const [label, extra] of [
@@ -365,10 +366,10 @@ await check('Real AudioWorklet wrapper forwards its second input to DSP and prod
 });
 
 async function runBackingWithBayan(preexistingProfile = false) {
-  const rate = 8000, duration = 8.4, length = Math.ceil(rate * duration), app = createApp(undefined, {rate});await app.api.start();
+  const rate = 8000, duration = 9.7, length = Math.ceil(rate * duration), app = createApp(undefined, {rate});await app.api.start();
   const ctx = app.api.getContext(), detector = app.api.getFallback(), epoch = app.api.state.epoch, master = app.api.getMaster(), reference = new Float32Array(length), capture = new Float32Array(length), delaySamples = Math.round(.315 * rate);
   const playerTimes = Array.from({length: 5}, (_, i) => epoch + (16 + i * 2) * .3 + .315), anchorObservations = [], emissions = [], originalEmit = detector.emit;
-  detector.emit = message => {emissions.push({...message});originalEmit(message);};detector.sustained.emit = detector.emit;
+  detector.emit = message => {emissions.push({...message});originalEmit(message);};
   if (preexistingProfile) {detector.bins = Math.ceil(detector.duration * rate / 128);detector.profile = new Float32Array(detector.bins * 3).fill(10);}
   let sourceIndex = 0;
   for (let first = 0;first < length;first += 128) {

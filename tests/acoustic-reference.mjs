@@ -28,7 +28,7 @@ function bayan(rate,duration,times,amplitude=.14,frequencies=[220,293.66,329.63,
 function run({rate=8000,duration=10,kind='mixed',delay=()=>.08,gain=.55,near=null,room=null,echo=true,block=128}={}){
  const reference=backing(rate,duration,kind),player=near??new Float32Array(reference.length),capture=new Float32Array(reference.length),cleaned=new Float32Array(reference.length),messages=[],durations=[];
  for(let i=0;i<capture.length;i++){const t=i/rate,lag=delay(t)*rate;capture[i]=(echo?gain*sample(reference,i-lag):0)+(room?room(reference,i,t,lag):0)+(player[i]||0);}
- const engine=new ReferenceEcho(rate,m=>messages.push(m));
+ const engine=new ReferenceEcho(rate,m=>{if(m.type==='acoustic-sync')messages.push(m);});
  for(let i=0;i<capture.length;i+=block){const start=performance.now(),output=engine.process(capture.subarray(i,Math.min(capture.length,i+block)),reference.subarray(i,Math.min(reference.length,i+block)),i/rate);durations.push(performance.now()-start);cleaned.set(output,i);}
  return {engine,messages,reference,capture,cleaned,player,durations,rate,duration};
 }
@@ -109,7 +109,7 @@ for(const rate of [44100,48000,96000])check(`Acoustic matching and cancellation 
  const result=run({rate,duration:8,delay:()=>.073}),locked=result.messages.filter(m=>m.status==='locked'),first=5*rate,ratio=rms(result.cleaned,first)/rms(result.capture,first),sorted=result.durations.slice(100).sort((a,b)=>a-b);return {ok:locked.length>0&&Math.abs(locked.at(-1).delayMs-73)<1&&ratio<.08,delayMs:locked.at(-1)?.delayMs,residualRatio:ratio,p99BlockMilliseconds:sorted[Math.floor(sorted.length*.99)],maximumBlockMilliseconds:Math.max(...sorted)};
 });
 check('Engine storage stays fixed during a long audio stream',()=>{
- const result=run({duration:25}),engine=result.engine,totalBytes=[engine.ref,engine.cap,engine.rawRef,engine.rawCap,...engine.envRef,...engine.envCap,engine.filters,engine.powers,engine.h].reduce((sum,array)=>sum+array.byteLength,0);return {ok:totalBytes<1500000&&engine.ref.length===2**Math.ceil(Math.log2(engine.rate*1.05+512))&&engine.rawRef.length===32768&&engine.envRef.every(array=>array.length===4096),allocatedPersistentBytes:totalBytes};
+ const result=run({duration:25}),engine=result.engine,totalBytes=[engine.ref,engine.cap,engine.rawRef,engine.rawCap,...engine.envRef,...engine.envCap,engine.filters,engine.powers,engine.h].reduce((sum,array)=>sum+array.byteLength,0);return {ok:totalBytes<6000000&&engine.ref.length===2**Math.ceil(Math.log2(engine.rate*3.5+512))&&engine.rawRef.length===32768&&engine.envRef.every(array=>array.length===4096),allocatedPersistentBytes:totalBytes};
 });
 check('Reset releases learned anchors and cancellation coefficients',()=>{
  dry.engine.reset();return {ok:!dry.engine.locked&&!dry.engine.cancelReady&&dry.engine.total===0&&dry.engine.h.every(value=>value===0)&&dry.engine.scan===null,locked:dry.engine.locked};
