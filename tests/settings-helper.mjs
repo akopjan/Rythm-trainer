@@ -40,7 +40,7 @@ try {
   record('Portable settings sanitizer is available independently of DOM and audio', typeof sanitize === 'function');
 } catch (error) {record('Portable settings sanitizer is available independently of DOM and audio', false, {error: error.message});}
 
-const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: false, autoNormalize: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
+const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: false, autoNormalize: true, referenceSync: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
 const permittedKeys = [...Object.keys(defaultFields), 'pattern', 'trackEnabled', 'trackVolumes'].sort();
 const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => track === 0 ? [0, 8].includes(position % 16) : track === 1 ? [4, 12].includes(position % 16) : track === 2 ? position % 2 === 0 : false));
 function defaultsOk(value) {

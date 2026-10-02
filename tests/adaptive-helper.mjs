@@ -1,208 +1,84 @@
-// Independent regressions for the adaptive median normalizer.
-// Evaluates only pure helpers from the saved HTML; no browser/audio hardware.
-const target = Deno.args[0] ?? 'index.html';
-const html = await Deno.readTextFile(target);
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]);
-const results = [];
-const record = (name, ok, evidence = {}) => results.push({name, status: ok ? 'PASS' : 'FAIL', evidence});
-const close = (a, b, epsilon = 1e-6) => Number.isFinite(a) && Math.abs(a - b) <= epsilon;
-const clamp = (x, low, high) => Math.min(high, Math.max(low, x));
-const phase = (value, period) => value - Math.round(value / period) * period;
-const meanAbs = values => values.reduce((sum, value) => sum + Math.abs(value), 0) / values.length;
+// Local unwrapped phase tracking and independent acoustic-anchor regressions.
+// Read production-equivalent JS or a staged standalone HTML; no physical I/O.
+const target=Deno.args[0]??'index.html';
+const source=await Deno.readTextFile(target),results=[];
+const record=(name,ok,evidence={})=>results.push({name,status:ok?'PASS':'FAIL',evidence});
+const close=(a,b,epsilon=1e-6)=>Number.isFinite(a)&&Math.abs(a-b)<=epsilon;
+const clamp=(x,low,high)=>Math.min(high,Math.max(low,x));
+const phase=(raw,step)=>raw-Math.round(raw/step)*step;
 
-function extractDeclaration(source, name, kind = 'function') {
-  const start = source?.search(new RegExp(kind + '\\s+' + name + (kind === 'class' ? '\\s*\\{' : '\\s*\\('))) ?? -1;
-  if (start < 0) throw new Error(`Missing ${kind} ${name} in the second HTML script`);
-  const body = source.indexOf('{', start);
-  let depth = 0, quote = '', comment = '';
-  for (let i = body; i < source.length; i++) {
-    const char = source[i], next = source[i + 1];
-    if (comment === 'line') {if (char === '\n') comment = ''; continue;}
-    if (comment === 'block') {if (char === '*' && next === '/') {comment = ''; i++;} continue;}
-    if (quote) {if (char === '\\') i++; else if (char === quote) quote = ''; continue;}
-    if (char === '/' && next === '/') {comment = 'line'; i++; continue;}
-    if (char === '/' && next === '*') {comment = 'block'; i++; continue;}
-    if (char === '"' || char === "'" || char === '`') {quote = char; continue;}
-    if (char === '{') depth++;
-    if (char === '}' && --depth === 0) return source.slice(start, i + 1);
-  }
-  throw new Error(`Unclosed ${kind} ${name}`);
+function declaration(text,name){
+ const start=text.search(new RegExp('class\\s+'+name+'\\s*\\{'));
+ if(start<0)throw new Error(`Missing class ${name}`);
+ const body=text.indexOf('{',start);let depth=0,quote='',comment='';
+ for(let i=body;i<text.length;i++){
+  const c=text[i],next=text[i+1];
+  if(comment==='line'){if(c==='\n')comment='';continue;}
+  if(comment==='block'){if(c==='*'&&next==='/'){comment='';i++;}continue;}
+  if(quote){if(c==='\\')i++;else if(c===quote)quote='';continue;}
+  if(c==='/'&&next==='/'){comment='line';i++;continue;}
+  if(c==='/'&&next==='*'){comment='block';i++;continue;}
+  if(c==='"'||c==="'"||c==='`'){quote=c;continue;}
+  if(c==='{')depth++;
+  if(c==='}'&&--depth===0)return text.slice(start,i+1);
+ }
+ throw new Error(`Unclosed class ${name}`);
 }
-
 let AdaptiveNormalizer;
-try {
-  const declarations = extractDeclaration(scripts[1], 'fitLatencyMedian') + '\n' + extractDeclaration(scripts[1], 'AdaptiveNormalizer', 'class');
-  AdaptiveNormalizer = new Function('clamp', declarations + '; return AdaptiveNormalizer;')(clamp);
-  record('Adaptive normalizer is available as a pure class', typeof AdaptiveNormalizer === 'function');
-} catch (error) {
-  record('Adaptive normalizer is available as a pure class', false, {error: error.message});
+try{AdaptiveNormalizer=new Function('clamp',declaration(source,'AdaptiveNormalizer')+';return AdaptiveNormalizer;')(clamp);record('Local adaptive tracker is available without the global circular fit',typeof AdaptiveNormalizer==='function');}
+catch(error){record('Local adaptive tracker is available without the global circular fit',false,{error:error.message});}
+function check(name,run){try{const evidence=run();record(name,evidence.ok,evidence);}catch(error){record(name,false,{error:error.message});}}
+
+function simulate({count=180,step=300,bar=2400,prior=0,allowBootstrap=true,anchor=null,delay=()=>60,jitter=()=>0,references=null,startIndex=1}={}){
+ const tracker=new AdaptiveNormalizer(allowBootstrap),history=[],referenceUpdates=[];
+ let correction=prior;
+ if(anchor!==null){const update=tracker.setAnchor(anchor,'acoustic',0);if(Number.isFinite(update.delayMs))correction=update.delayMs;referenceUpdates.push(update);}
+ for(let i=0;i<count;i++){
+  const scheduled=(startIndex+i)*step;
+  if(references){const value=references(i,scheduled);if(Number.isFinite(value)){const update=tracker.setAnchor(value,'acoustic',scheduled);if(Number.isFinite(update.delayMs))correction=update.delayMs;referenceUpdates.push(update);}}
+  const rawMs=scheduled+delay(i,scheduled)+jitter(i),offsetAtHit=correction,error=phase(rawMs-correction,step),update=tracker.observe(rawMs,step,bar,correction);
+  if(Number.isFinite(update.delayMs))correction=update.delayMs;
+  history.push({i,scheduled,rawMs,offsetAtHit,error,update,correction});
+ }
+ return {tracker,history,referenceUpdates,correction};
 }
 
-function check(name, run) {
-  try {
-    const evidence = run();
-    record(name, evidence.ok, evidence);
-  } catch (error) {record(name, false, {error: error.message});}
+if(AdaptiveNormalizer){
+ check('Eight attacks never initialize a phase offset',()=>{const run=simulate({count:8});return {ok:run.correction===0&&!run.tracker.ready&&run.tracker.samples.length===8,correction:run.correction};});
+ check('Nine coherent attacks spanning a bar learn an initial 60 ms at a 300 ms grid',()=>{const run=simulate({count:9});return {ok:close(run.correction,60)&&run.history.at(-1).update.status==='bootstrap'&&run.tracker.anchorMs===0&&close(run.tracker.phaseOffset,60),correction:run.correction,phaseOffset:run.tracker.phaseOffset};});
+ check('Submillisecond alternating jitter is retained around a local median',()=>{const run=simulate({count:100,delay:()=>30,jitter:i=>i%2?.5:-.5});return {ok:Math.abs(run.correction-30)<.6&&run.history.slice(-40).some(row=>row.error<-.1)&&run.history.slice(-40).some(row=>row.error>.1),correction:run.correction};});
+ check('A half-grid alternating cluster is held with an explicit local-bound reason',()=>{const run=simulate({count:180,delay:()=>0,jitter:i=>i%2?149:-149});return {ok:run.correction===0&&run.history.every(row=>row.correction===0)&&run.history[8].update.status==='bounded',correction:run.correction,status:run.history[8].update.status};});
+ check('A slightly asymmetric half-grid cluster still cannot jump by an eighth note',()=>{const run=simulate({count:180,delay:()=>0,jitter:i=>i%3?148:-147});return {ok:run.correction===0&&Math.abs(run.tracker.phaseOffset)<=60,correction:run.correction,phaseOffset:run.tracker.phaseOffset};});
+ check('A coherent distant cluster is rejected with the local-bound reason',()=>{const run=simulate({delay:()=>100});return {ok:run.correction===0&&!run.tracker.ready&&run.history.some(row=>row.update.status==='bounded'),correction:run.correction};});
+ check('A later distant cluster cannot accumulate multiple local corrections',()=>{const run=simulate({count:350,delay:i=>i<30?60:120});return {ok:run.history.every(row=>Math.abs(row.correction)<=60+1e-6)&&close(run.correction,60)&&run.history.slice(80).some(row=>row.update.status==='bounded'),correction:run.correction,maxCorrection:Math.max(...run.history.map(row=>row.correction))};});
+ check('The initial session prior remains the center of the phase bound',()=>{const run=simulate({prior:180,delay:()=>210});return {ok:close(run.correction,210)&&run.tracker.anchorMs===180&&run.history.every(row=>Math.abs(row.correction-180)<=60+1e-6),correction:run.correction,anchor:run.tracker.anchorMs};});
+ check('Tracking a local change is gradual and does not bootstrap twice',()=>{const run=simulate({count:220,delay:i=>i<50?20:45});let largest=0;for(let i=1;i<run.history.length;i++)if(run.history[i].update.status==='tracking')largest=Math.max(largest,Math.abs(run.history[i].correction-run.history[i-1].correction));return {ok:run.correction>43&&run.correction<=45&&largest<=10+1e-6&&run.history.filter(row=>row.update.status==='bootstrap').length===1,correction:run.correction,largestStep:largest};});
+ check('Every phase-learning target remains fixed after local updates',()=>{const run=simulate({count:140,delay:()=>30,jitter:i=>i%2?8:-8});return {ok:run.tracker.entries.every(entry=>entry.targetIndex===Math.round((entry.rawMs-entry.anchorAtHit)/300)&&close(entry.phaseMs,entry.rawMs-entry.targetIndex*300-entry.anchorAtHit)),samples:run.tracker.entries.length};});
+ check('A proposed target-changing bootstrap is held with the explicit alias reason',()=>{const run=simulate({count:9,delay:()=>40,jitter:i=>i===0?-189:0});return {ok:run.correction===0&&!run.tracker.ready&&run.history.at(-1).update.status==='alias',correction:run.correction,status:run.history.at(-1).update.status};});
+ check('Broad dispersion inside the local bound has the distinct uncertainty reason',()=>{const values=[-80,-50,-20,0,20,50,80,-80,-50],run=simulate({count:9,delay:()=>0,jitter:i=>values[i]});return {ok:run.correction===0&&!run.tracker.ready&&run.history.at(-1).update.status==='uncertain',correction:run.correction,status:run.history.at(-1).update.status};});
+ check('A bad bar does not move a previously stable phase correction',()=>{const run=simulate({count:42,delay:()=>30,jitter:i=>i>=12&&i<24?(i%2?110:-110):0});return {ok:run.history.filter(row=>row.i>=12&&row.i<24).every(row=>close(row.correction,30))&&close(run.correction,30),correction:run.correction};});
+ check('Initial tracking without bootstrap waits for two complete bars',()=>{const run=simulate({count:9,allowBootstrap:false,delay:()=>40});return {ok:run.correction===0&&run.history.every(row=>!Number.isFinite(row.update.delayMs)),correction:run.correction};});
+ check('Phase tracking enabled mid-session learns only gradual local changes',()=>{const run=simulate({allowBootstrap:false,delay:()=>40});return {ok:run.correction>38&&!run.history.some(row=>row.update.status==='bootstrap')&&run.history.every(row=>Math.abs(row.correction)<=60+1e-6),correction:run.correction};});
+ check('A long silent gap clears samples but preserves anchor and learned phase',()=>{const run=simulate({count:9,delay:()=>30});const update=run.tracker.observe(run.history.at(-1).rawMs+20000,300,2400,run.correction);return {ok:run.tracker.samples.length===1&&run.tracker.ready&&run.tracker.anchorMs===0&&close(run.tracker.phaseOffset,30)&&!Number.isFinite(update.delayMs)&&!run.tracker.allowBootstrap,samples:run.tracker.samples.length,phase:run.tracker.phaseOffset};});
+ check('A post-gap distant phase cannot trigger a second startup jump',()=>{const run=simulate({count:9,delay:()=>30});let correction=run.correction;const updates=[];for(let i=0;i<30;i++){const update=run.tracker.observe(30000+i*300+120,300,2400,correction);if(Number.isFinite(update.delayMs))correction=update.delayMs;updates.push(update);}return {ok:close(correction,30)&&updates.every(update=>update.status!=='bootstrap'),correction};});
+ check('Fractional 3/4 grids preserve a local bootstrap without integer rounding',()=>{const step=60000/137/4,run=simulate({step,bar:step*12,count:14,delay:()=>20});return {ok:close(run.correction,20,.002)&&run.tracker.entries.every(entry=>close(entry.phaseMs,20,.002)),step,correction:run.correction};});
+ check('Hardware anchors allow a genuine initial 300 ms delay on a 300 ms grid',()=>{const run=simulate({count:60,anchor:300,delay:()=>300});return {ok:close(run.correction,300)&&run.tracker.anchorMs===300&&run.tracker.entries.every(entry=>entry.targetIndex===Math.round((entry.rawMs-300)/300)),correction:run.correction};});
+ check('A hardware anchor retains both early and late jitter at a half-grid absolute delay',()=>{const run=simulate({count:120,anchor:150,delay:()=>150,jitter:i=>i%2?10:-10});const tail=run.history.slice(-40);return {ok:Math.abs(run.correction-150)<=10&&tail.some(row=>row.error< -5)&&tail.some(row=>row.error>5)&&run.tracker.entries.every(entry=>close(Math.abs(entry.phaseMs),10)),correction:run.correction};});
+ check('The first acoustic anchor replaces unreferenced hardware-like phase without double correction',()=>{const run=simulate({count:25,delay:()=>40}),update=run.tracker.setAnchor(300,'acoustic',10000);return {ok:update.firstAcoustic&&close(update.delayMs,300)&&run.tracker.phaseOffset===0&&run.tracker.samples.length===0&&run.tracker.anchorSource==='acoustic',update};});
+ check('Later acoustic drift preserves learned player phase and existing samples',()=>{const run=simulate({anchor:80,delay:()=>100,count:80}),before=run.tracker.entries.map(entry=>({...entry})),update=run.tracker.setAnchor(90,'acoustic',25000);return {ok:close(run.tracker.phaseOffset,20)&&close(update.delayMs,110)&&close(update.targetDelayMs,110)&&run.tracker.entries.length===before.length&&run.tracker.entries.every((entry,i)=>entry.targetIndex===before[i].targetIndex&&entry.anchorAtHit===80&&entry.phaseMs===before[i].phaseMs),update};});
+ check('Old player samples do not cancel a new physical acoustic delay',()=>{const run=simulate({anchor:80,delay:()=>100,count:80});let correction=run.tracker.setAnchor(90,'acoustic',25000).delayMs;const update=run.tracker.observe(81*300+110,300,2400,correction);if(Number.isFinite(update.delayMs))correction=update.delayMs;return {ok:close(correction,110)&&close(run.tracker.phaseOffset,20)&&run.tracker.entries.at(-1).anchorAtHit===90&&close(run.tracker.entries.at(-1).phaseMs,20),correction,phase:run.tracker.phaseOffset};});
+ check('A sudden later acoustic change is rate capped while exposing its absolute target',()=>{const tracker=new AdaptiveNormalizer();tracker.setAnchor(300,'acoustic',0);const update=tracker.setAnchor(480,'acoustic',1000),repeated=tracker.setAnchor(480,'acoustic',1000);return {ok:close(update.delayMs,310)&&close(update.targetDelayMs,480)&&!update.firstAcoustic&&close(repeated.delayMs,310),update,repeated};});
+ check('Reference-driven hardware drift can exceed the original local phase neighborhood',()=>{const run=simulate({count:600,anchor:80,delay:(_,time)=>80+time*.001+20,references:(i,time)=>i%4===0?80+time*.001:null});const tail=run.history.slice(-40);return {ok:run.correction>260&&Math.abs(run.tracker.phaseOffset-20)<2&&tail.every(row=>Math.abs(row.error)<3)&&run.tracker.entries.every(entry=>Math.abs(entry.phaseMs)<23),correction:run.correction,anchor:run.tracker.anchorMs,phase:run.tracker.phaseOffset,maxTailError:Math.max(...tail.map(row=>Math.abs(row.error)))};});
+ check('When acoustic references stop, the last anchor remains fixed',()=>{const run=simulate({anchor:80,count:180,delay:()=>100});return {ok:run.tracker.anchorMs===80&&run.tracker.anchorSource==='acoustic'&&close(run.correction,100)&&close(run.tracker.phaseOffset,20),correction:run.correction,anchor:run.tracker.anchorMs};});
+ check('Player phase cannot learn a full step beyond an acoustic anchor',()=>{const run=simulate({anchor:80,count:120,delay:()=>190});return {ok:close(run.correction,80)&&run.tracker.phaseOffset===0&&run.history.some(row=>row.update.status==='bounded'),correction:run.correction,phase:run.tracker.phaseOffset};});
+ check('Upper correction limits constrain total acoustic plus player offset',()=>{const run=simulate({anchor:495,step:2000,bar:8000,count:70,delay:()=>508,startIndex:10});return {ok:run.history.every(row=>row.correction<=500&&row.correction>=-300)&&close(run.correction,500),correction:run.correction,phase:run.tracker.phaseOffset};});
+ check('Lower correction limits constrain total session plus phase offset',()=>{const run=simulate({prior:-295,step:2000,bar:8000,count:70,delay:()=>-308,startIndex:10});return {ok:run.history.every(row=>row.correction<=500&&row.correction>=-300)&&close(run.correction,-300),correction:run.correction};});
+ check('Invalid and out-of-order attacks leave the sample window unchanged',()=>{const run=simulate({count:9}),before=JSON.stringify(run.tracker.entries),last=run.history.at(-1).rawMs,updates=[NaN,Infinity,-Infinity,last,last-100].map(raw=>run.tracker.observe(raw,300,2400,run.correction));return {ok:JSON.stringify(run.tracker.entries)===before&&updates.every(update=>!Number.isFinite(update.delayMs)),samples:run.tracker.samples.length};});
+ check('Invalid acoustic references cannot overwrite the last reliable anchor',()=>{const tracker=new AdaptiveNormalizer();tracker.setAnchor(80,'acoustic',0);const updates=[NaN,Infinity,-301,501].map(value=>tracker.setAnchor(value,'acoustic',1000));return {ok:tracker.anchorMs===80&&tracker.lastCorrection===80&&updates.every(update=>!Number.isFinite(update.delayMs)),anchor:tracker.anchorMs};});
+ check('The bounded sample buffer keeps raw times aligned with their fixed targets',()=>{const run=simulate({count:600,delay:()=>30});return {ok:run.tracker.samples.length<=48&&run.tracker.samples.length>=9&&run.tracker.entries.length===run.tracker.samples.length&&run.tracker.samples.every((raw,i)=>raw===run.tracker.entries[i].rawMs),samples:run.tracker.samples.length};});
+ check('Reset releases the prior anchor and learned phase for a new session',()=>{const run=simulate({anchor:80,delay:()=>100});run.tracker.reset(false);return {ok:run.tracker.anchorMs===null&&run.tracker.phaseOffset===0&&run.tracker.samples.length===0&&!run.tracker.ready&&!run.tracker.allowBootstrap,anchor:run.tracker.anchorMs,phase:run.tracker.phaseOffset};});
 }
 
-function simulation({step = 250, bar = 2000, count = 240, prior = 0, allowBootstrap = true, delay = () => 80, jitter = () => 0, startIndex = 0} = {}) {
-  const tracker = new AdaptiveNormalizer(allowBootstrap), history = [];
-  let correction = prior;
-  for (let i = 0; i < count; i++) {
-    const scheduled = (i + startIndex) * step, physicalDelay = delay(i, scheduled), rawMs = scheduled + physicalDelay + jitter(i);
-    const offsetAtHit = correction, error = phase(rawMs - offsetAtHit, step);
-    const update = tracker.observe(rawMs, step, bar, correction);
-    if (Number.isFinite(update.delayMs)) correction = update.delayMs;
-    history.push({i, rawMs, physicalDelay, offsetAtHit, error, update, correction});
-  }
-  return {tracker, history, correction};
-}
-
-if (AdaptiveNormalizer) {
-  check('Too few attacks preserve the prior and do not bootstrap', () => {
-    const run = simulation({count: 8, prior: 20});
-    return {ok: close(run.correction, 20) && !run.tracker.ready && run.history.every(row => row.update.status === 'warming' && !Number.isFinite(row.update.delayMs)), status: run.history.at(-1).update.status, correction: run.correction};
-  });
-
-  check('Nine coherent attacks spanning a full bar initialize the common median', () => {
-    const run = simulation({count: 9});
-    return {ok: run.tracker.ready && close(run.correction, 80) && run.history.at(-1).update.status === 'bootstrap', correction: run.correction, update: run.history.at(-1).update};
-  });
-
-  check('Many rapid attacks within one short bar cannot bootstrap prematurely', () => {
-    const tracker = new AdaptiveNormalizer();
-    let last;
-    for (let i = 0; i < 20; i++) last = tracker.observe(i * 50 + 30, 50, 2000, 0);
-    return {ok: !tracker.ready && last.status === 'warming' && !Number.isFinite(last.delayMs), last};
-  });
-
-  check('Initial jitter uses the median rather than following every attack', () => {
-    const jitter = [-12, 8, -4, 4, 0, 12, -8, 4, -4];
-    const run = simulation({count: 9, jitter: i => jitter[i]});
-    return {ok: close(run.correction, 80) && run.history.at(-1).update.maeMs > 0, correction: run.correction, maeMs: run.history.at(-1).update.maeMs};
-  });
-
-  check('A constant delay stays stable after initialization', () => {
-    const run = simulation();
-    return {ok: close(run.correction, 80) && run.history.slice(9).every(row => close(row.correction, 80)), finalCorrection: run.correction};
-  });
-
-  check('Slow positive latency drift reduces residual error compared with a fixed correction', () => {
-    const run = simulation({count: 280, delay: (_, time) => 80 + Math.max(0, time - 10000) * .0015});
-    const tail = run.history.slice(-40), adapted = meanAbs(tail.map(row => row.error)), fixed = meanAbs(tail.map(row => phase(row.rawMs - 80, 250)));
-    return {ok: adapted < fixed / 2 && adapted < 23 && run.correction > 140, adaptiveMeanAbsMs: adapted, fixedMeanAbsMs: fixed, finalCorrection: run.correction};
-  });
-
-  check('Slow negative latency drift also follows the common center', () => {
-    const run = simulation({count: 280, delay: (_, time) => 80 - Math.max(0, time - 10000) * .001});
-    const tail = run.history.slice(-40), adapted = meanAbs(tail.map(row => row.error)), fixed = meanAbs(tail.map(row => phase(row.rawMs - 80, 250)));
-    return {ok: adapted < fixed / 2 && adapted < 17 && run.correction < 40, adaptiveMeanAbsMs: adapted, fixedMeanAbsMs: fixed, finalCorrection: run.correction};
-  });
-
-  check('Tracking adjustments respect the rate limit and never repeat the bootstrap jump', () => {
-    const run = simulation({count: 160, delay: (_, time) => time < 10000 ? 80 : 115});
-    let maxDelta = 0, prior = 0;
-    const tracking = [];
-    for (const row of run.history) {
-      if (row.update.status === 'tracking') {const delta = Math.abs(row.correction - prior);maxDelta = Math.max(maxDelta, delta);tracking.push(row);}
-      prior = row.correction;
-    }
-    return {ok: tracking.length > 0 && maxDelta <= 10 + 1e-6 && run.history.filter(row => row.update.status === 'bootstrap').length === 1, maximumTrackingChangeMs: maxDelta, trackingUpdates: tracking.length};
-  });
-
-  check('Alternating early and late playing remains visible instead of being fitted away', () => {
-    const run = simulation({jitter: i => i % 2 ? 15 : -15});
-    const tail = run.history.slice(-80), early = tail.filter(row => row.error < -5).length, late = tail.filter(row => row.error > 5).length;
-    return {ok: early >= 30 && late >= 30 && meanAbs(tail.map(row => row.error)) > 12 && Math.abs(run.correction - 80) <= 15, early, late, meanAbsoluteErrorMs: meanAbs(tail.map(row => row.error)), finalCorrection: run.correction};
-  });
-
-  check('One gross late attack does not pull the rolling median', () => {
-    const run = simulation({count: 140, jitter: i => i === 60 ? 100 : 0});
-    const around = run.history.slice(55, 100);
-    return {ok: around.every(row => close(row.correction, 80)) && run.history[60].error > 90, maximumCorrectionChangeMs: Math.max(...around.map(row => Math.abs(row.correction - 80))), retainedOutlierMs: run.history[60].error};
-  });
-
-  check('Broad phase scatter holds the previous correction rather than inventing a center', () => {
-    const jitter = [-100, -70, -40, 0, 40, 70, 100];
-    const run = simulation({count: 100, prior: 25, allowBootstrap: false, delay: () => 25, jitter: i => jitter[i % jitter.length]});
-    return {ok: close(run.correction, 25) && run.history.some(row => row.update.status === 'uncertain'), finalCorrection: run.correction, uncertainUpdates: run.history.filter(row => row.update.status === 'uncertain').length};
-  });
-
-  check('Tracking without bootstrap changes the prior gradually when enabled during existing history', () => {
-    const run = simulation({count: 100, prior: 0, allowBootstrap: false, delay: () => 40});
-    const movements = run.history.filter(row => Number.isFinite(row.update.delayMs));
-    return {ok: !run.history.some(row => row.update.status === 'bootstrap') && movements.length > 0 && movements.every((row, i) => Math.abs(row.correction - (i ? movements[i - 1].correction : 0)) <= 10 + 1e-6) && run.correction > 20, finalCorrection: run.correction, movements: movements.length};
-  });
-
-  check('Enabling tracking during existing history waits for two full bars', () => {
-    const run = simulation({count: 9, prior: 0, allowBootstrap: false, delay: () => 40});
-    return {ok: close(run.correction, 0) && run.history.every(row => !Number.isFinite(row.update.delayMs)), correction: run.correction, last: run.history.at(-1).update};
-  });
-
-  check('The correction stays inside the supported upper bound', () => {
-    const run = simulation({step: 2000, bar: 8000, count: 70, prior: 495, allowBootstrap: false, startIndex: 10, delay: () => 508});
-    return {ok: run.history.every(row => row.correction >= -300 && row.correction <= 500) && run.correction > 498, finalCorrection: run.correction};
-  });
-
-  check('The correction stays inside the supported lower bound', () => {
-    const run = simulation({step: 2000, bar: 8000, count: 70, prior: -295, allowBootstrap: false, startIndex: 10, delay: () => -308});
-    return {ok: run.history.every(row => row.correction >= -300 && row.correction <= 500) && run.correction < -298, finalCorrection: run.correction};
-  });
-
-  check('Nonfinite observations cannot contaminate the window', () => {
-    const tracker = new AdaptiveNormalizer();
-    tracker.observe(80, 250, 2000, 0);
-    const before = JSON.stringify(tracker.samples), updates = [NaN, Infinity, -Infinity].map(raw => tracker.observe(raw, 250, 2000, 0));
-    return {ok: JSON.stringify(tracker.samples) === before && updates.every(update => !Number.isFinite(update.delayMs)), updates};
-  });
-
-  check('Out-of-order and duplicate timestamps are ignored', () => {
-    const run = simulation({count: 9});
-    const before = JSON.stringify(run.tracker.samples), last = run.history.at(-1).rawMs;
-    const updates = [run.tracker.observe(last - 100, 250, 2000, 80), run.tracker.observe(last, 250, 2000, 80)];
-    return {ok: JSON.stringify(run.tracker.samples) === before && updates.every(update => !Number.isFinite(update.delayMs)), updates};
-  });
-
-  check('The recent sample buffer has a fixed 48-attack upper bound', () => {
-    const run = simulation({step: 100, bar: 400, count: 500, delay: () => 20});
-    return {ok: Array.isArray(run.tracker.samples) && run.tracker.samples.length <= 48 && run.tracker.samples.length >= 9, samples: run.tracker.samples.length};
-  });
-
-  check('A long silent gap clears old samples while retaining initialization', () => {
-    const run = simulation({count: 9});
-    const last = run.history.at(-1).rawMs, update = run.tracker.observe(last + 20000, 250, 2000, run.correction);
-    return {ok: run.tracker.ready && run.tracker.samples.length === 1 && !Number.isFinite(update.delayMs) && update.status !== 'bootstrap', ready: run.tracker.ready, samples: run.tracker.samples.length, update};
-  });
-
-  check('A post-gap restarted window cannot bootstrap a second abrupt correction', () => {
-    const run = simulation({count: 9});
-    let correction = run.correction, maxDelta = 0;const updates = [];
-    for (let i = 0; i < 24; i++) {
-      const update = run.tracker.observe(25000 + i * 250 + 105, 250, 2000, correction);
-      if (Number.isFinite(update.delayMs)) {maxDelta = Math.max(maxDelta, Math.abs(update.delayMs - correction));correction = update.delayMs;}
-      updates.push(update);
-    }
-    return {ok: updates.every(update => update.status !== 'bootstrap') && maxDelta <= 10 + 1e-6 && correction > 80, maxDeltaMs: maxDelta, finalCorrection: correction};
-  });
-
-  check('Fractional sixteenth-note periods in 3/4 bootstrap without rounding the timing grid', () => {
-    const step = 60000 / 137 / 4, bar = step * 12;
-    const run = simulation({step, bar, count: 14, delay: () => 27.375});
-    return {ok: run.tracker.ready && close(run.correction, 27.375, .002) && run.history.some(row => row.update.status === 'bootstrap'), stepMs: step, barMs: bar, correction: run.correction};
-  });
-
-  check('A circular phase near a neighboring grid line preserves the closest delay alias', () => {
-    const run = simulation({step: 100, bar: 400, count: 50, prior: 149, delay: () => 151});
-    return {ok: Math.abs(run.correction - 151) < 1 && run.history.every(row => Math.abs(row.correction - 149) < 10), finalCorrection: run.correction};
-  });
-
-  check('A drift run retains varying historical offsets rather than using one final correction', () => {
-    const run = simulation({count: 240, delay: (_, time) => 80 + Math.max(0, time - 8000) * .0015});
-    const old = run.history[40], newer = run.history.at(-1);
-    return {ok: newer.offsetAtHit - old.offsetAtHit > 40 && close(old.error, phase(old.rawMs - old.offsetAtHit, 250)) && Math.abs(old.error - phase(old.rawMs - run.correction, 250)) > 40, oldOffsetMs: old.offsetAtHit, finalOffsetMs: run.correction, oldErrorMs: old.error};
-  });
-}
-
-const passed = results.filter(result => result.status === 'PASS').length, failed = results.length - passed;
-console.log(JSON.stringify({target, passed, failed, scope: 'Pure adaptive-median timing tests; no physical microphone, audio or browser validation.', results}, null, 2));
-Deno.exitCode = failed ? 1 : 0;
+const passed=results.filter(result=>result.status==='PASS').length,failed=results.length-passed;
+console.log(JSON.stringify({target,passed,failed,scope:'Pure anchored phase and acoustic-delay timing; no physical browser or audio verification.',results},null,2));
+Deno.exitCode=failed?1:0;

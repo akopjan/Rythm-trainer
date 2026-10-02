@@ -45,6 +45,9 @@ if(el('input-mode'))el('input-mode').value='sustained';
 record('Adaptive normalization is enabled by default in the saved UI',el('auto-normalize')?.checked===true);
 // Fixed-mode regression cases still verify the explicit manual correction.
 el('auto-normalize').checked=false;
+// These transport/control regressions exercise the ordinary AEC route. The
+// independent reference integration suite covers raw capture and its DSP link.
+if(el('reference-sync'))el('reference-sync').checked=false;
 el('start').append(new Element('SPAN'),new Element('PATH'));
 el('chart').parentElement = new Element(); el('meter').parentElement = new Element();
 const drawing = [];
@@ -347,9 +350,14 @@ playAdaptive(60);
 record('Adaptive bootstrap automatically learns a stable 60 ms microphone offset',close(Number(el('latency').value),60,.001)&&api.state.adaptive.ready&&api.state.count===9);
 record('Bootstrap corrects provisional notes once and stores each applied offset',api.state.attacks.every(e=>close(e.error,0,.001)&&close(e.correctionMs,60,.001))&&el('mae').innerHTML.startsWith('0,0'));
 const firstArchive=api.state.attacks.map(e=>({...e}));
+// The preceding case independently proves an unreferenced +60 ms bootstrap.
+// A physical +60 ms anchor makes the following +0..35 ms phase drift local;
+// unreferenced phase learning intentionally cannot cross its initial ±60 ms.
+const anchored=api.state.adaptive.setAnchor(60,'acoustic',api.state.attacks.at(-1).rawMs);
+el('latency').value=String(anchored.delayMs);
 let lastOffset=60,maxAdaptiveChange=0;const recentErrors=[];
 for(let i=1;i<=100;i++){playAdaptive(60+i*.35);const offset=Number(el('latency').value);maxAdaptiveChange=Math.max(maxAdaptiveChange,Math.abs(offset-lastOffset));lastOffset=offset;if(i>60)recentErrors.push(api.state.attacks.at(-1).error);}
-record('Adaptive mode follows a gradually drifting delay without another button press',Number(el('latency').value)>75&&Number(el('latency').value)<95&&recentErrors.reduce((s,e)=>s+Math.abs(e),0)/recentErrors.length<20);
+record('Adaptive mode follows gradual player phase drift relative to its acoustic anchor',Number(el('latency').value)>75&&Number(el('latency').value)<95&&recentErrors.reduce((s,e)=>s+Math.abs(e),0)/recentErrors.length<20&&api.state.adaptive.anchorMs===60&&api.state.adaptive.anchorSource==='acoustic'&&Math.abs(api.state.adaptive.phaseOffset)<=60);
 record('Automatic updates are smooth rather than a full jump on each hit',maxAdaptiveChange<=6.001&&maxAdaptiveChange>0&&api.state.adaptive.updates>5);
 record('Adaptive tracking preserves every old warmup event and bar assignment',firstArchive.every((old,i)=>Object.keys(old).every(key=>api.state.attacks[i][key]===old[key])));
 for(let i=0;i<50;i++)playAdaptive(95);
