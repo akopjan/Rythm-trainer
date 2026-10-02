@@ -12,6 +12,7 @@
 @media(max-width:720px){main{margin:22px auto;padding:0 14px 30px}h1 span{display:block;margin:2px 0 0;font-size:13px}header{margin-bottom:18px}.transport{gap:13px;padding:15px}.transport .checks{justify-content:flex-start;flex-basis:100%;min-height:25px}.field{flex:1}.start{min-width:105px}.stats{grid-template-columns:repeat(2,1fr)}.stat{padding:15px}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.stat-value{font-size:26px}.advanced{grid-template-columns:1fr;gap:14px}.results-head{flex-wrap:wrap}.seq-foot{font-size:12px}.local{font-size:12px}.empty-chart{left:55px;right:15px;font-size:13px}.status{align-items:center}.mic-label{display:none}}
 
 .bar-results{margin:24px 0 12px}.bar-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.bar-head h3{margin:0;font-size:16px}.bar-problem,.bar-range,.bar-empty{font-size:13px;color:var(--muted);line-height:1.5}.bar-summary{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.bar-position{font-size:13px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px}.bar-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}.bar-table{border-collapse:collapse;width:100%;min-width:660px;font-size:13px;font-variant-numeric:tabular-nums}.bar-table th,.bar-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line)}.bar-table th{font-weight:500;color:var(--muted);background:#f8f9fb}.bar-table th:first-child,.bar-table td:first-child,.bar-table th:nth-child(2),.bar-table td:nth-child(2){text-align:left}.bar-table tr:last-child td{border-bottom:0}.bar-table .problem-bar{background:#fff1eb}.bar-table-wrap[hidden]{display:none}
+.seq-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.seq-actions small{white-space:nowrap}
 .track-label{flex-direction:column;align-items:stretch;gap:5px}.track-switch{display:flex;align-items:center;gap:5px;font-size:13px}.track-volume{display:flex;align-items:center;gap:6px}.track-volume input{max-width:95px}.track-volume output{font-size:11px;min-width:30px;color:var(--muted)}
 </style>
 </head>
@@ -24,13 +25,13 @@
 <label class="field">Размер<select id="signature"><option value="4" selected>4/4</option><option value="3">3/4</option></select></label>
 <label class="field">Длина цикла<select id="bars"><option value="1">1 такт</option><option value="2">2 такта</option></select></label>
 <label class="field">Сетка<select id="division"><option value="4">1/4</option><option value="8" selected>1/8</option><option value="16">1/16</option></select></label>
-<div class="checks"><label class="check"><input type="checkbox" id="click" checked>Метроном</label><label class="check"><input type="checkbox" id="mic" checked>Микрофон</label></div>
+<div class="checks"><label class="check"><input type="checkbox" id="click">Метроном</label><label class="check"><input type="checkbox" id="mic" checked>Микрофон</label></div>
 </section>
 <div class="status"><span id="status" role="status" aria-live="polite">Нажмите Start и разрешите микрофон. Для точности используйте наушники.</span><span class="mic-label">Вход</span><div class="mic-meter" role="meter" aria-label="Уровень микрофона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter"></div></div></div>
 <section aria-labelledby="seq-title">
-<div class="section-head"><h2 id="seq-title">Ритм</h2><div><small id="step-count">8 шагов</small><button class="quiet" id="clear-pattern">Очистить</button></div></div>
+<div class="section-head"><h2 id="seq-title">Ритм</h2><div class="seq-actions"><small id="step-count">8 шагов</small><button class="quiet" id="basic-pattern" title="Бочка, малый и хэт; метроном выключен">Базовый ритм</button><button class="quiet" id="clear-pattern">Очистить</button></div></div>
 <div class="sequencer"><div id="sequencer" class="seq-grid"></div></div>
-<div class="seq-foot"><span>Рисунок начинается пустым. Включайте клетки и регулируйте каждый барабан слева.</span><span id="position">Такт 1 / 1</span></div>
+<div class="seq-foot"><span>Базовый рисунок: бочка, малый и хэт. Метроном изначально выключен; каждый звук под вашим контролем.</span><span id="position">Такт 1 / 1</span></div>
 </section>
 <section aria-labelledby="results-title">
 <div class="results-head"><h2 id="results-title">Точность</h2><div class="tolerance"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю атак по медиане с учётом соседних долей; пересчитывает график и ошибки каждого такта.">Нормализовать</button><button class="quiet" id="reset">Сбросить</button></div></div>
@@ -63,7 +64,7 @@
 <div class="echo-row"><label class="field">Громкость метронома <output id="click-volume-value">100%</output><input id="click-volume" type="range" min="0" max="100" value="100"></label><p>Метроном управляется переключателем сверху и звучит по четвертным долям. Барабаны звучат только в включённых клетках.</p></div>
 <div class="echo-row"><button id="measure-latency">Измерить задержку</button><p id="latency-info">8 щелчков без вашей игры. Микрофон должен слышать колонки или один поднесённый к нему наушник. Используйте то же аудиоустройство, что и при тренировке: возьмём медиану задержек услышанных щелчков и покажем среднее абсолютное отклонение.</p></div>
 <div class="echo-row"><button id="calibrate">Калибровка для колонок</button><p id="echo-info">3 цикла без вашей игры: запомним фон ритма и будем вычитать его из анализа.</p></div>
-<div class="echo-row"><button id="export-settings">Настройки в файл</button><button id="import-settings">Загрузить настройки</button><input id="settings-file" type="file" accept="application/json,.json" hidden><p id="settings-info">Настройки и рисунок автоматически сохраняются в этом браузере. Для переноса используйте JSON-файл.</p></div>
+<div class="echo-row"><button id="export-settings">Настройки в файл</button><button id="import-settings">Загрузить настройки</button><input id="settings-file" type="file" accept="application/json,.json" hidden><p id="settings-info">Настройки сохраняются в cookies; для локального HTML — в хранилище браузера. Для переноса используйте JSON-файл.</p></div>
 <p id="audio-info" class="notes">Подавление эха запрашивается у браузера. Калибровка помогает при неизменных ритме, громкости и положении микрофона, но не гарантирует полного удаления эха.</p>
 <p class="notes">Микрофон определяет атаки, а не инструмент или высоту ноты. Попадания считаются среди обнаруженных атак, пропущенные ноты не учитываются. Для теста без микрофона отключите его и нажимайте <kbd>Пробел</kbd> во время воспроизведения. В этом режиме Пробел работает и при фокусе на клетке; <kbd>Enter</kbd> переключает клетку. Bluetooth и задержки устройств влияют на результат. После Stop доступ к микрофону прекращается. Аудио не записывается и никуда не отправляется.</p>
 </details>
@@ -213,8 +214,8 @@ if(typeof AudioWorkletProcessor!=='undefined'){
 'use strict';
 const $=id=>document.getElementById(id);
 const tracks=[{name:'Бочка',color:'#bf5435'},{name:'Малый',color:'#a8792f'},{name:'Хэт',color:'#438371'},{name:'Тарелка',color:'#657db3'}];
-const pattern=Array.from({length:4},()=>Array(32).fill(false));
-// Start with a blank drum pattern; the explicit metronome is independent.
+const pattern=sanitizeSettings({}).pattern;
+// The basic groove is independent of the optional metronome.
 const state={running:false,pending:false,token:0,bpm:100,bars:1,beats:4,division:8,events:[],attacks:[],showAllBars:false,adaptive:null,trackEnabled:[true,true,true,true],trackVolumes:[100,100,100,100],count:0,sum:0,sumAbs:0,sumSq:0,errors:[],epoch:0,next:0,drawStep:-1,stoppedCycle:0,lastBar:-1,calibrating:false,calibrationEnd:0,readyTime:0,measuring:false,measurementEnd:0,measureDeadline:0};
 let context=null,stream=null,source=null,processor=null,silent=null,master=null,scheduler=null,raf=null,buffers=[],clickBuffers=[],trackGains=[],clickGain=null,fallback=null,activeSources=new Set();
 const stepDuration=()=>60/state.bpm*4/state.division;
@@ -230,15 +231,35 @@ function sanitizeSettings(data){
  const numeric=(key,lo,hi,fallback)=>typeof d[key]==='number'&&Number.isFinite(d[key])?Math.min(hi,Math.max(lo,d[key])):fallback;
  const flag=(key,fallback)=>typeof d[key]==='boolean'?d[key]:fallback;
  const choice=(key,options,fallback)=>options.includes(d[key])?d[key]:fallback;
- return {version:1,bpm:numeric('bpm',30,280,100),bars:choice('bars',[1,2],1),beats:choice('beats',[3,4],4),division:choice('division',[4,8,16],8),mic:flag('mic',true),click:flag('click',true),autoNormalize:flag('autoNormalize',true),inputMode:choice('inputMode',['sustained','percussive'],'sustained'),volume:numeric('volume',0,100,55),clickVolume:numeric('clickVolume',0,100,100),threshold:numeric('threshold',-65,-15,-48),latency:numeric('latency',-300,500,0),tolerance:numeric('tolerance',1,100,30),pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>d.pattern?.[r]?.[i]===true)),trackEnabled:Array.from({length:4},(_,i)=>typeof d.trackEnabled?.[i]==='boolean'?d.trackEnabled[i]:true),trackVolumes:Array.from({length:4},(_,i)=>typeof d.trackVolumes?.[i]==='number'&&Number.isFinite(d.trackVolumes[i])?Math.min(100,Math.max(0,d.trackVolumes[i])):100)};
+ const storedPattern=Array.isArray(d.pattern)?d.pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>r===0?i%16===0||i%16===8:r===1?i%16===4||i%16===12:r===2?i%2===0:false));
+ return {version:1,bpm:numeric('bpm',30,280,100),bars:choice('bars',[1,2],1),beats:choice('beats',[3,4],4),division:choice('division',[4,8,16],8),mic:flag('mic',true),click:flag('click',false),autoNormalize:flag('autoNormalize',true),inputMode:choice('inputMode',['sustained','percussive'],'sustained'),volume:numeric('volume',0,100,55),clickVolume:numeric('clickVolume',0,100,100),threshold:numeric('threshold',-65,-15,-48),latency:numeric('latency',-300,500,0),tolerance:numeric('tolerance',1,100,30),pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>storedPattern[r]?.[i]===true)),trackEnabled:Array.from({length:4},(_,i)=>typeof d.trackEnabled?.[i]==='boolean'?d.trackEnabled[i]:true),trackVolumes:Array.from({length:4},(_,i)=>typeof d.trackVolumes?.[i]==='number'&&Number.isFinite(d.trackVolumes[i])?Math.min(100,Math.max(0,d.trackVolumes[i])):100)};
 }
-const settingsKey='rhythm-trainer.settings.v1';let settingsTimer=null,settingsDirty=false,settingsWritable=null,settingsImportId=0;
+const settingsKey='rhythm-trainer.settings.v1';let settingsTimer=null,settingsDirty=false,settingsWritable=null,settingsSavedTo=null,lastSettingsWrite=0,settingsImportId=0;
 function captureSettings(){return sanitizeSettings({version:1,bpm:state.bpm,bars:state.bars,beats:state.beats,division:state.division,mic:$('mic').checked,click:$('click').checked,autoNormalize:$('auto-normalize').checked,inputMode:$('input-mode').value,volume:Number($('volume').value),clickVolume:Number($('click-volume').value),threshold:Number($('threshold').value),latency:Number($('latency').value),tolerance:Number($('tolerance').value),pattern,trackEnabled:state.trackEnabled,trackVolumes:state.trackVolumes});}
+function readSettingsCookie(){
+ if(!['http:','https:'].includes(window.location?.protocol))return null;
+ const item=document.cookie.split(';').map(part=>part.trim()).find(part=>part.startsWith(settingsKey+'='));
+ return item?decodeURIComponent(item.slice(settingsKey.length+1)):null;
+}
+function writeSettingsCookie(value){
+ try{
+  if(!['http:','https:'].includes(window.location?.protocol))return false;
+  const encoded=encodeURIComponent(value);if(encoded.length>3800)return false;
+  document.cookie=`${settingsKey}=${encoded}; Max-Age=31536000; Path=/; SameSite=Lax${window.location.protocol==='https:'?'; Secure':''}`;
+  return readSettingsCookie()===value;
+ }catch{return false;}
+}
+function settingsStorageMessage(action){
+ return settingsSavedTo==='cookies'?`Настройки и рисунок ${action} в cookies браузера.`:`Cookies недоступны; настройки и рисунок ${action} в этом браузере (localStorage).`;
+}
 function flushSettings(){
  if(settingsTimer!==null){window.clearTimeout?.(settingsTimer);settingsTimer=null;}
  if(!settingsDirty)return settingsWritable;settingsDirty=false;
- try{window.localStorage.setItem(settingsKey,JSON.stringify(captureSettings()));settingsWritable=true;$('settings-info').textContent='Настройки и рисунок сохранены в этом браузере. Файловая копия — кнопкой «Настройки в файл».';}
- catch{settingsWritable=false;$('settings-info').textContent='Браузер не разрешил автосохранение. Сохраните настройки кнопкой «Настройки в файл».';}
+ lastSettingsWrite=Math.max(Date.now(),lastSettingsWrite+1);
+ const value=JSON.stringify({...captureSettings(),savedAt:lastSettingsWrite}),cookieSaved=writeSettingsCookie(value);let localSaved=false;
+ try{window.localStorage.setItem(settingsKey,value);localSaved=true;}catch{}
+ settingsSavedTo=cookieSaved?'cookies':localSaved?'localStorage':null;settingsWritable=Boolean(settingsSavedTo);
+ $('settings-info').textContent=settingsWritable?settingsStorageMessage('сохранены')+' Файловая копия — кнопкой «Настройки в файл».':'Браузер не разрешил автосохранение. Сохраните настройки кнопкой «Настройки в файл».';
  return settingsWritable;
 }
 function saveSettings(){settingsDirty=true;if(settingsTimer===null){if(window.setTimeout)settingsTimer=window.setTimeout(flushSettings,700);else flushSettings();}}
@@ -252,8 +273,18 @@ function applySettings(data){
  clearResults();renderGrid();setControls();$('position').textContent=`Такт 1 / ${state.bars}`;
 }
 function loadSavedSettings(){
- try{const value=window.localStorage.getItem(settingsKey);if(value){applySettings(JSON.parse(value));$('settings-info').textContent='Настройки и рисунок восстановлены из этого браузера.';}}
- catch{$('settings-info').textContent='Сохранённые настройки недоступны. Начинаем с пустого рисунка; можно загрузить JSON-файл.';}
+ const candidates=[];let unavailable=false;
+ for(const [kind,read] of [['cookies',readSettingsCookie],['localStorage',()=>window.localStorage.getItem(settingsKey)]]){
+  try{const value=read();if(value){const data=JSON.parse(value);if(!data||typeof data!=='object'||Array.isArray(data)||!Object.keys(data).some(key=>key!=='version'&&Object.hasOwn(sanitizeSettings({}),key)))throw new Error('Нет настроек.');const settings=sanitizeSettings(data),savedAt=Number.isSafeInteger(data.savedAt)&&data.savedAt>=0?data.savedAt:0;candidates.push({kind,settings,savedAt});}}
+  catch{unavailable=true;}
+ }
+ candidates.sort((a,b)=>b.savedAt-a.savedAt);
+ if(candidates.length){
+  const latest=candidates[0];applySettings(latest.settings);lastSettingsWrite=latest.savedAt;settingsSavedTo=latest.kind;settingsWritable=true;
+  if(latest.kind==='localStorage'&&writeSettingsCookie(JSON.stringify({...captureSettings(),savedAt:lastSettingsWrite})))settingsSavedTo='cookies';
+  $('settings-info').textContent=settingsStorageMessage('восстановлены');
+ }else if(unavailable)$('settings-info').textContent='Сохранённые настройки недоступны. Начинаем с базового ритма; можно загрузить JSON-файл.';
+ else $('settings-info').textContent=['http:','https:'].includes(window.location?.protocol)?'Настройки и рисунок будут сохраняться в cookies. Для переноса используйте JSON-файл.':'Для локального HTML cookies недоступны. Настройки сохраняются в этом браузере (localStorage); перенос — через JSON-файл.';
 }
 function exportSettings(){
  const blob=new Blob([JSON.stringify(captureSettings(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -265,7 +296,7 @@ async function importSettings(){
  const file=$('settings-file').files?.[0];$('settings-file').value='';if(!file)return;
  if(state.running||state.pending||state.measuring){$('settings-info').textContent='Остановите тренировку перед загрузкой настроек.';return;}
  const token=state.token,requestId=++settingsImportId;
- try{if(file.size>65536)throw new Error('Файл настроек слишком большой.');const data=JSON.parse(await file.text());if(requestId!==settingsImportId)return;if(token!==state.token||state.running||state.pending||state.measuring)throw new Error('Загрузка отменена: началась тренировка.');if(!data||typeof data!=='object'||Array.isArray(data)||!Object.keys(data).some(key=>key!=='version'&&key in sanitizeSettings({})))throw new Error('В файле нет настроек тренажёра.');applySettings(data);invalidateEcho();saveSettings();const saved=flushSettings();$('settings-info').textContent=saved?'Настройки из файла загружены. Рисунок и громкости восстановлены.':'Настройки из файла загружены; автосохранение недоступно. Сохраните JSON-файл для следующего запуска.';}
+ try{if(file.size>65536)throw new Error('Файл настроек слишком большой.');const data=JSON.parse(await file.text());if(requestId!==settingsImportId)return;if(token!==state.token||state.running||state.pending||state.measuring)throw new Error('Загрузка отменена: началась тренировка.');if(!data||typeof data!=='object'||Array.isArray(data)||!Object.keys(data).some(key=>key!=='version'&&Object.hasOwn(sanitizeSettings({}),key)))throw new Error('В файле нет настроек тренажёра.');applySettings(data);invalidateEcho();saveSettings();const saved=flushSettings();$('settings-info').textContent=saved?'Настройки из файла загружены. '+settingsStorageMessage('сохранены'):'Настройки из файла загружены; автосохранение недоступно. Сохраните JSON-файл для следующего запуска.';}
  catch(error){if(requestId===settingsImportId)$('settings-info').textContent=`Настройки не изменены: ${error.message}`;}
 }
 function updateTrackGain(row){if(trackGains[row]&&context)trackGains[row].gain.setTargetAtTime(state.trackEnabled[row]?state.trackVolumes[row]/100:0,context.currentTime,.015);}
@@ -274,7 +305,7 @@ function number(id,min,max,def){const e=$(id),v=Number(e.value);const n=clamp(Nu
 function labelForStep(i){const perBeat=state.division/4;const beat=Math.floor((i%stepsPerBar())/perBeat)+1;const sub=i%perBeat;return perBeat===1?String(beat):perBeat===2?(sub?'&':String(beat)):[String(beat),'e','&','a'][sub];}
 function setStatus(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
 function renderGrid(){const grid=$('sequencer'),n=stepCount();grid.style.gridTemplateColumns=`168px repeat(${n},minmax(25px,1fr))`;grid.style.minWidth=`${Math.max(550,n*31+175)}px`;grid.replaceChildren();const blank=document.createElement('div');blank.textContent=`${state.beats}/4`;$('signature-label').textContent=`${state.beats}/4`;blank.className='step-number';grid.append(blank);for(let i=0;i<n;i++){const el=document.createElement('div');el.className='step-number'+(i%(state.division/4)===0?' beat':'');el.textContent=labelForStep(i);el.dataset.head=i;el.title=`Такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`;grid.append(el);}tracks.forEach((track,row)=>{const label=document.createElement('div');label.className='track-label';label.style.setProperty('--track',track.color);const heading=document.createElement('label');heading.className='track-switch';const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=state.trackEnabled[row];enabled.dataset.trackEnabled=row;enabled.setAttribute('aria-label',`${track.name}: включить звук`);enabled.disabled=state.calibrating||state.measuring;enabled.addEventListener('change',()=>{if(state.calibrating||state.measuring)return;state.trackEnabled[row]=enabled.checked;updateTrackGain(row);invalidateEcho();saveSettings();});const dot=document.createElement('span');dot.className='track-dot';heading.append(enabled,dot,document.createTextNode(track.name));const level=document.createElement('div');level.className='track-volume';const volume=document.createElement('input');volume.type='range';volume.min='0';volume.max='100';volume.value=state.trackVolumes[row];volume.dataset.trackVolume=row;volume.setAttribute('aria-label',`${track.name}: громкость`);volume.disabled=state.calibrating||state.measuring;const amount=document.createElement('output');amount.textContent=state.trackVolumes[row]+'%';volume.addEventListener('input',()=>{if(state.calibrating||state.measuring)return;state.trackVolumes[row]=Number(volume.value);amount.textContent=volume.value+'%';updateTrackGain(row);invalidateEcho();saveSettings();});level.append(volume,amount);label.append(heading,level);grid.append(label);for(let i=0;i<n;i++){const b=document.createElement('button'),p=patternIndex(i);b.type='button';b.dataset.row=row;b.dataset.step=i;b.style.setProperty('--track',track.color);b.className='step'+(i%(state.division/4)===0?' beat':'')+(i&&i%stepsPerBar()===0?' bar-start':'')+(pattern[row][p]?' on':'');b.setAttribute('aria-pressed',String(pattern[row][p]));b.setAttribute('aria-label',`${track.name}, такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`);b.addEventListener('click',()=>{if(state.calibrating||state.measuring)return;pattern[row][p]=!pattern[row][p];b.classList.toggle('on',pattern[row][p]);b.setAttribute('aria-pressed',String(pattern[row][p]));invalidateEcho();saveSettings();});grid.append(b);}});$('step-count').textContent=`${n} шагов`;state.drawStep=-1;drawChart();}
-function setControls(){const locked=state.running||state.pending||state.measuring;['bpm','bars','division','signature','input-mode','mic'].forEach(id=>$(id).disabled=locked);['clear-pattern','click','volume','click-volume'].forEach(id=>$(id).disabled=state.calibrating||state.measuring);$('calibrate').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('measure-latency').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('latency').disabled=state.calibrating||state.pending||state.measuring;$('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!state.count||state.events.at(-1)?.kind!=='mic';$('import-settings').disabled=locked;$('settings-file').disabled=locked;document.querySelectorAll('[data-track-enabled],[data-track-volume]').forEach(el=>el.disabled=state.calibrating||state.measuring);$('auto-normalize').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;updateAdaptiveInfo();document.querySelectorAll('.step').forEach(b=>b.disabled=state.calibrating||state.measuring);$('start').classList.toggle('playing',locked);$('start').querySelector('span').textContent=locked?'Stop':'Start';$('start').querySelector('path').setAttribute('d',locked?'M2 2H14V14H2Z':'M3 1L14 8 3 15Z');}
+function setControls(){const locked=state.running||state.pending||state.measuring;['bpm','bars','division','signature','input-mode','mic'].forEach(id=>$(id).disabled=locked);['basic-pattern','clear-pattern','click','volume','click-volume'].forEach(id=>$(id).disabled=state.calibrating||state.measuring);$('calibrate').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('measure-latency').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('latency').disabled=state.calibrating||state.pending||state.measuring;$('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!state.count||state.events.at(-1)?.kind!=='mic';$('import-settings').disabled=locked;$('settings-file').disabled=locked;document.querySelectorAll('[data-track-enabled],[data-track-volume]').forEach(el=>el.disabled=state.calibrating||state.measuring);$('auto-normalize').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;updateAdaptiveInfo();document.querySelectorAll('.step').forEach(b=>b.disabled=state.calibrating||state.measuring);$('start').classList.toggle('playing',locked);$('start').querySelector('span').textContent=locked?'Stop':'Start';$('start').querySelector('path').setAttribute('d',locked?'M2 2H14V14H2Z':'M3 1L14 8 3 15Z');}
 function sendDSP(message){if(fallback)fallback.configure(message);else if(processor)processor.port.postMessage(message);}
 function invalidateEcho(){sendDSP({type:'invalidate'});$('echo-info').textContent='Для текущего ритма профиль не настроен. Во время калибровки не играйте.';}
 function clearResults(){state.stoppedCycle=0;state.lastBar=-1;state.showAllBars=false;state.events=[];state.attacks=[];state.errors=[];state.count=0;state.sum=0;state.sumAbs=0;state.sumSq=0;resetAdaptive();$('empty').hidden=false;$('last-hit').textContent='Последние 6 циклов · каждая атака — точка';updateStats();drawChart();}
@@ -518,6 +549,7 @@ $('tolerance').addEventListener('change',()=>{number('tolerance',1,100,30);updat
 $('normalize').addEventListener('click',normalizeLatency);
 $('reset').addEventListener('click',clearResults);
 $('show-all-bars').addEventListener('click',()=>{state.showAllBars=!state.showAllBars;updateBarStats();});
+$('basic-pattern').addEventListener('click',()=>{if(state.calibrating||state.measuring)return;const preset=sanitizeSettings({}).pattern;pattern.forEach((row,r)=>row.splice(0,32,...preset[r]));$('click').checked=false;invalidateEcho();renderGrid();saveSettings();});
 $('clear-pattern').addEventListener('click',()=>{pattern.forEach(row=>row.fill(false));invalidateEcho();renderGrid();saveSettings();});
 $('measure-latency').addEventListener('click',measureLatency);
 $('calibrate').addEventListener('click',()=>state.running?beginCalibration():start(true));

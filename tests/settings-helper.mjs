@@ -40,19 +40,30 @@ try {
   record('Portable settings sanitizer is available independently of DOM and audio', typeof sanitize === 'function');
 } catch (error) {record('Portable settings sanitizer is available independently of DOM and audio', false, {error: error.message});}
 
-const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: true, autoNormalize: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
+const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: false, autoNormalize: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
 const permittedKeys = [...Object.keys(defaultFields), 'pattern', 'trackEnabled', 'trackVolumes'].sort();
+const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => track === 0 ? [0, 8].includes(position % 16) : track === 1 ? [4, 12].includes(position % 16) : track === 2 ? position % 2 === 0 : false));
 function defaultsOk(value) {
-  return value && Object.entries(defaultFields).every(([key, expected]) => Object.is(value[key], expected)) && value.pattern?.length === 4 && value.pattern.every(row => row.length === 32 && row.every(cell => cell === false)) && value.trackEnabled?.length === 4 && value.trackEnabled.every(enabled => enabled === true) && value.trackVolumes?.length === 4 && value.trackVolumes.every(volume => volume === 100);
+  return value && Object.entries(defaultFields).every(([key, expected]) => Object.is(value[key], expected)) && JSON.stringify(value.pattern) === JSON.stringify(presetPattern()) && value.trackEnabled?.length === 4 && value.trackEnabled.every(enabled => enabled === true) && value.trackVolumes?.length === 4 && value.trackVolumes.every(volume => volume === 100);
 }
 function check(name, run) {
   try {const evidence = run();record(name, evidence.ok, evidence);} catch (error) {record(name, false, {error: error.message});}
 }
 
 if (sanitize) {
-  check('Missing settings create a blank rhythm with the metronome explicitly enabled', () => {
+  check('Missing settings restore the drum groove and leave the metronome off', () => {
     const settings = sanitize({});
     return {ok: defaultsOk(settings), settings};
+  });
+
+  check('Absent or malformed pattern roots restore the complete two-bar preset', () => {
+    const snapshots = [undefined, null, false, 'pattern', {0: [true]}].map(pattern => sanitize({pattern}));
+    return {ok: snapshots.every(settings => JSON.stringify(settings.pattern) === JSON.stringify(presetPattern())), repairedInputs: snapshots.length};
+  });
+
+  check('Explicit empty pattern arrays stay silent instead of restoring the preset', () => {
+    const snapshots = [[], Array.from({length: 4}, () => Array(32).fill(false))].map(pattern => sanitize({pattern}));
+    return {ok: snapshots.every(settings => settings.pattern.length === 4 && settings.pattern.every(row => row.length === 32 && row.every(cell => cell === false))), explicitBlankVariants: snapshots.length};
   });
 
   for (const input of [null, undefined, [], false, 'not settings', 42]) {
@@ -105,7 +116,7 @@ if (sanitize) {
 
   check('Boolean fields accept only actual booleans', () => {
     const settings = sanitize({mic: 'false', click: 0, autoNormalize: null, trackEnabled: ['false', 0, null, {}]});
-    return {ok: settings.mic === true && settings.click === true && settings.autoNormalize === true && settings.trackEnabled.every(value => value === true), settings};
+    return {ok: settings.mic === true && settings.click === false && settings.autoNormalize === true && settings.trackEnabled.every(value => value === true), settings};
   });
 
   check('Sparse and short patterns become four complete 32-position boolean tracks', () => {
@@ -145,7 +156,7 @@ if (sanitize) {
 
   check('Default snapshots have independent track arrays and do not share subsequent defaults', () => {
     const first = sanitize({}), second = sanitize({});first.pattern[0][3] = true;first.trackEnabled[0] = false;first.trackVolumes[0] = 0;
-    return {ok: first.pattern[1][3] === false && second.pattern.every(row => row.every(value => value === false)) && second.trackEnabled.every(value => value === true) && second.trackVolumes.every(value => value === 100), independentDefaults: true};
+    return {ok: first.pattern[1][3] === false && JSON.stringify(second.pattern) === JSON.stringify(presetPattern()) && second.trackEnabled.every(value => value === true) && second.trackVolumes.every(value => value === 100), independentDefaults: true};
   });
 
   check('Legacy settings without a version preserve known controls and gain version 1', () => {
