@@ -190,7 +190,8 @@ class ReferenceEcho {
    // Strong independent playing freezes the filter; it is never blanked.
    const audible=predPower>1e-12&&capPower>predPower*.015&&covariance>0;
    if(!audible)for(let i=0;i<n;i++)cleaned[i]=Number.isFinite(capture[i])?capture[i]:0;
-   else if(coherence>.8&&covariance/predPower>.65&&covariance/predPower<1.35&&errorPower<capPower*(this.modelCeiling*2+.005)){
+   else if(coherence>.8&&covariance/predPower>.65&&covariance/predPower<1.35&&errorPower<capPower*(this.modelCeiling*2+.0002)){
+    this.modelCeiling=Math.max(.0001,Math.min(this.modelCeiling,errorPower/Math.max(1e-12,capPower)+.0001));
     for(let i=0;i<n;i++){
      const at=first+i,origin=at-delaySamples+lead;let predicted=0,norm=1e-7;
      for(let j=0;j<this.h.length;j++){const x=this.referenceSample(origin-j,at);predicted+=this.h[j]*x;norm+=x*x;}
@@ -296,7 +297,7 @@ class ReferenceEcho {
     if(confidence<.85&&(!this.pending||Math.abs(candidate-this.pending.delayMs)>4)){this.pending={delayMs:candidate};this.fail('unavailable',time,'confirming');return;}
     this.locked=true;this.delayMs=candidate;
    }else if(!scan.ambiguous)this.delayMs+=Math.max(-2,Math.min(2,(candidate-this.delayMs)*.55));
-   if(!this.cancelReady||Math.abs(candidate-this.cancelDelayMs)>12){this.cancelReady=true;this.cancelDelayMs=candidate;this.gain=gain;this.modelCeiling=Math.max(.006,Math.min(.2,Number.isFinite(bestError)?bestError/Math.max(1e-12,scan.fullCapPower):1-scan.bestScore**2));this.h.fill(0);this.h[Math.min(8,Math.floor(candidate*this.rate/1000))]=gain;}
+   if(!this.cancelReady||Math.abs(candidate-this.cancelDelayMs)>12){this.cancelReady=true;this.cancelDelayMs=candidate;this.gain=gain;this.modelCeiling=Math.max(.0001,Math.min(.2,Number.isFinite(bestError)?bestError/Math.max(1e-12,scan.fullCapPower):1-scan.bestScore**2));this.h.fill(0);this.h[Math.min(8,Math.floor(candidate*this.rate/1000))]=gain;}
    else this.cancelDelayMs+=Math.max(-2,Math.min(2,(candidate-this.cancelDelayMs)*.55));
    const ambiguous=scan.ambiguous;this.matches++;this.misses=0;this.pending=null;this.scan=null;this.notify(ambiguous?'ambiguous':'locked',time,confidence,ambiguous?'repeating-pattern':undefined);
   }
