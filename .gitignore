@@ -1,0 +1,5 @@
+.DS_Store
+rhythm-settings.json
+test-results/
+test-results*.json
+test-results*.txt

@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
+<title>Ритм — тренажёр точности</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:light;--ink:#20242a;--muted:#68717d;--line:#dfe3e8;--bg:#f5f6f8;--orange:#bf4722;--green:#167657;--blue:#3266ca;--red:#bf4248;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button,select,input[type=checkbox],input[type=range]{cursor:pointer}button{color:inherit;background:white;border:1px solid var(--line);border-radius:7px;padding:9px 14px}button:hover{border-color:#7c8693}button:disabled{cursor:default;opacity:.5}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #4678d7;outline-offset:3px}input[type=number],select{height:42px;border:1px solid #ccd2d9;border-radius:6px;background:#fff;color:var(--ink);padding:7px 10px}input[type=number]{width:90px}input[type=checkbox]{accent-color:var(--orange);width:16px;height:16px}input[type=range]{accent-color:var(--orange);max-width:145px;width:100%}main{max-width:1100px;margin:36px auto;padding:0 24px 40px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px}h1{font-size:25px;letter-spacing:-.7px;margin:0;font-weight:750}h1 span{font-size:15px;font-weight:400;color:var(--muted);letter-spacing:0;margin-left:12px}.local{font-size:13px;color:var(--muted)}.transport{display:flex;gap:22px;align-items:end;flex-wrap:wrap;background:white;border:1px solid var(--line);border-radius:10px;padding:20px}.field{display:flex;flex-direction:column;gap:5px;font-size:14px;color:var(--muted)}.start{height:43px;min-width:125px;color:white;background:var(--ink);border-color:var(--ink);font-weight:650;display:flex;align-items:center;justify-content:center;gap:10px}.start.playing{background:var(--orange);border-color:var(--orange)}.start svg{width:13px;height:13px;fill:currentColor}.transport .checks{display:flex;gap:14px;flex:1;align-items:center;justify-content:flex-end;flex-wrap:wrap;min-height:43px}.check{display:inline-flex;align-items:center;gap:7px;font-size:14px;white-space:nowrap}.status{display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:53px;color:var(--muted);font-size:14px}.status #status{flex:1}.mic-meter{width:78px;height:5px;border-radius:9px;overflow:hidden;background:var(--line)}.mic-meter div{height:100%;width:0;background:var(--green);transition:width .07s linear}.mic-label{font-size:12px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px}h2{font-size:16px;font-weight:650;margin:0}.section-head small{color:var(--muted);font-size:13px}.quiet{background:transparent;font-size:13px;padding:5px 9px;border-color:transparent;color:var(--muted)}.sequencer{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 16px 19px;overflow-x:auto}.seq-grid{display:grid;gap:7px;min-width:550px;align-items:center}.track-label{font-size:14px;display:flex;align-items:center;gap:8px;white-space:nowrap}.track-dot{width:7px;height:7px;background:var(--track);border-radius:50%;flex-shrink:0}.step-number{font-size:12px;text-align:center;color:#737c86;padding:1px 0 5px}.step-number.beat{font-weight:650;color:var(--ink)}.step-number.current{color:var(--orange)}.step{padding:0;height:36px;min-width:0;border-radius:4px;background:#eef0f3;border:1px solid transparent;position:relative}.step.beat{background:#e4e8ed}.step.bar-start{border-left:2px solid #a0a8b3}.step.on{background:var(--track);border-color:var(--track)}.step.on::after{content:"";width:5px;height:5px;background:rgba(255,255,255,.9);border-radius:50%;position:absolute;top:calc(50% - 2.5px);left:calc(50% - 2.5px)}.step.current{box-shadow:0 0 0 2px var(--ink);z-index:1}.seq-foot{display:flex;justify-content:space-between;gap:15px;font-size:13px;color:var(--muted);margin:11px 0 24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:14px}.stat{padding:18px 22px}.stat+.stat{border-left:1px solid var(--line)}.stat-label{font-size:13px;color:var(--muted);margin-bottom:6px}.stat-value{font-variant-numeric:tabular-nums;font-size:28px;line-height:1.25;font-weight:650;letter-spacing:-1px}.stat-value small{font-size:14px;font-weight:400;color:var(--muted);letter-spacing:0}.stat-sub{font-size:12px;color:var(--muted);margin-top:5px}.results-head{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:8px 0 12px}.tolerance{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:var(--muted);font-size:14px}.tolerance input{width:72px;height:34px}.chart-wrap{position:relative;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}canvas{width:100%;height:290px;display:block}.empty-chart{position:absolute;left:80px;right:30px;top:40px;text-align:center;pointer-events:none;color:var(--muted);font-size:14px}.chart-caption{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--muted);font-size:13px;margin:10px 0 22px;flex-wrap:wrap}.legend{display:flex;gap:14px;flex-wrap:wrap}.legend span{display:flex;gap:5px;align-items:center}.legend i{width:7px;height:7px;border-radius:50%;background:var(--c)}details{border-top:1px solid var(--line);padding:16px 0;font-size:14px;color:var(--muted)}summary{cursor:pointer;max-width:max-content;color:var(--ink)}.advanced{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:18px}.advanced p{font-size:13px;margin:8px 0}.advanced label{color:var(--ink)}.advanced input[type=number]{width:92px}.echo-row{margin-top:15px;display:flex;align-items:center;flex-wrap:wrap;gap:12px}.echo-row p{flex:1;min-width:230px;margin:0;font-size:13px}.notes{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.65}.error{color:#a42e35!important}.good{color:var(--green)!important}.last-hit{font-variant-numeric:tabular-nums}kbd{border:1px solid var(--line);border-radius:4px;background:#fff;font:12px inherit;padding:1px 5px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:720px){main{margin:22px auto;padding:0 14px 30px}h1 span{display:block;margin:2px 0 0;font-size:13px}header{margin-bottom:18px}.transport{gap:13px;padding:15px}.transport .checks{justify-content:flex-start;flex-basis:100%;min-height:25px}.field{flex:1}.start{min-width:105px}.stats{grid-template-columns:repeat(2,1fr)}.stat{padding:15px}.stat:nth-child(3){border-left:0;border-top:1px solid var(--line)}.stat:nth-child(4){border-top:1px solid var(--line)}.stat-value{font-size:26px}.advanced{grid-template-columns:1fr;gap:14px}.results-head{flex-wrap:wrap}.seq-foot{font-size:12px}.local{font-size:12px}.empty-chart{left:55px;right:15px;font-size:13px}.status{align-items:center}.mic-label{display:none}}
+
+.bar-results{margin:24px 0 12px}.bar-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.bar-head h3{margin:0;font-size:16px}.bar-problem,.bar-range,.bar-empty{font-size:13px;color:var(--muted);line-height:1.5}.bar-summary{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.bar-position{font-size:13px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px}.bar-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}.bar-table{border-collapse:collapse;width:100%;min-width:660px;font-size:13px;font-variant-numeric:tabular-nums}.bar-table th,.bar-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line)}.bar-table th{font-weight:500;color:var(--muted);background:#f8f9fb}.bar-table th:first-child,.bar-table td:first-child,.bar-table th:nth-child(2),.bar-table td:nth-child(2){text-align:left}.bar-table tr:last-child td{border-bottom:0}.bar-table .problem-bar{background:#fff1eb}.bar-table-wrap[hidden]{display:none}
+.track-label{flex-direction:column;align-items:stretch;gap:5px}.track-switch{display:flex;align-items:center;gap:5px;font-size:13px}.track-volume{display:flex;align-items:center;gap:6px}.track-volume input{max-width:95px}.track-volume output{font-size:11px;min-width:30px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Ритм<span>Тренажёр точности</span></h1><span class="local"><span id="signature-label">4/4</span> · Всё на вашем устройстве</span></header>
+<section class="transport" aria-label="Управление воспроизведением">
+<button class="start" id="start"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1L14 8 3 15Z"/></svg><span>Start</span></button>
+<label class="field">BPM<input id="bpm" type="number" min="30" max="280" value="100" inputmode="numeric"></label>
+<label class="field">Размер<select id="signature"><option value="4" selected>4/4</option><option value="3">3/4</option></select></label>
+<label class="field">Длина цикла<select id="bars"><option value="1">1 такт</option><option value="2">2 такта</option></select></label>
+<label class="field">Сетка<select id="division"><option value="4">1/4</option><option value="8" selected>1/8</option><option value="16">1/16</option></select></label>
+<div class="checks"><label class="check"><input type="checkbox" id="click" checked>Метроном</label><label class="check"><input type="checkbox" id="mic" checked>Микрофон</label></div>
+</section>
+<div class="status"><span id="status" role="status" aria-live="polite">Нажмите Start и разрешите микрофон. Для точности используйте наушники.</span><span class="mic-label">Вход</span><div class="mic-meter" role="meter" aria-label="Уровень микрофона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter"></div></div></div>
+<section aria-labelledby="seq-title">
+<div class="section-head"><h2 id="seq-title">Ритм</h2><div><small id="step-count">8 шагов</small><button class="quiet" id="clear-pattern">Очистить</button></div></div>
+<div class="sequencer"><div id="sequencer" class="seq-grid"></div></div>
+<div class="seq-foot"><span>Рисунок начинается пустым. Включайте клетки и регулируйте каждый барабан слева.</span><span id="position">Такт 1 / 1</span></div>
+</section>
+<section aria-labelledby="results-title">
+<div class="results-head"><h2 id="results-title">Точность</h2><div class="tolerance"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю атак по медиане с учётом соседних долей; пересчитывает график и ошибки каждого такта.">Нормализовать</button><button class="quiet" id="reset">Сбросить</button></div></div>
+<p id="adaptive-info" class="notes">Поправка сама подстраивается по медиане недавних атак.</p>
+<div class="stats">
+<div class="stat"><div class="stat-label">Средняя ошибка по модулю</div><div class="stat-value" id="mae">— <small>мс</small></div><div class="stat-sub">Среднее |отклонение от сетки|</div></div>
+<div class="stat"><div class="stat-label">Разброс</div><div class="stat-value" id="spread">— <small>мс</small></div><div class="stat-sub">Среднее |отклонение от медианы|</div></div>
+<div class="stat"><div class="stat-label">В допуске</div><div class="stat-value" id="accuracy">— <small>%</small></div><div class="stat-sub" id="hit-count">0 атак</div></div>
+<div class="stat"><div class="stat-label">Медианное смещение</div><div class="stat-value" id="bias">— <small>мс</small></div><div class="stat-sub" id="bias-label">− раньше · + позже</div></div>
+</div>
+<div class="chart-wrap"><canvas id="chart" tabindex="0" role="img" aria-label="Отклонения атак от ближайших позиций сетки. Выше нуля — позже, ниже — раньше."></canvas><div class="empty-chart" id="empty">Сыграйте несколько ударов — здесь появятся отклонения.</div></div>
+<div class="chart-caption"><div class="legend"><span><i style="--c:var(--blue)"></i>Раньше</span><span><i style="--c:var(--green)"></i>В допуске</span><span><i style="--c:var(--red)"></i>Позже</span></div><span class="last-hit" id="last-hit">Последние 6 циклов · каждая атака — точка</span></div>
+<div class="bar-results" aria-labelledby="bar-title">
+<div class="bar-head"><h3 id="bar-title">Ошибка по тактам</h3><button class="quiet" id="show-all-bars" hidden>Все такты</button></div>
+<p id="bar-problem" class="bar-problem">Пока нет сыгранных атак для сравнения.</p>
+<div id="bar-summary" class="bar-summary"></div>
+<p id="bar-empty" class="bar-empty">После начала игры здесь появится каждый такт. Автоподстройка сохраняет результаты прошлых тактов.</p>
+<div id="bar-table-wrap" class="bar-table-wrap" hidden><table class="bar-table" aria-label="Ошибка каждого такта">
+<thead><tr><th scope="col">Такт</th><th scope="col">В цикле</th><th scope="col">Атак</th><th scope="col">Средняя |ошибка|</th><th scope="col">Медиана</th><th scope="col">В допуске</th><th scope="col">Раньше / позже</th></tr></thead>
+<tbody id="bar-rows"></tbody></table></div><p id="bar-range" class="bar-range"></p>
+</div>
+</section>
+<details><summary>Настройки звука и микрофона</summary>
+<div class="advanced">
+<div><label class="field">Инструмент<select id="input-mode"><option value="sustained" selected>Баян / мелодический инструмент</option><option value="percussive">Ударные / хлопки</option></select></label><p>Для баяна учитываем плавное начало и смену нот.</p></div>
+<div><label class="field">Громкость ритма <output id="volume-value">55%</output><input id="volume" type="range" min="0" max="100" value="55"></label><p>Тихий ритм меньше попадает в микрофон.</p></div>
+<div><label class="field">Порог атаки <output id="threshold-value">−48 dB</output><input id="threshold" type="range" min="-65" max="-15" value="-48"></label><p>Ложные атаки — поднимите порог. Тихие удары пропадают — снизьте.</p></div>
+<div><label class="field">Поправка задержки, мс<input id="latency" type="number" min="-300" max="500" value="0" step="0.001"></label><p>Автонормализация включена: сначала подбираем медиану по минимум 9 атакам, затем плавно следим за недавней игрой. При разбросанных атаках держим поправку. Автоцентрирование учитывает и задержку устройства, и устойчивое смещение вашей игры. «Нормализовать» вручную пересчитывает всю историю; автоматическая подстройка сохраняет прошлые такты после начального подбора.</p></div>
+</div>
+<div class="echo-row"><label class="field">Громкость метронома <output id="click-volume-value">100%</output><input id="click-volume" type="range" min="0" max="100" value="100"></label><p>Метроном управляется переключателем сверху и звучит по четвертным долям. Барабаны звучат только в включённых клетках.</p></div>
+<div class="echo-row"><button id="measure-latency">Измерить задержку</button><p id="latency-info">8 щелчков без вашей игры. Микрофон должен слышать колонки или один поднесённый к нему наушник. Используйте то же аудиоустройство, что и при тренировке: возьмём медиану задержек услышанных щелчков и покажем среднее абсолютное отклонение.</p></div>
+<div class="echo-row"><button id="calibrate">Калибровка для колонок</button><p id="echo-info">3 цикла без вашей игры: запомним фон ритма и будем вычитать его из анализа.</p></div>
+<div class="echo-row"><button id="export-settings">Настройки в файл</button><button id="import-settings">Загрузить настройки</button><input id="settings-file" type="file" accept="application/json,.json" hidden><p id="settings-info">Настройки и рисунок автоматически сохраняются в этом браузере. Для переноса используйте JSON-файл.</p></div>
+<p id="audio-info" class="notes">Подавление эха запрашивается у браузера. Калибровка помогает при неизменных ритме, громкости и положении микрофона, но не гарантирует полного удаления эха.</p>
+<p class="notes">Микрофон определяет атаки, а не инструмент или высоту ноты. Попадания считаются среди обнаруженных атак, пропущенные ноты не учитываются. Для теста без микрофона отключите его и нажимайте <kbd>Пробел</kbd> во время воспроизведения. В этом режиме Пробел работает и при фокусе на клетке; <kbd>Enter</kbd> переключает клетку. Bluetooth и задержки устройств влияют на результат. После Stop доступ к микрофону прекращается. Аудио не записывается и никуда не отправляется.</p>
+</details>
+</main>
+<script id="rhythm-dsp">
+/* Shared DSP runs in AudioWorklet (or a ScriptProcessor fallback). No wall-clock timers. */
+// A sustained-instrument detector: energy rise plus positive spectral change.
+// The existing transient detector remains available for percussion.
+// Local acoustic loopback measurement. Only summary measurements leave the DSP.
+class LatencyProbe {
+ constructor(rate,emit,config){
+  this.rate=rate;this.emit=message=>emit({id:config.id,...message});this.start=config.start;this.end=config.end;this.times=config.times;this.maxDelay=.5;
+  this.binRate=1000;this.energy=new Float32Array(Math.ceil((this.end-this.start)*this.binRate)+2);this.counts=new Uint16Array(this.energy.length);
+  this.alpha=1-Math.exp(-1/(rate*.0015));this.cosStep=Math.cos(2*Math.PI*1100/rate);this.sinStep=Math.sin(2*Math.PI*1100/rate);
+  this.re=0;this.im=0;this.cos=1;this.sin=0;this.done=false;
+  const size=64,reference=new Float32Array(size),counts=new Uint16Array(size);let re=0,im=0,cos=1,sin=0;
+  for(let i=0;i<size*rate/this.binRate;i++){
+   const sample=config.template[i]||0;re+=(sample*cos-re)*this.alpha;im+=(sample*sin-im)*this.alpha;
+   const k=Math.min(size-1,Math.floor(i*this.binRate/rate));reference[k]+=re*re+im*im;counts[k]++;
+   const nextCos=cos*this.cosStep-sin*this.sinStep;sin=sin*this.cosStep+cos*this.sinStep;cos=nextCos;
+  }
+  for(let i=0;i<size;i++)reference[i]/=counts[i]||1;
+  const mean=reference.reduce((s,x)=>s+x,0)/size;this.reference=Float32Array.from(reference,x=>x-mean);this.referencePower=this.reference.reduce((s,x)=>s+x*x,0);
+ }
+ process(samples,t){
+  if(this.done)return;
+  for(let i=0;i<samples.length;i++){
+   const time=t+i/this.rate,sample=samples[i];this.re+=(sample*this.cos-this.re)*this.alpha;this.im+=(sample*this.sin-this.im)*this.alpha;
+   const nextCos=this.cos*this.cosStep-this.sin*this.sinStep;this.sin=this.sin*this.cosStep+this.cos*this.sinStep;this.cos=nextCos;
+   const k=Math.floor((time-this.start)*this.binRate);if(k>=0&&k<this.energy.length){this.energy[k]+=this.re*this.re+this.im*this.im;this.counts[k]++;}
+  }
+  if(t+samples.length/this.rate>=this.end){this.done=true;this.finish();}
+ }
+ finish(){
+  for(let i=0;i<this.energy.length;i++)this.energy[i]/=this.counts[i]||1;
+  const noise=this.energy.slice(0,180),noiseMean=noise.reduce((s,x)=>s+x,0)/noise.length;
+  const noiseSd=Math.sqrt(noise.reduce((s,x)=>s+(x-noiseMean)**2,0)/noise.length);
+  const matches=[],size=this.reference.length;
+  for(const when of this.times){
+   const base=Math.round((when-this.start)*this.binRate),candidates=[];
+   for(let lag=0;lag<=this.maxDelay*this.binRate;lag++){
+    const first=base+lag;if(first+size>this.energy.length)break;
+    let sum=0,sumSq=0,cov=0,peak=0,covered=0;
+    for(let j=0;j<size;j++){const x=this.energy[first+j];sum+=x;sumSq+=x*x;cov+=x*this.reference[j];peak=Math.max(peak,x);if(this.counts[first+j])covered++;}
+    const power=Math.max(0,sumSq-sum*sum/size),correlation=power>1e-20?cov/Math.sqrt(power*this.referencePower):0;
+    if(covered>=size*.95&&peak>Math.max(1e-10,noiseMean*5,noiseMean+noiseSd*8)&&correlation>=.72)candidates.push({lag,correlation,peak});
+   }
+   if(candidates.length){
+    const best=Math.max(...candidates.map(c=>c.correlation));
+    // Prefer the first credible correlation peak over a later room reflection.
+    const index=candidates.findIndex((c,i)=>c.correlation>=best-.012&&(!candidates[i-1]||candidates[i-1].lag!==c.lag-1||c.correlation>=candidates[i-1].correlation)&&(!candidates[i+1]||candidates[i+1].lag!==c.lag+1||c.correlation>=candidates[i+1].correlation));
+    const match=candidates[index],left=candidates[index-1],right=candidates[index+1];let fraction=0;
+    if(left?.lag===match.lag-1&&right?.lag===match.lag+1){const curvature=left.correlation-2*match.correlation+right.correlation;if(curvature<0)fraction=Math.max(-.5,Math.min(.5,.5*(left.correlation-right.correlation)/curvature));}
+    matches.push({delayMs:Math.max(0,Math.min(500,match.lag+fraction)),correlation:match.correlation});
+   }
+  }
+  if(matches.length<5){this.emit({type:'latency-result',ok:false,reason:'not-heard',matched:matches.length,total:this.times.length});return;}
+  // Use the median so a few late arrivals cannot skew the correction.
+  const delays=matches.map(m=>m.delayMs).sort((a,b)=>a-b),middle=delays.length>>1;
+  const delayMs=delays.length%2?delays[middle]:(delays[middle-1]+delays[middle])/2;
+  const maeMs=delays.reduce((s,d)=>s+Math.abs(d-delayMs),0)/delays.length;
+  const spreadMs=Math.max(...matches.map(m=>m.delayMs))-Math.min(...matches.map(m=>m.delayMs));
+  this.emit({type:'latency-result',ok:true,delayMs,maeMs,spreadMs,matched:matches.length,total:this.times.length,correlation:matches.reduce((s,m)=>s+m.correlation,0)/matches.length});
+ }
+}
+class SustainedOnset {
+ constructor(rate,emit){
+  this.rate=rate;this.emit=emit;this.n=2048;this.hop=256;
+  this.ring=new Float32Array(this.n);this.real=new Float32Array(this.n);this.imag=new Float32Array(this.n);
+  this.previous=new Float32Array(this.n/2+1);this.window=new Float32Array(this.n);this.reverse=new Uint16Array(this.n);
+  this.cos=new Float32Array(this.n/2);this.sin=new Float32Array(this.n/2);
+  for(let i=0;i<this.n;i++){this.window[i]=.5-.5*Math.cos(2*Math.PI*i/(this.n-1));let x=i,r=0;for(let b=0;b<11;b++){r=(r<<1)|(x&1);x>>=1;}this.reverse[i]=r;}
+  for(let i=0;i<this.n/2;i++){this.cos[i]=Math.cos(2*Math.PI*i/this.n);this.sin[i]=-Math.sin(2*Math.PI*i/this.n);}
+  this.reset();
+ }
+ reset(){this.ring.fill(0);this.previous.fill(0);this.cursor=0;this.total=0;this.fast=0;this.slow=0;this.flux=0;this.armed=true;this.stableSince=null;this.lastHit=-10;}
+ spectrum(){
+  const n=this.n,re=this.real,im=this.imag;
+  for(let i=0;i<n;i++){re[this.reverse[i]]=this.ring[(this.cursor+i)%n]*this.window[i];im[i]=0;}
+  for(let size=2;size<=n;size*=2){const half=size/2,stride=n/size;for(let base=0;base<n;base+=size)for(let j=0;j<half;j++){
+   const a=base+j,b=a+half,k=j*stride,vr=re[b]*this.cos[k]-im[b]*this.sin[k],vi=re[b]*this.sin[k]+im[b]*this.cos[k];
+   re[b]=re[a]-vr;im[b]=im[a]-vi;re[a]+=vr;im[a]+=vi;
+  }}
+  let rise=0,total=0;
+  const first=Math.ceil(60*n/this.rate),last=Math.min(n/2,Math.floor(9000*n/this.rate));
+  for(let k=first;k<=last;k++){const magnitude=Math.hypot(re[k],im[k]);rise+=Math.max(0,magnitude-this.previous[k]);total+=magnitude;this.previous[k]=magnitude;}
+  this.flux=total>1e-8?rise/total:0;
+ }
+ process(samples,t,level,gate){
+  for(let i=0;i<samples.length;i++){this.ring[this.cursor]=samples[i];this.cursor=(this.cursor+1)%this.n;this.total++;if(this.total>=this.n&&this.total%this.hop===0)this.spectrum();}
+  const duration=samples.length/this.rate;
+  this.fast+=(level-this.fast)*(1-Math.exp(-duration/.012));
+  this.slow+=(level-this.slow)*(1-Math.exp(-duration/.09));
+  const energyRise=this.fast>gate&&this.fast>this.slow*1.45&&this.fast-this.slow>gate*.2;
+  const spectralRise=this.total>=this.n&&this.fast>gate&&this.flux>.04&&this.flux*this.fast>gate*.25;
+  const rising=energyRise||spectralRise;
+  if(rising){
+   this.stableSince=null;
+   if(this.armed&&t-this.lastHit>.045){this.armed=false;this.lastHit=t;this.emit({type:'onset',time:energyRise?t:Math.max(0,t-this.n/this.rate/4),level});}
+  }else{
+   if(this.stableSince===null)this.stableSince=t;
+   if(t-this.stableSince>=.025)this.armed=true;
+  }
+ }
+}
+
+class RhythmDetector {
+ constructor(rate,emit){this.rate=rate;this.emit=emit;this.probe=null;this.mode='percussive';this.sustained=new SustainedOnset(rate,emit);this.low=0;this.mid=0;this.prevX=0;this.hp=0;this.envelope=0;this.floor=.0002;this.lastHit=-10;this.lastMeter=0;this.threshold=.0126;this.active=false;this.profile=null;this.training=false;this.alphaLow=1-Math.exp(-2*Math.PI*250/rate);this.alphaMid=1-Math.exp(-2*Math.PI*2500/rate);}
+ configure(m){if(m.type==='measure-latency'){this.probe=new LatencyProbe(this.rate,this.emit,m);this.active=false;}if(m.type==='mode'){this.mode=m.value==='sustained'?'sustained':'percussive';this.sustained.reset();}if(m.type==='arm'){this.probe=null;this.start=m.start;this.duration=m.duration;this.active=true;this.envelope=0;this.sustained.reset();this.floor=.0002;this.lastHit=-10;this.profile=null;this.training=false;}if(m.type==='threshold')this.threshold=m.value;if(m.type==='invalidate'){this.profile=null;this.training=false;}if(m.type==='calibrate'){this.start=m.start;this.duration=m.duration;this.bins=Math.ceil(this.duration*this.rate/128);this.peaks=new Float32Array(this.bins*3);this.training=true;this.profile=null;this.active=true;this.envelope=0;this.sustained.reset();this.floor=.0002;this.lastHit=-10;}}
+ process(samples,t){
+  if(!samples.length)return;
+  let bands=[0,0,0],total=0,first=-1;
+  for(let i=0;i<samples.length;i++){const x=samples[i];this.hp=x-this.prevX+.995*this.hp;this.prevX=x;this.low+=this.alphaLow*(this.hp-this.low);this.mid+=this.alphaMid*(this.hp-this.mid);const a=this.low,b=this.mid-this.low,c=this.hp-this.mid;bands[0]+=a*a;bands[1]+=b*b;bands[2]+=c*c;total+=this.hp*this.hp;if(first<0&&Math.abs(this.hp)>this.threshold)first=i;}
+  bands=bands.map(x=>Math.sqrt(x/samples.length));const raw=Math.sqrt(total/samples.length);
+  if(t-this.lastMeter>.045){this.emit({type:'level',value:raw});this.lastMeter=t;}
+  if(this.probe){this.probe.process(samples,t);return;}
+  if(!this.active||t<this.start)return;
+  const phase=((t-this.start)%this.duration+this.duration)%this.duration;
+  if(this.training){
+   const loop=Math.floor((t-this.start)/this.duration);
+   if(loop<3){if(loop>=1){const k=Math.min(this.bins-1,Math.floor(phase/this.duration*this.bins));for(let j=0;j<3;j++)this.peaks[k*3+j]=Math.max(this.peaks[k*3+j],bands[j]);}return;}
+   const learned=this.peaks;
+   this.profile=new Float32Array(learned.length);for(let k=0;k<this.bins;k++)for(let j=0;j<3;j++){let peak=0;for(let d=-2;d<=2;d++)peak=Math.max(peak,learned[((k+d+this.bins)%this.bins)*3+j]);this.profile[k*3+j]=peak;}
+   this.training=false;this.envelope=0;this.sustained.reset();this.emit({type:'calibrated'});return;
+  }
+  // Subtract band energy, not amplitudes, so a new simultaneous attack can survive.
+  // A small learned-echo margin absorbs block-phase variation; this remains a heuristic.
+  if(this.profile){const k=Math.min(this.bins-1,Math.floor(phase/this.duration*this.bins));bands=bands.map((v,j)=>Math.sqrt(Math.max(0,v*v-this.profile[k*3+j]**2*1.02)));}
+  const level=Math.sqrt(bands.reduce((s,x)=>s+x*x,0));
+  if(this.mode==='sustained'){if(level<this.threshold*.5)this.floor+=(level-this.floor)*.004;this.sustained.process(samples,t,level,Math.max(this.threshold,Math.min(this.floor*3,this.threshold*1.5)));return;}
+  this.floor+=(Math.min(level,this.floor*2+.0001)-this.floor)*.004;
+  const gate=Math.max(this.threshold,this.floor*3);
+  const novelty=level-this.envelope;
+  if(level>gate&&novelty>Math.max(gate*.3,this.envelope*.32)&&t-this.lastHit>.045){this.lastHit=t;this.emit({type:'onset',time:t+Math.max(0,first)/this.rate,level});}
+  this.envelope=Math.max(level,this.envelope*.955);
+ }
+}
+if(typeof AudioWorkletProcessor!=='undefined'){
+ class RhythmProcessor extends AudioWorkletProcessor{
+  constructor(){super();this.detector=new RhythmDetector(sampleRate,m=>this.port.postMessage(m));this.port.onmessage=e=>this.detector.configure(e.data);}
+  process(inputs,outputs){const channel=inputs[0]?.[0];if(channel){for(let i=0;i<channel.length;i+=128)this.detector.process(channel.subarray(i,i+128),(currentFrame+i)/sampleRate);}for(const output of outputs)for(const c of output)c.fill(0);return true;}
+ }
+ registerProcessor('rhythm-detector',RhythmProcessor);
+}
+</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const tracks=[{name:'Бочка',color:'#bf5435'},{name:'Малый',color:'#a8792f'},{name:'Хэт',color:'#438371'},{name:'Тарелка',color:'#657db3'}];
+const pattern=Array.from({length:4},()=>Array(32).fill(false));
+// Start with a blank drum pattern; the explicit metronome is independent.
+const state={running:false,pending:false,token:0,bpm:100,bars:1,beats:4,division:8,events:[],attacks:[],showAllBars:false,adaptive:null,trackEnabled:[true,true,true,true],trackVolumes:[100,100,100,100],count:0,sum:0,sumAbs:0,sumSq:0,errors:[],epoch:0,next:0,drawStep:-1,stoppedCycle:0,lastBar:-1,calibrating:false,calibrationEnd:0,readyTime:0,measuring:false,measurementEnd:0,measureDeadline:0};
+let context=null,stream=null,source=null,processor=null,silent=null,master=null,scheduler=null,raf=null,buffers=[],clickBuffers=[],trackGains=[],clickGain=null,fallback=null,activeSources=new Set();
+const stepDuration=()=>60/state.bpm*4/state.division;
+const stepsPerBar=()=>state.beats*state.division/4;
+const stepCount=()=>state.bars*stepsPerBar();
+const patternIndex=i=>Math.floor(i/stepsPerBar())*16+(i%stepsPerBar())*16/state.division;
+const cycleDuration=()=>60/state.bpm*state.beats*state.bars;
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+// Versioned settings contain controls only: no audio, permissions or history.
+function sanitizeSettings(data){
+ const d=data&&typeof data==='object'&&!Array.isArray(data)?data:{};
+ if(d.version!==undefined&&d.version!==1)throw new Error('Неподдерживаемая версия настроек.');
+ const numeric=(key,lo,hi,fallback)=>typeof d[key]==='number'&&Number.isFinite(d[key])?Math.min(hi,Math.max(lo,d[key])):fallback;
+ const flag=(key,fallback)=>typeof d[key]==='boolean'?d[key]:fallback;
+ const choice=(key,options,fallback)=>options.includes(d[key])?d[key]:fallback;
+ return {version:1,bpm:numeric('bpm',30,280,100),bars:choice('bars',[1,2],1),beats:choice('beats',[3,4],4),division:choice('division',[4,8,16],8),mic:flag('mic',true),click:flag('click',true),autoNormalize:flag('autoNormalize',true),inputMode:choice('inputMode',['sustained','percussive'],'sustained'),volume:numeric('volume',0,100,55),clickVolume:numeric('clickVolume',0,100,100),threshold:numeric('threshold',-65,-15,-48),latency:numeric('latency',-300,500,0),tolerance:numeric('tolerance',1,100,30),pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>d.pattern?.[r]?.[i]===true)),trackEnabled:Array.from({length:4},(_,i)=>typeof d.trackEnabled?.[i]==='boolean'?d.trackEnabled[i]:true),trackVolumes:Array.from({length:4},(_,i)=>typeof d.trackVolumes?.[i]==='number'&&Number.isFinite(d.trackVolumes[i])?Math.min(100,Math.max(0,d.trackVolumes[i])):100)};
+}
+const settingsKey='rhythm-trainer.settings.v1';let settingsTimer=null,settingsDirty=false,settingsWritable=null,settingsImportId=0;
+function captureSettings(){return sanitizeSettings({version:1,bpm:state.bpm,bars:state.bars,beats:state.beats,division:state.division,mic:$('mic').checked,click:$('click').checked,autoNormalize:$('auto-normalize').checked,inputMode:$('input-mode').value,volume:Number($('volume').value),clickVolume:Number($('click-volume').value),threshold:Number($('threshold').value),latency:Number($('latency').value),tolerance:Number($('tolerance').value),pattern,trackEnabled:state.trackEnabled,trackVolumes:state.trackVolumes});}
+function flushSettings(){
+ if(settingsTimer!==null){window.clearTimeout?.(settingsTimer);settingsTimer=null;}
+ if(!settingsDirty)return settingsWritable;settingsDirty=false;
+ try{window.localStorage.setItem(settingsKey,JSON.stringify(captureSettings()));settingsWritable=true;$('settings-info').textContent='Настройки и рисунок сохранены в этом браузере. Файловая копия — кнопкой «Настройки в файл».';}
+ catch{settingsWritable=false;$('settings-info').textContent='Браузер не разрешил автосохранение. Сохраните настройки кнопкой «Настройки в файл».';}
+ return settingsWritable;
+}
+function saveSettings(){settingsDirty=true;if(settingsTimer===null){if(window.setTimeout)settingsTimer=window.setTimeout(flushSettings,700);else flushSettings();}}
+function applySettings(data){
+ const s=sanitizeSettings(data);
+ for(const [key,id] of [['bpm','bpm'],['bars','bars'],['beats','signature'],['division','division'],['inputMode','input-mode'],['volume','volume'],['clickVolume','click-volume'],['threshold','threshold'],['latency','latency'],['tolerance','tolerance']])$(id).value=s[key];
+ for(const [key,id] of [['mic','mic'],['click','click'],['autoNormalize','auto-normalize']])$(id).checked=s[key];
+ state.bpm=s.bpm;state.bars=s.bars;state.beats=s.beats;state.division=s.division;state.trackEnabled=[...s.trackEnabled];state.trackVolumes=[...s.trackVolumes];
+ pattern.forEach((row,r)=>row.splice(0,32,...s.pattern[r]));
+ $('volume-value').textContent=s.volume+'%';$('click-volume-value').textContent=s.clickVolume+'%';$('threshold-value').textContent=s.threshold+' dB';
+ clearResults();renderGrid();setControls();$('position').textContent=`Такт 1 / ${state.bars}`;
+}
+function loadSavedSettings(){
+ try{const value=window.localStorage.getItem(settingsKey);if(value){applySettings(JSON.parse(value));$('settings-info').textContent='Настройки и рисунок восстановлены из этого браузера.';}}
+ catch{$('settings-info').textContent='Сохранённые настройки недоступны. Начинаем с пустого рисунка; можно загрузить JSON-файл.';}
+}
+function exportSettings(){
+ const blob=new Blob([JSON.stringify(captureSettings(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='rhythm-settings.json';document.body.append(a);a.click();a.remove();
+ (window.setTimeout||setTimeout)(()=>URL.revokeObjectURL(url),1000);
+ $('settings-info').textContent='Файл rhythm-settings.json подготовлен. Сохраните его в папку проекта для переноса настроек.';
+}
+async function importSettings(){
+ const file=$('settings-file').files?.[0];$('settings-file').value='';if(!file)return;
+ if(state.running||state.pending||state.measuring){$('settings-info').textContent='Остановите тренировку перед загрузкой настроек.';return;}
+ const token=state.token,requestId=++settingsImportId;
+ try{if(file.size>65536)throw new Error('Файл настроек слишком большой.');const data=JSON.parse(await file.text());if(requestId!==settingsImportId)return;if(token!==state.token||state.running||state.pending||state.measuring)throw new Error('Загрузка отменена: началась тренировка.');if(!data||typeof data!=='object'||Array.isArray(data)||!Object.keys(data).some(key=>key!=='version'&&key in sanitizeSettings({})))throw new Error('В файле нет настроек тренажёра.');applySettings(data);invalidateEcho();saveSettings();const saved=flushSettings();$('settings-info').textContent=saved?'Настройки из файла загружены. Рисунок и громкости восстановлены.':'Настройки из файла загружены; автосохранение недоступно. Сохраните JSON-файл для следующего запуска.';}
+ catch(error){if(requestId===settingsImportId)$('settings-info').textContent=`Настройки не изменены: ${error.message}`;}
+}
+function updateTrackGain(row){if(trackGains[row]&&context)trackGains[row].gain.setTargetAtTime(state.trackEnabled[row]?state.trackVolumes[row]/100:0,context.currentTime,.015);}
+
+function number(id,min,max,def){const e=$(id),v=Number(e.value);const n=clamp(Number.isFinite(v)&&e.value!==''?v:def,min,max);e.value=n;return n;}
+function labelForStep(i){const perBeat=state.division/4;const beat=Math.floor((i%stepsPerBar())/perBeat)+1;const sub=i%perBeat;return perBeat===1?String(beat):perBeat===2?(sub?'&':String(beat)):[String(beat),'e','&','a'][sub];}
+function setStatus(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
+function renderGrid(){const grid=$('sequencer'),n=stepCount();grid.style.gridTemplateColumns=`168px repeat(${n},minmax(25px,1fr))`;grid.style.minWidth=`${Math.max(550,n*31+175)}px`;grid.replaceChildren();const blank=document.createElement('div');blank.textContent=`${state.beats}/4`;$('signature-label').textContent=`${state.beats}/4`;blank.className='step-number';grid.append(blank);for(let i=0;i<n;i++){const el=document.createElement('div');el.className='step-number'+(i%(state.division/4)===0?' beat':'');el.textContent=labelForStep(i);el.dataset.head=i;el.title=`Такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`;grid.append(el);}tracks.forEach((track,row)=>{const label=document.createElement('div');label.className='track-label';label.style.setProperty('--track',track.color);const heading=document.createElement('label');heading.className='track-switch';const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=state.trackEnabled[row];enabled.dataset.trackEnabled=row;enabled.setAttribute('aria-label',`${track.name}: включить звук`);enabled.disabled=state.calibrating||state.measuring;enabled.addEventListener('change',()=>{if(state.calibrating||state.measuring)return;state.trackEnabled[row]=enabled.checked;updateTrackGain(row);invalidateEcho();saveSettings();});const dot=document.createElement('span');dot.className='track-dot';heading.append(enabled,dot,document.createTextNode(track.name));const level=document.createElement('div');level.className='track-volume';const volume=document.createElement('input');volume.type='range';volume.min='0';volume.max='100';volume.value=state.trackVolumes[row];volume.dataset.trackVolume=row;volume.setAttribute('aria-label',`${track.name}: громкость`);volume.disabled=state.calibrating||state.measuring;const amount=document.createElement('output');amount.textContent=state.trackVolumes[row]+'%';volume.addEventListener('input',()=>{if(state.calibrating||state.measuring)return;state.trackVolumes[row]=Number(volume.value);amount.textContent=volume.value+'%';updateTrackGain(row);invalidateEcho();saveSettings();});level.append(volume,amount);label.append(heading,level);grid.append(label);for(let i=0;i<n;i++){const b=document.createElement('button'),p=patternIndex(i);b.type='button';b.dataset.row=row;b.dataset.step=i;b.style.setProperty('--track',track.color);b.className='step'+(i%(state.division/4)===0?' beat':'')+(i&&i%stepsPerBar()===0?' bar-start':'')+(pattern[row][p]?' on':'');b.setAttribute('aria-pressed',String(pattern[row][p]));b.setAttribute('aria-label',`${track.name}, такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`);b.addEventListener('click',()=>{if(state.calibrating||state.measuring)return;pattern[row][p]=!pattern[row][p];b.classList.toggle('on',pattern[row][p]);b.setAttribute('aria-pressed',String(pattern[row][p]));invalidateEcho();saveSettings();});grid.append(b);}});$('step-count').textContent=`${n} шагов`;state.drawStep=-1;drawChart();}
+function setControls(){const locked=state.running||state.pending||state.measuring;['bpm','bars','division','signature','input-mode','mic'].forEach(id=>$(id).disabled=locked);['clear-pattern','click','volume','click-volume'].forEach(id=>$(id).disabled=state.calibrating||state.measuring);$('calibrate').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('measure-latency').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('latency').disabled=state.calibrating||state.pending||state.measuring;$('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!state.count||state.events.at(-1)?.kind!=='mic';$('import-settings').disabled=locked;$('settings-file').disabled=locked;document.querySelectorAll('[data-track-enabled],[data-track-volume]').forEach(el=>el.disabled=state.calibrating||state.measuring);$('auto-normalize').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;updateAdaptiveInfo();document.querySelectorAll('.step').forEach(b=>b.disabled=state.calibrating||state.measuring);$('start').classList.toggle('playing',locked);$('start').querySelector('span').textContent=locked?'Stop':'Start';$('start').querySelector('path').setAttribute('d',locked?'M2 2H14V14H2Z':'M3 1L14 8 3 15Z');}
+function sendDSP(message){if(fallback)fallback.configure(message);else if(processor)processor.port.postMessage(message);}
+function invalidateEcho(){sendDSP({type:'invalidate'});$('echo-info').textContent='Для текущего ритма профиль не настроен. Во время калибровки не играйте.';}
+function clearResults(){state.stoppedCycle=0;state.lastBar=-1;state.showAllBars=false;state.events=[];state.attacks=[];state.errors=[];state.count=0;state.sum=0;state.sumAbs=0;state.sumSq=0;resetAdaptive();$('empty').hidden=false;$('last-hit').textContent='Последние 6 циклов · каждая атака — точка';updateStats();drawChart();}
+// Ignore floating point noise when an attack is exactly on the tolerance boundary.
+function inTolerance(error,tolerance=Number($('tolerance').value)){return Math.abs(error)<=tolerance+1e-6;}
+function updateStats(){
+ const n=state.count,sorted=[...state.errors].sort((a,b)=>a-b),middle=n>>1,median=n?(n%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2):0;
+ const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1).replace('.',',');
+ $('mae').innerHTML=`${n?fmt(state.sumAbs/n):'—'} <small>мс</small>`;
+ $('spread').innerHTML=`${n?fmt(state.errors.reduce((s,e)=>s+Math.abs(e-median),0)/n):'—'} <small>мс</small>`;
+ const tol=Number($('tolerance').value),inside=state.errors.reduce((s,e)=>s+inTolerance(e,tol),0);
+ $('accuracy').innerHTML=`${n?Math.round(100*inside/n):'—'} <small>%</small>`;$('hit-count').textContent=`${inside} из ${n} атак`;
+ $('bias').innerHTML=`${n?(median>=.05?'+':'')+fmt(median):'—'} <small>мс</small>`;
+ $('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!n||state.events.at(-1)?.kind!=='mic';
+ $('bias-label').textContent=!n?'− раньше · + позже':Math.abs(median)<.5?'Медиана на линии':median<0?'Медиана раньше':'Медиана позже';
+ updateBarStats();updateAdaptiveInfo();
+}
+function addHit(time,kind='mic'){if(!state.running||state.pending||state.calibrating||state.measuring)return;const corrected=time-(kind==='mic'?Number($('latency').value)/1000:0);if(corrected<state.readyTime)return;const pos=(corrected-state.epoch)/stepDuration();const nearest=Math.round(pos);if(nearest<0)return;const err=(pos-nearest)*stepDuration()*1000;const step=((nearest%stepCount())+stepCount())%stepCount();const cycle=Math.floor(nearest/stepCount());const event={step,error:err,cycle,kind,rawMs:(time-state.epoch)*1000,correctionMs:kind==='mic'?(Number($('latency').value)||0):0};state.attacks.push(event);state.events.push(event);if(state.events.length>3000)state.events.splice(0,state.events.length-3000);state.count++;state.errors.push(err);state.sum+=err;state.sumAbs+=Math.abs(err);state.sumSq+=err*err;adaptLatency(event);$('empty').hidden=true;$('last-hit').textContent=`${kind==='key'?'Пробел':'Атака'}: ${event.error>0?'+':''}${Math.round(event.error)} мс · ${inTolerance(event.error)?'в допуске':event.error<0?'раньше':'позже'}`;updateStats();drawChart();}
+function handleDSP(m){if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring)addHit(m.time);if(m.type==='calibrated'){state.calibrating=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent='Профиль фона включён. При изменении ритма или громкости калибровка сбросится.';setStatus('Калибровка завершена. Можно играть.');}}
+function makeSound(type,accent=false){const rate=context.sampleRate,duration=[.34,.23,.065,.85,.04][type];const b=context.createBuffer(1,Math.ceil(rate*duration),rate),d=b.getChannelData(0);let seed=type*1787+91,phase=0,last=0;for(let i=0;i<d.length;i++){const t=i/rate;seed=(1664525*seed+1013904223)>>>0;const noise=seed/2147483648-1;let v=0;if(type===0){const f=48+130*Math.exp(-t*36);phase+=2*Math.PI*f/rate;v=Math.sin(phase)*Math.exp(-t*16)*.84+noise*Math.exp(-t*230)*.12;}if(type===1){const hp=noise-last;last=noise;v=hp*.27*Math.exp(-t*22)+Math.sin(2*Math.PI*180*t)*.27*Math.exp(-t*30);}if(type===2||type===3){const hp=noise-last;last=noise;v=hp*(type===2?.19:.16)*Math.exp(-t*(type===2?70:7));if(type===3)v+=(Math.sin(t*2*Math.PI*4211)+Math.sin(t*2*Math.PI*5879))*.025*Math.exp(-t*8);}if(type===4)v=Math.sin(2*Math.PI*(accent?1550:1100)*t)*Math.exp(-t*95)*.32;const attack=Math.min(1,i/(rate*.0008));d[i]=v*attack;}return b;}
+function playBuffer(buffer,when,output=master){if(!context||!master)return;const src=context.createBufferSource();src.buffer=buffer;src.connect(output);activeSources.add(src);src.onended=()=>{activeSources.delete(src);src.disconnect();};src.start(when);}
+function schedule(){if(!state.running||!context)return;const now=context.currentTime,step=stepDuration();if(state.epoch+state.next*step<now-.06){stop();setStatus('Воспроизведение прервалось. Нажмите Start для новой сессии.',true);return;}while(state.epoch+state.next*step<now+.12){const when=state.epoch+state.next*step,i=state.next%stepCount(),p=patternIndex(i);tracks.forEach((_,r)=>{if(state.trackEnabled[r]&&pattern[r][p])playBuffer(buffers[r],when,trackGains[r]||master);});if($('click').checked&&i%(state.division/4)===0)playBuffer(clickBuffers[i%stepsPerBar()===0?1:0],when,clickGain||master);state.next++;}}
+function audibleTime(eventTime=performance.now()){if(!context)return 0;const stamp=context.getOutputTimestamp?.();if(stamp&&stamp.contextTime>0&&stamp.performanceTime>0)return stamp.contextTime+(eventTime-stamp.performanceTime)/1000;return context.currentTime-(context.outputLatency||context.baseLatency||0)+(eventTime-performance.now())/1000;}
+function animate(){if(!state.running)return;const t=audibleTime();const n=Math.floor((t-state.epoch)/stepDuration());const step=n>=0?n%stepCount():-1;if(step!==state.drawStep){document.querySelectorAll('[data-step],[data-head]').forEach(el=>el.classList.toggle('current',Number(el.dataset.step??el.dataset.head)===step));state.drawStep=step;$('position').textContent=n<0?'Приготовьтесь':`Такт ${Math.floor(step/stepsPerBar())+1} / ${state.bars} · цикл ${Math.floor(n/stepCount())+1}`;drawChart();updateBarStats();}if(state.calibrating){const remain=Math.max(0,state.calibrationEnd-context.currentTime);setStatus(`Калибровка: не играйте, звучит только ритм. Осталось ${Math.ceil(remain)} с.`);}raf=requestAnimationFrame(animate);}
+async function connectMic(myContext,myStream){source=myContext.createMediaStreamSource(myStream);silent=myContext.createGain();silent.gain.value=0;let fallbackUsed=false;if(myContext.audioWorklet&&window.AudioWorkletNode){const url=URL.createObjectURL(new Blob([$ ('rhythm-dsp').textContent],{type:'application/javascript'}));try{await myContext.audioWorklet.addModule(url);if(context!==myContext)return;processor=new AudioWorkletNode(myContext,'rhythm-detector',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:1,channelCountMode:'explicit'});processor.port.onmessage=e=>handleDSP(e.data);}catch(e){fallbackUsed=true;}finally{URL.revokeObjectURL(url);}}else fallbackUsed=true;if(context!==myContext)return;if(fallbackUsed){processor=myContext.createScriptProcessor(512,1,1);fallback=new RhythmDetector(myContext.sampleRate,handleDSP);processor.onaudioprocess=e=>{const input=e.inputBuffer.getChannelData(0);/* playbackTime refers to output of this callback; remove its block buffering. */const t=e.playbackTime-e.inputBuffer.duration;for(let i=0;i<input.length;i+=128)fallback.process(input.subarray(i,i+128),t+i/myContext.sampleRate);e.outputBuffer.getChannelData(0).fill(0);};}source.connect(processor);processor.connect(silent);silent.connect(myContext.destination);sendDSP({type:'mode',value:$('input-mode').value});sendDSP({type:'threshold',value:10**(Number($('threshold').value)/20)});return fallbackUsed;}
+async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});try{if(track.getCapabilities?.().echoCancellation?.includes('all'))await track.applyConstraints({echoCancellation:'all'});}catch{/* Keep the browser's supported default AEC mode. */}if(token!==state.token)return;fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?'Слушаем микрофон. Играйте в выбранную сетку.':'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
+function stop(){const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
+function beginCalibration(){if(!state.running||!processor||state.measuring)return;state.calibrating=true;clearResults();/* Start training on the next complete loop; first loop settles AEC. */const cycle=cycleDuration();const start=state.epoch+Math.max(0,Math.ceil((context.currentTime-state.epoch)/cycle))*cycle;state.calibrationEnd=start+3*cycle;state.readyTime=state.calibrationEnd;sendDSP({type:'calibrate',start,duration:cycle});setControls();}
+function drawChart(){const canvas=$('chart'),rect=canvas.getBoundingClientRect();if(!rect.width)return;const dpr=window.devicePixelRatio||1;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);const c=canvas.getContext('2d');c.scale(dpr,dpr);const w=rect.width,h=rect.height,left=w<500?48:64,right=20,top=32,bottom=40,pw=w-left-right,ph=h-top-bottom,n=stepCount(),range=stepDuration()*500,tol=Math.min(range,Number($('tolerance').value));const y=e=>top+ph/2-e/range*ph/2;const x=i=>left+(i+.5)/n*pw;c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#edf7f2';c.fillRect(left,y(tol),pw,y(-tol)-y(tol));c.font='12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';c.textAlign='right';c.textBaseline='middle';for(const v of [-range,-range/2,0,range/2,range]){c.beginPath();c.strokeStyle=v===0?'#91b3a4':'#e9ecf0';c.setLineDash(v===0?[]:[3,4]);c.moveTo(left,y(v));c.lineTo(w-right,y(v));c.stroke();c.fillStyle='#75808b';c.fillText((v>0?'+':'')+Math.round(v),left-9,y(v));}c.setLineDash([]);for(let i=0;i<n;i++){if(i===state.drawStep){c.fillStyle='rgba(191,71,34,.05)';c.fillRect(left+i/n*pw,top,pw/n,ph);}c.strokeStyle=i%stepsPerBar()===0?'#ccd3da':'#eef0f3';c.beginPath();c.moveTo(left+i/n*pw,top);c.lineTo(left+i/n*pw,h-bottom);c.stroke();c.textAlign='center';c.fillStyle=i%(state.division/4)===0?'#414b56':'#8b939c';if(w>600||n<=16||i%2===0)c.fillText(labelForStep(i),x(i),h-bottom+17);}c.textAlign='left';c.fillStyle='#747d87';c.fillText('Позже, мс',left,14);c.fillText('Раньше',left,h-10);let latest=Math.max(0,state.stoppedCycle,...state.events.map(e=>e.cycle));if(state.running&&context)latest=Math.max(latest,Math.floor((audibleTime()-state.epoch)/cycleDuration()));const visible=state.events.filter(e=>e.cycle>=latest-5);visible.forEach((e,i)=>{const age=latest-e.cycle;c.globalAlpha=Math.max(.25,1-age*.13);c.fillStyle=inTolerance(e.error)?'#167657':e.error<0?'#3266ca':'#bf4248';c.beginPath();const jitter=(((i*17)%7)-3)*Math.min(1.8,pw/n/16);c.arc(x(e.step)+jitter,y(e.error),w<500?3.3:4,0,Math.PI*2);c.fill();});c.globalAlpha=1;}
+// Circular median: minimize mean absolute distance to the nearest grid line.
+// Flat minima use their midpoint (the usual median for an even sample).
+// Sweep valleys and antipodes, including every feasible periodic alias.
+// Track common phase drift using raw received times, never already corrected
+// history. Each later update affects future attacks; archive errors stay fixed.
+class AdaptiveNormalizer {
+ constructor(allowBootstrap=true){this.samples=[];this.allowBootstrap=allowBootstrap;this.ready=false;this.lastInput=null;this.lastAttempt=null;this.status='warming';this.updates=0;}
+ observe(rawMs,stepMs,barMs,previous){
+  if(!Number.isFinite(rawMs)||!Number.isFinite(stepMs)||stepMs<=0||!Number.isFinite(barMs)||barMs<=0||this.lastInput!==null&&rawMs<=this.lastInput)return {status:'idle',samples:this.samples.length};
+  const windowMs=Math.max(12000,barMs*3);
+  if(this.lastInput!==null&&rawMs-this.lastInput>windowMs){this.samples=[];this.lastAttempt=null;this.allowBootstrap=false;}
+  this.lastInput=rawMs;this.samples.push(rawMs);
+  this.samples=this.samples.filter(t=>t>=rawMs-windowMs).slice(-48);
+  const span=this.samples.at(-1)-this.samples[0],minimumSpan=!this.ready&&this.allowBootstrap?barMs:barMs*2;
+  if(this.samples.length<9||span<minimumSpan-1e-6){this.status='warming';return {status:this.status,samples:this.samples.length};}
+  if(this.lastAttempt!==null&&rawMs-this.lastAttempt<500)return {status:'idle',samples:this.samples.length};
+  const dt=this.lastAttempt===null ? .5 : Math.min(1,(rawMs-this.lastAttempt)/1000);this.lastAttempt=rawMs;
+  const wrapped=x=>(x/stepMs-Math.round(x/stepMs))*stepMs;
+  const errors=this.samples.map(t=>wrapped(t-previous)),fit=fitLatencyMedian(errors,stepMs,previous);
+  const residuals=this.samples.map(t=>Math.abs(wrapped(t-fit.delayMs))).sort((a,b)=>a-b),middle=residuals.length>>1;
+  const mad=residuals.length%2?residuals[middle]:(residuals[middle-1]+residuals[middle])/2;
+  const inliers=residuals.filter(e=>e<=Math.min(60,stepMs*.22)).length;
+  if(mad>Math.min(35,stepMs*.16)||inliers<residuals.length*.7){this.status='uncertain';return {status:this.status,samples:this.samples.length,maeMs:fit.maeMs};}
+  if(!this.ready&&this.allowBootstrap){this.ready=true;this.allowBootstrap=false;this.status='bootstrap';this.updates++;return {status:this.status,delayMs:fit.delayMs,samples:this.samples.length,maeMs:fit.maeMs};}
+  this.ready=true;this.status='tracking';
+  const difference=fit.delayMs-previous,change=Math.abs(difference)<.75?0:clamp(difference*(1-Math.exp(-dt/4)),-10*dt,10*dt);
+  const delayMs=clamp(previous+change,-300,500);if(Math.abs(change)>1e-9)this.updates++;
+  return {status:this.status,delayMs,samples:this.samples.length,maeMs:fit.maeMs};
+ }
+}
+
+function resetAdaptive(allowBootstrap=state.count===0){state.adaptive=new AdaptiveNormalizer(allowBootstrap);updateAdaptiveInfo();}
+function updateAdaptiveInfo(){
+ const value=Number($('latency').value)||0,tracker=state.adaptive,n=tracker?.samples.length||0;
+ let message;
+ if(!$('auto-normalize').checked)message='Автонормализация выключена. Поправка фиксирована.';
+ else if(!$('mic').checked)message='Автонормализация доступна с микрофоном.';
+ else if(state.calibrating||state.measuring||state.pending)message='Автоподстройка приостановлена на время подготовки или калибровки.';
+ else if(!state.running)message='Автонормализация включена. Начните играть — поправка подстроится сама.';
+ else if(tracker?.status==='uncertain')message='Пока нет устойчивой медианы. Поправку держим; все атаки остаются в оценке ошибки.';
+ else if(!tracker?.ready||tracker.status==='warming')message=`Собираем атаки: ${n} из минимум 9. Нужно сыграть хотя бы ${!tracker?.ready&&tracker?.allowBootstrap?'один такт':'два такта'}.`;
+ else message=`Подстраиваемся по недавним атакам (${n}). Прошлые такты сохраняют свои результаты.`;
+ $('adaptive-info').textContent=`${message} Поправка ${value.toFixed(1)} мс.`;
+}
+function adaptLatency(event){
+ if(event.kind!=='mic'||!$('auto-normalize').checked||!$('mic').checked||!state.running||state.pending||state.calibrating||state.measuring)return;
+ if(!state.adaptive)resetAdaptive(false);
+ const result=state.adaptive.observe(event.rawMs,stepDuration()*1000,60/state.bpm*state.beats*1000,Number($('latency').value)||0);
+ if(result.status==='bootstrap')applyLatencyCorrection(result.delayMs,false);
+ else if(Number.isFinite(result.delayMs)){const value=Math.round(result.delayMs*1000)/1000;if(value!==Number($('latency').value)){$('latency').value=value;saveSettings();}}
+}
+
+function fitLatencyMedian(errors,stepMs,previous){
+ previous=clamp(Number.isFinite(previous)?previous:0,-300,500);
+ const values=errors.filter(Number.isFinite),n=values.length;
+ if(!n||!Number.isFinite(stepMs)||stepMs<=0)return {delayMs:previous,maeMs:0};
+ const objective=delay=>values.reduce((s,e)=>{const p=(e-(delay-previous))/stepMs;return s+Math.abs((p-Math.round(p))*stepMs);},0)/n;
+ const events=[];let value=0,slope=0;
+ for(const error of values){
+  const phase=((error%stepMs)+stepMs)%stepMs,opposite=(phase+stepMs/2)%stepMs;
+  value+=Math.min(phase,stepMs-phase)/n;slope+=phase===0||phase>stepMs/2?1:-1;
+  if(phase>0)events.push({at:phase,change:2});
+  if(opposite>0)events.push({at:opposite,change:-2});
+ }
+ events.sort((a,b)=>a.at-b.at);
+ let best=Infinity,ranges=[],moving=false;
+ const inspect=(lo,hi,score,derivative)=>{
+  // Equivalent antipodes can differ by a few floating point ulps.
+  moving||=derivative!==0&&hi-lo>stepMs*1e-10;
+  const first=Math.ceil((-300-previous-hi)/stepMs),last=Math.floor((500-previous-lo)/stepMs);
+  for(let alias=first;alias<=last;alias++){
+   const origin=previous+alias*stepMs,a=Math.max(-300,origin+lo),b=Math.min(500,origin+hi);
+   if(a>b)continue;
+   const x=derivative>0?a:derivative<0?b:(a+b)/2,candidate=Math.max(0,score+derivative*(x-origin-lo));
+   if(candidate<best-1e-7){best=candidate;ranges=[];}
+   if(Math.abs(candidate-best)<=1e-7)ranges.push(derivative===0?[a,b]:[x,x]);
+  }
+ };
+ let lo=0;
+ for(let i=0;i<events.length;){
+  const hi=events[i].at,derivative=slope/n;inspect(lo,hi,value,derivative);value+=derivative*(hi-lo);
+  do{slope+=events[i++].change;}while(i<events.length&&events[i].at===hi);
+  lo=hi;
+ }
+ inspect(lo,stepMs,value,slope/n);
+ // Antipodal pairs give a constant objective and no identifiable center.
+ if(!moving)return {delayMs:previous,maeMs:objective(previous)};
+ ranges.sort((a,b)=>a[0]-b[0]);const joined=[];
+ for(const range of ranges){const last=joined.at(-1);if(last&&range[0]<=last[1]+1e-7)last[1]=Math.max(last[1],range[1]);else joined.push([...range]);}
+ let delayMs=previous,distance=Infinity;
+ for(const [a,b] of joined){const candidate=(a+b)/2,d=Math.abs(candidate-previous);if(d<distance-1e-7||(Math.abs(d-distance)<=1e-7&&candidate<delayMs)){delayMs=candidate;distance=d;}}
+ return {delayMs,maeMs:objective(delayMs)};
+}
+
+// Use one session correction for all bars: centering each bar would hide drift.
+function summarizeBars(attacks,perBar,bars,tolerance=30,latestBar=-1){
+ const buckets=new Map(),positions=Array.from({length:bars},(_,i)=>({bar:i+1,errors:[]}));let latest=latestBar;
+ for(const event of attacks){
+  const absolute=event.cycle*perBar*bars+event.step,index=Math.floor(absolute/perBar);
+  if(index<0||!Number.isFinite(event.error))continue;
+  if(!buckets.has(index))buckets.set(index,[]);
+  buckets.get(index).push(event.error);positions[index%bars].errors.push(event.error);latest=Math.max(latest,index);
+ }
+ const stats=errors=>{
+  const count=errors.length,sorted=[...errors].sort((a,b)=>a-b),middle=count>>1;
+  return {count,maeMs:count?errors.reduce((s,e)=>s+Math.abs(e),0)/count:null,medianMs:count?(count%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2):null,biasMs:count?errors.reduce((s,e)=>s+e,0)/count:null,inside:errors.filter(e=>Math.abs(e)<=tolerance+1e-6).length,earlier:errors.filter(e=>e<-.05).length,later:errors.filter(e=>e>.05).length};
+ };
+ const history=Array.from({length:Math.max(0,latest+1)},(_,i)=>({bar:i+1,patternBar:i%bars+1,cycle:Math.floor(i/bars)+1,...stats(buckets.get(i)||[])}));
+ return {history,positions:positions.map(p=>({bar:p.bar,...stats(p.errors)}))};
+}
+
+function updateBarStats(){
+ let latest=state.lastBar;
+ if(state.running&&context){latest=Math.max(latest,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));state.lastBar=latest;}
+ const report=summarizeBars(state.attacks,stepsPerBar(),state.bars,Number($('tolerance').value),latest);
+ const played=report.history.filter(row=>row.count),worst=played.reduce((best,row)=>!best||row.maeMs>best.maeMs+1e-6?row:best,null);
+ const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1).replace('.',','),signed=n=>(n>=.05?'+':'')+fmt(n);
+ $('bar-empty').hidden=!!report.history.length;$('bar-table-wrap').hidden=!report.history.length;
+ $('bar-problem').textContent=worst?`Самый неточный: такт ${worst.bar} · ${fmt(worst.maeMs)} мс · ${worst.count} атак`:'Пока нет сыгранных атак для сравнения.';
+ $('bar-summary').replaceChildren();
+ if(state.bars>1)for(const row of report.positions){const card=document.createElement('div');card.className='bar-position';card.textContent=`${row.bar}-й такт цикла: ${row.count?fmt(row.maeMs)+' мс':'—'} · ${row.count} атак`;$('bar-summary').append(card);}
+ $('bar-rows').replaceChildren();
+ const visible=state.showAllBars?report.history:report.history.slice(-12);
+ for(const row of visible){
+  const tr=document.createElement('tr');tr.dataset.bar=row.bar;tr.className=row.bar===worst?.bar?'problem-bar':'';
+  const values=[String(row.bar),`${row.patternBar} / ${state.bars} · цикл ${row.cycle}`,String(row.count),row.count?fmt(row.maeMs)+' мс':'—',row.count?signed(row.medianMs)+' мс':'—',row.count?Math.round(100*row.inside/row.count)+'%':'—',row.count?`${row.earlier} / ${row.later}`:'—'];
+  for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+  $('bar-rows').append(tr);
+ }
+ $('bar-range').textContent=report.history.length?`Показаны такты ${visible[0].bar}–${visible.at(-1).bar} из ${report.history.length}. Ошибка — среднее |отклонение| от сетки после действовавшей поправки.`:'';
+ $('show-all-bars').hidden=report.history.length<=12;$('show-all-bars').textContent=state.showAllBars?'Последние 12 тактов':'Все такты';
+}
+
+function applyLatencyCorrection(value,resetTracker=true){
+ const next=Math.round(clamp(value,-300,500)*1000)/1000,stepMs=stepDuration()*1000;
+ $('latency').value=next;
+ // Rebuild from immutable received timestamps, including history older than
+ // the 3000 chart points. Keyboard timing does not use microphone latency.
+ for(const event of state.attacks){event.correctionMs=event.kind==='mic'?next:0;const pos=(event.rawMs-event.correctionMs)/stepMs,nearest=Math.round(pos);event.error=(pos-nearest)*stepMs;event.step=((nearest%stepCount())+stepCount())%stepCount();event.cycle=Math.floor(nearest/stepCount());}
+ state.errors=state.attacks.map(event=>event.error);state.sum=state.errors.reduce((s,e)=>s+e,0);state.sumAbs=state.errors.reduce((s,e)=>s+Math.abs(e),0);state.sumSq=state.errors.reduce((s,e)=>s+e*e,0);
+ const last=state.events.at(-1);if(last)$('last-hit').textContent=`${last.kind==='key'?'Пробел':'Атака'}: ${last.error>0?'+':''}${Math.round(last.error)} мс · ${inTolerance(last.error)?'в допуске':last.error<0?'раньше':'позже'}`;
+ if(resetTracker)resetAdaptive();saveSettings();updateStats();drawChart();return next;
+}
+function normalizeLatency(){
+ if(!state.count||state.calibrating||state.measuring||state.pending||!$('mic').checked||state.events.at(-1)?.kind!=='mic')return;
+ const previous=Number($('latency').value)||0,stepMs=stepDuration()*1000;
+ const errors=state.attacks.filter(event=>event.kind==='mic').map(event=>{const pos=(event.rawMs-previous)/stepMs;return (pos-Math.round(pos))*stepMs;});
+ const fit=fitLatencyMedian(errors,stepDuration()*1000,Number($('latency').value)||0),next=applyLatencyCorrection(fit.delayMs);
+ const mae=state.attacks.filter(event=>event.kind==='mic').reduce((s,event)=>s+Math.abs(event.error),0)/errors.length;
+ setStatus(`Поправка по медиане: ${next.toFixed(1)} мс · все ${errors.length} атак. Средняя абсолютная ошибка ${mae.toFixed(1)} мс. График и каждый такт пересчитаны.`);
+}
+function finishLatencyMeasurement(result){
+ if(!state.measuring||result.id!==state.token)return;
+ stop();
+ if(result.ok&&Number.isFinite(result.delayMs)&&result.delayMs>=0&&result.delayMs<=500&&Number.isFinite(result.maeMs)&&result.maeMs>=0){
+  const value=applyLatencyCorrection(result.delayMs);
+  $('latency-info').textContent=`Медианная задержка ${value.toFixed(1)} мс · ${result.matched} из ${result.total} щелчков · среднее |отклонение| ${result.maeMs.toFixed(1)} мс. Поправка применена; случайные колебания остаются.`;
+  setStatus('Задержка измерена и учтена. Нажмите Start и играйте.');
+ }else{
+  const message='Не удалось уверенно услышать щелчки. Подведите звук колонок или одного наушника к микрофону и попробуйте снова.';
+  $('latency-info').textContent=message+' Прежняя поправка сохранена.';setStatus('Замер не удался. Поправка задержки не изменена.',true);
+ }
+}
+async function measureLatency(){
+ if(state.pending||state.calibrating||state.measuring||!$('mic').checked)return;
+ if(state.running)stop();
+ resetAdaptive(false);const token=++state.token;state.pending=true;state.measuring=true;setControls();setStatus('Подготовка замера задержки…');
+ $('latency-info').textContent='Сейчас прозвучат 8 щелчков. Не играйте; микрофон должен слышать звук вашего устройства. Если тренируетесь в наушниках, поднесите один наушник к микрофону.';
+ try{
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API.');
+  const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен для замера.');
+  const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});
+  if(token!==state.token){micStream.getTracks().forEach(track=>track.stop());return;}
+  stream=micStream;const track=stream.getAudioTracks()[0];
+  track.addEventListener('ended',()=>{if(token===state.token&&(state.pending||state.measuring)){stop();$('latency-info').textContent='Микрофон отключён. Прежняя поправка сохранена.';setStatus('Микрофон отключён во время замера.',true);}});
+  const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление для замера.');
+  $('audio-info').textContent='Для замера эхоподавление выключено, чтобы микрофон слышал щелчки. При следующем Start вернутся обычные настройки микрофона.';
+  state.measuring=true;await connectMic(ctx,stream);if(token!==state.token)return;
+  if(track.readyState==='ended')throw new Error('Микрофон отключён во время замера.');
+  master=ctx.createGain();master.gain.value=.4;master.connect(ctx.destination);
+  const probe=makeSound(4),captureStart=ctx.currentTime+.12,first=captureStart+.35;
+  const times=[0,.67,1.46,2.23,3.11,3.91,4.70,5.59].map(offset=>first+offset),end=times.at(-1)+.62;
+  state.pending=false;state.measurementEnd=end;state.measureDeadline=performance.now()+12000;setControls();
+  sendDSP({type:'measure-latency',id:token,start:captureStart,end,times,template:probe.getChannelData(0).slice()});
+  times.forEach(when=>playBuffer(probe,when));
+  setStatus('Замер задержки: не играйте, слушаем щелчки метронома.');
+  scheduler=setInterval(()=>{
+   if(token!==state.token||!state.measuring)return;
+   if(performance.now()>state.measureDeadline||ctx.currentTime>end+.5){finishLatencyMeasurement({id:token,ok:false,reason:'not-heard'});return;}
+   setStatus(`Замер задержки: не играйте. Осталось ${Math.max(0,Math.ceil(end-ctx.currentTime))} с.`);
+  },100);
+  ctx.onstatechange=()=>{if(token===state.token&&state.measuring&&ctx.state!=='running'){stop();$('latency-info').textContent='Звук приостановлен браузером. Прежняя поправка сохранена.';setStatus('Замер прерван. Нажмите «Измерить задержку» ещё раз.',true);}};
+ }catch(error){
+  if(token!==state.token)return;stop();
+  const messages={NotAllowedError:'Нет разрешения на микрофон.',NotFoundError:'Микрофон не найден.',NotReadableError:'Не удалось открыть микрофон.'};
+  $('latency-info').textContent=(messages[error.name]||error.message||'Не удалось выполнить замер.')+' Прежняя поправка сохранена.';setStatus('Замер не удался. Поправка задержки не изменена.',true);
+ }
+}
+
+$('start').addEventListener('click',()=>state.running||state.pending||state.measuring?stop():start());
+['bpm','bars','division','signature'].forEach(id=>$(id).addEventListener('change',()=>{state.bpm=number('bpm',30,280,100);state.bars=Number($('bars').value);state.beats=Number($('signature').value)||4;state.division=Number($('division').value);clearResults();renderGrid();$('position').textContent=`Такт 1 / ${state.bars}`;saveSettings();}));
+$('mic').addEventListener('change',()=>{resetAdaptive(false);setControls();saveSettings();});
+$('auto-normalize').addEventListener('change',()=>{resetAdaptive();setControls();saveSettings();});
+$('input-mode').addEventListener('change',()=>{$('threshold').value=$('input-mode').value==='sustained'?-48:-38;$('threshold-value').textContent=$('threshold').value+' dB';saveSettings();});
+$('click').addEventListener('change',()=>{invalidateEcho();saveSettings();});
+$('click-volume').addEventListener('input',()=>{$('click-volume-value').textContent=$('click-volume').value+'%';if(clickGain&&context)clickGain.gain.setTargetAtTime(Number($('click-volume').value)/100,context.currentTime,.015);invalidateEcho();saveSettings();});
+$('volume').addEventListener('input',()=>{const value=Number($('volume').value);$('volume-value').textContent=value+'%';if(master)master.gain.setTargetAtTime(value/100*.75,context.currentTime,.015);invalidateEcho();saveSettings();});
+$('threshold').addEventListener('input',()=>{$('threshold-value').textContent=$('threshold').value+' dB';sendDSP({type:'threshold',value:10**(Number($('threshold').value)/20)});saveSettings();});
+$('latency').addEventListener('change',()=>{number('latency',-300,500,0);clearResults();saveSettings();});
+$('tolerance').addEventListener('change',()=>{number('tolerance',1,100,30);updateStats();drawChart();saveSettings();});
+$('normalize').addEventListener('click',normalizeLatency);
+$('reset').addEventListener('click',clearResults);
+$('show-all-bars').addEventListener('click',()=>{state.showAllBars=!state.showAllBars;updateBarStats();});
+$('clear-pattern').addEventListener('click',()=>{pattern.forEach(row=>row.fill(false));invalidateEcho();renderGrid();saveSettings();});
+$('measure-latency').addEventListener('click',measureLatency);
+$('calibrate').addEventListener('click',()=>state.running?beginCalibration():start(true));
+$('export-settings').addEventListener('click',exportSettings);
+$('import-settings').addEventListener('click',()=>$('settings-file').click());
+$('settings-file').addEventListener('change',importSettings);
+document.addEventListener('keydown',e=>{
+ if(e.code!=='Space')return;
+ const stepButton=e.target.tagName==='BUTTON'&&e.target.classList.contains('step');
+ if(['INPUT','SELECT','TEXTAREA','SUMMARY'].includes(e.target.tagName)||e.target.isContentEditable||(e.target.tagName==='BUTTON'&&!stepButton))return;
+ if(state.running&&!$('mic').checked){
+  e.preventDefault();
+  if(e.repeat)return;
+  const eventTime=e.timeStamp>1e12?e.timeStamp-performance.timeOrigin:e.timeStamp;
+  addHit(audibleTime(eventTime),'key');
+ }
+});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(state.running||state.pending||state.measuring)){stop();setStatus('Сессия остановлена при переходе в другую вкладку. Результаты сохранены.');}});
+window.addEventListener('pagehide',stop);
+new ResizeObserver(drawChart).observe($('chart').parentElement);
+resetAdaptive();loadSavedSettings();renderGrid();updateStats();setControls();
+/* Optional browser agent interface; no dependency and no access to raw microphone audio. */
+if(document.modelContext?.registerTool){try{document.modelContext.registerTool({name:'read_rhythm_results',description:'Read current rhythm settings and measured session statistics.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({bpm:state.bpm,bars:state.bars,beatsPerBar:state.beats,division:state.division,running:state.running,attacks:state.count,meanAbsoluteErrorMs:state.count?state.sumAbs/state.count:null,meanOffsetMs:state.count?state.sum/state.count:null,toleranceMs:Number($('tolerance').value)})});}catch{}}
+</script>
+</body>
+</html>
