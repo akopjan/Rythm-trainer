@@ -113,6 +113,7 @@
       this.nextCenter = 0;
       this.baseTime = Number.isFinite(baseTime) ? baseTime : null;
       this.lastResult = null;
+      this.lastFilterActive = false;
       if (typeof this.model.resetStream === 'function') this.model.resetStream();
     }
 
@@ -184,8 +185,10 @@
       this.lastResult = result;
       const trusted = info.phaseTrusted && info.referenceTrusted;
       const ambientReady = info.backing === false && Number.isFinite(result && result.ambientFrames) && result.ambientFrames >= 2;
+      this.lastFilterActive = false;
       if (result && (result.ready === true && trusted || ambientReady) && Number.isFinite(result.gain) && result.gain >= 0) {
-        if (!this.mic.applyProfile(result.background, result.spread, result.gain)) {
+        this.lastFilterActive = this.mic.applyProfile(result.background, result.spread, result.gain);
+        if (!this.lastFilterActive) {
           this.emit({ type: 'background-filter-error', reason: 'invalid-profile', time: frameTime });
         }
       }
@@ -228,7 +231,7 @@
         this.ola[slot] = 0;
         this.norm[slot] = 0;
       }
-      return { samples: output, delaySamples: DELAY_SAMPLES, delay: DELAY_SAMPLES, reset: didReset, result: this.lastResult };
+      return { samples: output, delaySamples: DELAY_SAMPLES, delay: DELAY_SAMPLES, reset: didReset, result: this.lastResult, filterActive: this.lastFilterActive === true };
     }
   }
 

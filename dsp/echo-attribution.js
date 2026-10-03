@@ -52,8 +52,15 @@ class EchoAttribution {
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
   const ownEvidence=typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  const tonalEvidence=this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
-  if(job.message?.toneCheck===true)confirmed=job.message.profileReady===true?knownInstrument:ownEvidence&&this.stableInstrumentTone(job);
+  if(job.message?.toneCheck===true){
+   if(knownInstrument)confirmed=true;
+   else{
+    const stable=this.stableInstrumentTone(job);
+    confirmed=stable&&(ownEvidence||tonalEvidence&&job.tonalFamilyCount>=2);
+   }
+  }
   else if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function')confirmed=ownEvidence;
   if(!confirmed){
    this.rejected++;job.done=true;return;
@@ -73,6 +80,7 @@ class EchoAttribution {
  // two short source-time windows after projection. Drum/click decays do not
  // satisfy this; admitted events keep their original onset timestamp.
  stableInstrumentTone(job){
+  job.tonalFamilyCount=0;
   if(!job.y||!Number.isFinite(job.eventIndex))return false;
   const count=Math.max(16,Math.floor(.032*this.rate/this.stride)),first=job.eventIndex+Math.round(.020*this.rate),second=job.eventIndex+Math.round(.080*this.rate);
   if(first<0||second+(count-1)*this.stride>=job.y.length)return false;
@@ -81,14 +89,39 @@ class EchoAttribution {
   if(energies[1]<job.gate*job.gate*.04)return false;
   const sampledRate=this.rate/this.stride,high=Math.min(1400,sampledRate*.45/3);
   const power=(values,frequency)=>{const c=2*Math.cos(2*Math.PI*frequency/sampledRate);let a=0,b=0;for(const x of values){const next=x+c*a-b;b=a;a=next;}return Math.max(0,a*a+b*b-c*a*b)/(sum*sum);};
+  const families=[];let mono=false;
   for(let frequency=80;frequency<=high;frequency+=10){
    const early=[1,2,3].map(h=>power(windows[0],frequency*h)),late=[1,2,3].map(h=>power(windows[1],frequency*h));
    const a=early.reduce((x,y)=>x+y,0),b=late.reduce((x,y)=>x+y,0);
-   if(early[0]<energies[0]*.05||late[0]<energies[1]*.05||early[1]+early[2]<early[0]*.015||late[1]+late[2]<late[0]*.015)continue;
+   if(early[0]<energies[0]*.025||late[0]<energies[1]*.025||early[1]+early[2]<early[0]*.015||late[1]+late[2]<late[0]*.015)continue;
    let dot=0,aa=0,bb=0;for(let h=0;h<3;h++){dot+=early[h]*late[h];aa+=early[h]**2;bb+=late[h]**2;}
    const stableShape=aa*bb>1e-30&&dot/Math.sqrt(aa*bb)>=.85;
-   if(stableShape&&2*a>=energies[0]*.55&&2*b>=energies[1]*.55&&b>=a*.65*.65)return true;
+   if(!stableShape||b<a*.65*.65)continue;
+   const concentration=Math.min(2*a/energies[0],2*b/energies[1]);
+   if(concentration>=.35)mono=true;
+   if(concentration>=.12)families.push({frequency,early,late,concentration});
   }
+  // A chord distributes its energy across distinct fundamentals. Count the
+  // union of their partials; neighbouring hypotheses and shared harmonics must
+  // not count the same spectral energy twice.
+  families.sort((a,b)=>b.concentration-a.concentration);
+  const chosen=[],bands=[];
+  for(const family of families){
+   if(chosen.some(other=>Math.abs(other.frequency-family.frequency)<Math.max(25,family.frequency*.07)))continue;
+   if(chosen.some(other=>{const ratio=Math.max(other.frequency,family.frequency)/Math.min(other.frequency,family.frequency);return Math.abs(ratio-Math.round(ratio))<.06;}))continue;
+   chosen.push(family);
+   for(let h=0;h<3;h++){
+    const frequency=family.frequency*(h+1),existing=bands.find(band=>Math.abs(band.frequency-frequency)<20);
+    if(existing){existing.early=Math.max(existing.early,family.early[h]);existing.late=Math.max(existing.late,family.late[h]);}
+    else bands.push({frequency,early:family.early[h],late:family.late[h]});
+   }
+   if(chosen.length>=2){
+    let a=0,b=0,dot=0,aa=0,bb=0;for(const band of bands){a+=band.early;b+=band.late;dot+=band.early*band.late;aa+=band.early**2;bb+=band.late**2;}
+    if(2*a>=energies[0]*.35&&2*b>=energies[1]*.35&&b>=a*.65*.65&&dot/Math.sqrt(Math.max(1e-30,aa*bb))>=.85){job.tonalFamilyCount=chosen.length;return true;}
+   }
+   if(chosen.length===3)break;
+  }
+  if(mono){job.tonalFamilyCount=1;return true;}
   return false;
  }
  // Equal Hann windows distinguish a legato pitch change from a held tone.
