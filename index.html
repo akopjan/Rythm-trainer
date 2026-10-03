@@ -16,6 +16,7 @@
 .track-label{flex-direction:column;align-items:stretch;gap:5px}.track-switch{display:flex;align-items:center;gap:5px;font-size:13px}.track-volume{display:flex;align-items:center;gap:6px}.track-volume input{max-width:95px}.track-volume output{font-size:11px;min-width:30px;color:var(--muted)}
 .audio-meters{display:flex;flex-direction:column;gap:5px;flex-shrink:0;padding:7px 0}.audio-meter-row{display:grid;grid-template-columns:86px 78px;gap:8px;align-items:center}.audio-meter-row .mic-label{display:inline;white-space:nowrap}.meter-state{font-size:11px;line-height:1.2;text-align:right;color:var(--muted)}.filtered-meter[data-active="false"] div{background:var(--muted)}
 @media(max-width:480px){.status{flex-wrap:wrap;gap:8px;padding:8px 0}.status #status{flex-basis:100%}.audio-meters{margin-left:auto}}
+.detection-info{font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -37,6 +38,7 @@
 </section>
 <section aria-labelledby="results-title">
 <div class="results-head"><h2 id="results-title">Точность</h2><div class="tolerance"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><label class="check"><input id="reference-sync" type="checkbox" checked>Задержка по рисунку</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю атак по медиане с учётом соседних долей; пересчитывает график и ошибки каждого такта.">Нормализовать</button><button class="quiet" id="reset">Сбросить</button></div></div>
+<p id="detection-info" class="notes detection-info">Распознавание остановлено.</p>
 <p id="isolation-info" class="notes">Рисунок и метроном не входят в оценку игры. Перед началом проверяем отделение фона.</p>
 <p id="background-info" class="notes">Фон обновляется в паузах игры. При звучании инструмента обучение приостанавливается.</p>
 <p id="reference-info" class="notes">Слушаем барабанный рисунок для привязки задержки и вычитаем его из входа.</p>
@@ -876,8 +878,9 @@ class EchoAttribution {
  }
  reset(){
   for(const array of [this.render,this.capture,this.lowRender,this.lowCapture])array.fill(0);
-  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};this.accepted=0;this.rejected=0;
+  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};this.accepted=0;this.rejected=0;this.lastDecision=null;
  }
+ reject(job,reason){this.rejected++;this.lastDecision={time:job.message?.time??this.baseTime+this.total/this.rate,reason};job.done=true;}
  process(render,capture,cleaned,t,meta={}){
   const n=capture?.length||0;if(!n)return;
   if(this.baseTime===null)this.baseTime=t;
@@ -891,6 +894,13 @@ class EchoAttribution {
    this.lowRender[at]=this.filters[0];this.lowCapture[at]=this.filters[1];
   }
   if(!this.pending.length)return;
+  // The harmonic classifier has a shorter rolling history than a queued
+  // waveform audit. Retain each event's source-time evidence after its future
+  // observation window closes, including jobs waiting behind the head.
+  const evidenceTime=Number.isFinite(meta.evidenceTime)?meta.evidenceTime:t+n/this.rate;
+  for(const job of this.pending)if(!job.evidenceSnapshot&&evidenceTime>=job.message.time+.13){
+   job.evidenceSnapshot={time:evidenceTime,own:typeof meta.instrumentEvidence==='function'&&meta.instrumentEvidence(job.message.time),tonal:meta.renderRecent===true&&typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(job.message.time),renderRecent:meta.renderRecent===true};
+  }
   // A missing, stale or unproven reference does not prove an own attack.
   if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){this.pending=[];return;}
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
@@ -914,8 +924,8 @@ class EchoAttribution {
  accept(job){
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
-  const ownEvidence=typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
-  const tonalEvidence=this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
+  const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  const tonalEvidence=job.evidenceSnapshot?job.evidenceSnapshot.tonal:this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
   if(job.message?.toneCheck===true){
    if(knownInstrument)confirmed=true;
@@ -926,7 +936,7 @@ class EchoAttribution {
   }
   else if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function')confirmed=ownEvidence;
   if(!confirmed){
-   this.rejected++;job.done=true;return;
+   this.reject(job,'tone-unconfirmed');return;
   }
   if(job.y){
    // Independent energy can be a held note. A backing-triggered candidate
@@ -934,9 +944,9 @@ class EchoAttribution {
    const removed=Math.max(0,job.original-job.energy),echo=Math.sqrt(removed/job.length),limit=job.eventIndex,afterStart=Math.min(job.length-1,limit+Math.round(.012*this.rate)),afterEnd=Math.min(job.length,limit+Math.round(.052*this.rate));let before=0,after=0;
    for(let i=0;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
    before=Math.sqrt(before/Math.max(1,limit));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.rejected++;job.done=true;return;}
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.reject(job,'held-tone');return;}
   }
-  this.accepted++;this.emit({...job.message});job.done=true;
+  this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;
  }
  // Harmonics alone are also present in clipped speaker percussion. Before
  // a background profile exists, require a steady independent harmonic tone in
@@ -1028,7 +1038,7 @@ class EchoAttribution {
   // a changing short FIR appears as an extra negative colored echo source.
   for(let i=0;i<job.length;i++){const x=this.at(this.capture,job.start+i);job.y[i]=x;job.original+=x*x;if(i%this.stride===0)job.low[i/this.stride]=this.at(this.lowCapture,job.start+i);}
   job.originalY=job.y.slice();job.atoms=[];
-  if(job.original<1e-16){this.rejected++;job.done=true;return true;}
+  if(job.original<1e-16){this.reject(job,'below-threshold');return true;}
   const anchored=this.meta.cancelReady&&Number.isFinite(this.meta.delayMs);
   job.anchor=anchored?this.meta.delayMs*this.rate/1000:0;
   job.lowLag=anchored?Math.max(0,job.anchor-this.rate*.12):0;job.highLag=anchored?Math.min(this.rate*.5,job.anchor+this.rate*.20):this.rate*.5;
@@ -1085,7 +1095,7 @@ class EchoAttribution {
    const rms=Math.sqrt(job.energy/job.length),explained=1-job.energy/job.original;
    // A loud echo may accompany a quiet instrument. The veto requires both
    // coherent attribution and absence of audible independent residual energy.
-   if(explained>.90&&rms<job.gate*.5){this.rejected++;job.done=true;return;}
+   if(explained>.90&&rms<job.gate*.5){this.reject(job,'speaker');return;}
    if(++job.iteration>=6){this.accept(job);return;}
    this.beginCoarse(job);
   }
@@ -1269,10 +1279,13 @@ class RhythmDetector extends LegacyRhythmDetector {
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
   super(rate,emit);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
-  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];
+  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  const reject=this.attribution.reject.bind(this.attribution);
+  this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
+   this.scoredCount++;
    this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});
   };
  }
@@ -1284,6 +1297,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
  }
  onset(message,gate=this.currentGate||this.threshold){
+  this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
@@ -1300,7 +1314,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
   super.configure(m);
   if(m.type==='arm'){
-   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];
+   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
   if(m.type==='reference-sync'&&this.referenceEnabled){
    this.ensureBackground();this.background.configure({epoch:this.start,duration:this.duration,backing:m.backing,reset:true,oversubtraction:4});
@@ -1329,7 +1343,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   if(!this.referenceEnabled||this.probe)return super.process(samples,t,render);
   if(!samples?.length)return;
   const captured=samples,linear=this.reference.process(captured,render,t),isolation=this.reference.analysisInfo();
-  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,
+  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,
    instrumentEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&(e.harmonic||this.background?.ready&&this.mode==='percussive'&&e.reason==='unmatched-transient')),
    tonalEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&e.status==='instrument'&&e.reason==='persistent-tonal-energy')});
   this.ensureBackground();
@@ -1348,6 +1362,11 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.lastMeter=t;
   }
   const cal=this.backgroundCalibration;
+  if(t-this.lastDetectionEmit>=.20){
+   const pausedReason=cal?'calibration':!isolation.ready&&!isolation.canAudit?'reference':!r.cancelReady&&!this.background.ready&&this.background.status==='learning'?'learning':null;
+   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision});
+   this.lastDetectionEmit=t;
+  }
   if(cal){
    if((r.cancelReady&&r.modelCeiling<=.03||this.background.ready)&&cal.deadline!==null&&cal.deadline>Math.max(t,cal.requestedStart+3*cal.duration)){
     cal.deadline=Math.max(t,cal.requestedStart+3*cal.duration);
@@ -1486,6 +1505,42 @@ function updateTrackGain(row){if(trackGains[row]&&context)trackGains[row].gain.s
 
 // Background learning is independent of calibration, scoring, and history.
 // The second meter displays only the signal actually passed through the filter.
+// Read-only explanation of where current note recognition is waiting.
+function resetDetection(){
+ state.detection={time:-Infinity,mode:'sustained',level:0,gate:0,pausedReason:null,candidates:0,accepted:0,rejected:0,pending:0,lastDecision:null};
+ updateDetectionInfo();
+}
+function updateDetectionInfo(){
+ const target=$('detection-info');if(!target)return;
+ if(!$('mic').checked){target.textContent='Распознавание: микрофон выключен.';return;}
+ if(state.pending){target.textContent='Распознавание: подготовка входа…';return;}
+ if(!state.running){target.textContent='Распознавание остановлено.';return;}
+ const d=state.detection;
+ if(!Number.isFinite(d.time)){target.textContent='Распознавание: ждём звук микрофона…';return;}
+ let message;
+ if(d.pausedReason==='calibration')message='Калибровка: пока не играйте.';
+ else if(d.pausedReason==='reference')message='Нет звуковой опоры для проверки входа. Остановите тренировку и нажмите Start.';
+ else if(d.pausedReason==='learning')message='Запоминаем фон: дайте рисунку прозвучать без игры.';
+ else if(d.pending>0)message='Начало звука найдено. Проверяем, что это инструмент.';
+ else if(d.lastDecision&&d.time-d.lastDecision.time<=1.5){
+  const reason=d.lastDecision.reason;
+  message=reason==='instrument'?'Ноты распознаются.':reason==='speaker'?'Начало найдено, но звук похож на барабаны или метроном.':reason==='tone-unconfirmed'?'Начало найдено, но нота пока не подтверждена.':reason==='held-tone'?'Нота продолжается: нового начала нет.':'Начало слишком тихое для выбранного порога.';
+ }else if(d.level<d.gate)message='После фильтра звук ниже порога распознавания.';
+ else message=d.mode==='percussive'?'Звук слышен. Ищем начало удара.':'Звук слышен. Ищем начало или смену ноты.';
+ target.textContent=message+' Найдено: '+d.candidates+' · подтверждено: '+d.accepted+' · отсеяно: '+d.rejected+'.';
+}
+function acceptDetection(m){
+ const old=state.detection;
+ if(!state.running||state.pending||state.measuring||m.id!==state.token||!Number.isFinite(m.time)||m.time<=old.time||!['sustained','percussive'].includes(m.mode)||!Number.isFinite(m.level)||m.level<0||!Number.isFinite(m.gate)||m.gate<0||![null,'calibration','reference','learning'].includes(m.pausedReason))return;
+ if(!['candidates','accepted','rejected'].every(key=>Number.isSafeInteger(m[key])&&m[key]>=old[key])||m.accepted+m.rejected>m.candidates)return;
+ const pending=m.pending===undefined?m.candidates-m.accepted-m.rejected:m.pending;
+ if(!Number.isSafeInteger(pending)||pending<0||pending>m.candidates)return;
+ const decision=m.lastDecision;
+ if(decision!==null&&(!decision||!Number.isFinite(decision.time)||decision.time>m.time+.05||!['instrument','speaker','tone-unconfirmed','held-tone','below-threshold'].includes(decision.reason)))return;
+ state.detection={time:m.time,mode:m.mode,level:m.level,gate:m.gate,pausedReason:m.pausedReason,candidates:m.candidates,accepted:m.accepted,rejected:m.rejected,pending,lastDecision:decision?{time:decision.time,reason:decision.reason}:null};
+ updateDetectionInfo();
+}
+
 function resetFilteredMeter(){
  state.filteredLevel={value:0,active:false,time:-Infinity};
  updateFilteredMeter();
@@ -1588,7 +1643,7 @@ function number(id,min,max,def){const e=$(id),v=Number(e.value);const n=clamp(Nu
 function labelForStep(i){const perBeat=state.division/4;const beat=Math.floor((i%stepsPerBar())/perBeat)+1;const sub=i%perBeat;return perBeat===1?String(beat):perBeat===2?(sub?'&':String(beat)):[String(beat),'e','&','a'][sub];}
 function setStatus(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
 function renderGrid(){const grid=$('sequencer'),n=stepCount();grid.style.gridTemplateColumns=`168px repeat(${n},minmax(25px,1fr))`;grid.style.minWidth=`${Math.max(550,n*31+175)}px`;grid.replaceChildren();const blank=document.createElement('div');blank.textContent=`${state.beats}/4`;$('signature-label').textContent=`${state.beats}/4`;blank.className='step-number';grid.append(blank);for(let i=0;i<n;i++){const el=document.createElement('div');el.className='step-number'+(i%(state.division/4)===0?' beat':'');el.textContent=labelForStep(i);el.dataset.head=i;el.title=`Такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`;grid.append(el);}tracks.forEach((track,row)=>{const label=document.createElement('div');label.className='track-label';label.style.setProperty('--track',track.color);const heading=document.createElement('label');heading.className='track-switch';const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=state.trackEnabled[row];enabled.dataset.trackEnabled=row;enabled.setAttribute('aria-label',`${track.name}: включить звук`);enabled.disabled=state.calibrating||state.measuring;enabled.addEventListener('change',()=>{if(state.calibrating||state.measuring)return;state.trackEnabled[row]=enabled.checked;updateTrackGain(row);invalidateEcho();saveSettings();});const dot=document.createElement('span');dot.className='track-dot';heading.append(enabled,dot,document.createTextNode(track.name));const level=document.createElement('div');level.className='track-volume';const volume=document.createElement('input');volume.type='range';volume.min='0';volume.max='100';volume.value=state.trackVolumes[row];volume.dataset.trackVolume=row;volume.setAttribute('aria-label',`${track.name}: громкость`);volume.disabled=state.calibrating||state.measuring;const amount=document.createElement('output');amount.textContent=state.trackVolumes[row]+'%';volume.addEventListener('input',()=>{if(state.calibrating||state.measuring)return;state.trackVolumes[row]=Number(volume.value);amount.textContent=volume.value+'%';updateTrackGain(row);invalidateEcho();saveSettings();});level.append(volume,amount);label.append(heading,level);grid.append(label);for(let i=0;i<n;i++){const b=document.createElement('button'),p=patternIndex(i);b.type='button';b.dataset.row=row;b.dataset.step=i;b.style.setProperty('--track',track.color);b.className='step'+(i%(state.division/4)===0?' beat':'')+(i&&i%stepsPerBar()===0?' bar-start':'')+(pattern[row][p]?' on':'');b.setAttribute('aria-pressed',String(pattern[row][p]));b.setAttribute('aria-label',`${track.name}, такт ${Math.floor(i/stepsPerBar())+1}, шаг ${i%stepsPerBar()+1}`);b.addEventListener('click',()=>{if(state.calibrating||state.measuring)return;pattern[row][p]=!pattern[row][p];b.classList.toggle('on',pattern[row][p]);b.setAttribute('aria-pressed',String(pattern[row][p]));invalidateEcho();saveSettings();});grid.append(b);}});$('step-count').textContent=`${n} шагов`;state.drawStep=-1;drawChart();}
-function setControls(){const locked=state.running||state.pending||state.measuring;['bpm','bars','division','signature','input-mode','mic'].forEach(id=>$(id).disabled=locked);['basic-pattern','clear-pattern','click','volume','click-volume'].forEach(id=>$(id).disabled=state.calibrating||state.measuring);$('calibrate').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('measure-latency').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('latency').disabled=state.calibrating||state.pending||state.measuring;$('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!state.count||state.events.at(-1)?.kind!=='mic';$('reference-sync').disabled=locked||!$('mic').checked;$('import-settings').disabled=locked;$('settings-file').disabled=locked;document.querySelectorAll('[data-track-enabled],[data-track-volume]').forEach(el=>el.disabled=state.calibrating||state.measuring);$('auto-normalize').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;updateAdaptiveInfo();updateReferenceInfo();updateIsolationInfo();updateBackgroundInfo();updateFilteredMeter();document.querySelectorAll('.step').forEach(b=>b.disabled=state.calibrating||state.measuring);$('start').classList.toggle('playing',locked);$('start').querySelector('span').textContent=locked?'Stop':'Start';$('start').querySelector('path').setAttribute('d',locked?'M2 2H14V14H2Z':'M3 1L14 8 3 15Z');}
+function setControls(){const locked=state.running||state.pending||state.measuring;['bpm','bars','division','signature','input-mode','mic'].forEach(id=>$(id).disabled=locked);['basic-pattern','clear-pattern','click','volume','click-volume'].forEach(id=>$(id).disabled=state.calibrating||state.measuring);$('calibrate').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('measure-latency').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;$('latency').disabled=state.calibrating||state.pending||state.measuring;$('normalize').disabled=state.calibrating||state.pending||state.measuring||!$('mic').checked||!state.count||state.events.at(-1)?.kind!=='mic';$('reference-sync').disabled=locked||!$('mic').checked;$('import-settings').disabled=locked;$('settings-file').disabled=locked;document.querySelectorAll('[data-track-enabled],[data-track-volume]').forEach(el=>el.disabled=state.calibrating||state.measuring);$('auto-normalize').disabled=state.pending||state.calibrating||state.measuring||!$('mic').checked;updateAdaptiveInfo();updateReferenceInfo();updateIsolationInfo();updateBackgroundInfo();updateFilteredMeter();updateDetectionInfo();document.querySelectorAll('.step').forEach(b=>b.disabled=state.calibrating||state.measuring);$('start').classList.toggle('playing',locked);$('start').querySelector('span').textContent=locked?'Stop':'Start';$('start').querySelector('path').setAttribute('d',locked?'M2 2H14V14H2Z':'M3 1L14 8 3 15Z');}
 function sendDSP(message){if(fallback)fallback.configure(message);else if(processor)processor.port.postMessage(message);}
 function invalidateEcho(){sendDSP({type:'invalidate'});sendDSP({type:'backing-state',backing:hasAudibleBacking()});$('echo-info').textContent='Для текущего ритма профиль не настроен. Во время калибровки не играйте.';}
 function clearResults(){state.scoreAfter=state.running&&context?context.currentTime:0;state.stoppedCycle=0;state.lastBar=-1;state.showAllBars=false;state.events=[];state.attacks=[];state.errors=[];state.count=0;state.sum=0;state.sumAbs=0;state.sumSq=0;resetAdaptive();$('empty').hidden=false;$('last-hit').textContent='Последние 6 циклов · каждая атака — точка';updateStats();drawChart();}
@@ -1608,7 +1663,7 @@ function updateStats(){
  updateBarStats();updateAdaptiveInfo();
 }
 function addHit(time,kind='mic'){if(!state.running||state.pending||state.calibrating||state.measuring)return;if(kind==='mic'&&time<state.reference.acceptAfter)return;const corrected=time-(kind==='mic'?Number($('latency').value)/1000:0);if(corrected<state.readyTime)return;const pos=(corrected-state.epoch)/stepDuration();const nearest=Math.round(pos);if(nearest<0)return;const err=(pos-nearest)*stepDuration()*1000;const step=((nearest%stepCount())+stepCount())%stepCount();const cycle=Math.floor(nearest/stepCount());const event={step,error:err,cycle,kind,rawMs:(time-state.epoch)*1000,correctionMs:kind==='mic'?(Number($('latency').value)||0):0};state.attacks.push(event);state.events.push(event);if(state.events.length>3000)state.events.splice(0,state.events.length-3000);state.count++;state.errors.push(err);state.sum+=err;state.sumAbs+=Math.abs(err);state.sumSq+=err*err;adaptLatency(event);$('empty').hidden=true;$('last-hit').textContent=`${kind==='key'?'Пробел':'Атака'}: ${event.error>0?'+':''}${Math.round(event.error)} мс · ${inTolerance(event.error)?'в допуске':event.error<0?'раньше':'позже'}`;updateStats();drawChart();}
-function handleDSP(m){if(m.type==='filtered-level'){acceptFilteredLevel(m);return;}if(m.type==='calibration-progress'){if(state.running&&state.calibrating&&m.id===state.token&&Number.isFinite(m.end)){state.calibrationEnd=m.end;state.calibrationWaiting=false;state.readyTime=m.end;}return;}if(m.type==='background-state'){acceptBackground(m);return;}if(m.type==='analysis-state'){acceptAnalysis(m);return;}if(m.type==='acoustic-sync'){syncAcoustic(m);return;}if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring&&m.id===state.token&&m.isolated===true&&m.source==='instrument'&&Number.isFinite(m.time)&&m.time>=state.scoreAfter)addHit(m.time);if(m.type==='calibrated'&&(m.id===undefined||m.id===state.token)){state.calibrating=false;state.calibrationWaiting=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent=m.ready===false?'Не удалось собрать чистый профиль. Фон обновляется только в уверенных паузах.':'Профиль собран. В паузах игры он будет осторожно уточняться.';setStatus(m.ready===false?'Профиль фона пока не построен. Повторите калибровку без игры инструмента.':'Калибровка завершена. Можно играть.');}}
+function handleDSP(m){if(m.type==='detection-state'){acceptDetection(m);return;}if(m.type==='filtered-level'){acceptFilteredLevel(m);return;}if(m.type==='calibration-progress'){if(state.running&&state.calibrating&&m.id===state.token&&Number.isFinite(m.end)){state.calibrationEnd=m.end;state.calibrationWaiting=false;state.readyTime=m.end;}return;}if(m.type==='background-state'){acceptBackground(m);return;}if(m.type==='analysis-state'){acceptAnalysis(m);return;}if(m.type==='acoustic-sync'){syncAcoustic(m);return;}if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring&&m.id===state.token&&m.isolated===true&&m.source==='instrument'&&Number.isFinite(m.time)&&m.time>=state.scoreAfter)addHit(m.time);if(m.type==='calibrated'&&(m.id===undefined||m.id===state.token)){state.calibrating=false;state.calibrationWaiting=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent=m.ready===false?'Не удалось собрать чистый профиль. Фон обновляется только в уверенных паузах.':'Профиль собран. В паузах игры он будет осторожно уточняться.';setStatus(m.ready===false?'Профиль фона пока не построен. Повторите калибровку без игры инструмента.':'Калибровка завершена. Можно играть.');}}
 function makeSound(type,accent=false){const rate=context.sampleRate,duration=[.34,.23,.065,.85,.04][type];const b=context.createBuffer(1,Math.ceil(rate*duration),rate),d=b.getChannelData(0);let seed=type*1787+91,phase=0,last=0;for(let i=0;i<d.length;i++){const t=i/rate;seed=(1664525*seed+1013904223)>>>0;const noise=seed/2147483648-1;let v=0;if(type===0){const f=48+130*Math.exp(-t*36);phase+=2*Math.PI*f/rate;v=Math.sin(phase)*Math.exp(-t*16)*.84+noise*Math.exp(-t*230)*.12;}if(type===1){const hp=noise-last;last=noise;v=hp*.27*Math.exp(-t*22)+Math.sin(2*Math.PI*180*t)*.27*Math.exp(-t*30);}if(type===2||type===3){const hp=noise-last;last=noise;v=hp*(type===2?.19:.16)*Math.exp(-t*(type===2?70:7));if(type===3)v+=(Math.sin(t*2*Math.PI*4211)+Math.sin(t*2*Math.PI*5879))*.025*Math.exp(-t*8);}if(type===4)v=Math.sin(2*Math.PI*(accent?1550:1100)*t)*Math.exp(-t*95)*.32;const attack=Math.min(1,i/(rate*.0008));d[i]=v*attack;}return b;}
 function playBuffer(buffer,when,output=master){if(!context||!master)return;const src=context.createBufferSource();src.buffer=buffer;src.connect(output);activeSources.add(src);src.onended=()=>{activeSources.delete(src);src.disconnect();};src.start(when);}
 function schedule(){if(!state.running||!context)return;const now=context.currentTime,step=stepDuration();if(state.epoch+state.next*step<now-.06){stop();setStatus('Воспроизведение прервалось. Нажмите Start для новой сессии.',true);return;}while(state.epoch+state.next*step<now+.12){const when=state.epoch+state.next*step,i=state.next%stepCount(),p=patternIndex(i);tracks.forEach((_,r)=>{if(state.trackEnabled[r]&&pattern[r][p])playBuffer(buffers[r],when,trackGains[r]||master);});if($('click').checked&&i%(state.division/4)===0)playBuffer(clickBuffers[i%stepsPerBar()===0?1:0],when,clickGain||master);state.next++;}}
@@ -1640,8 +1695,8 @@ async function connectMic(myContext,myStream){
  sendDSP({type:'mode',value:$('input-mode').value});sendDSP({type:'threshold',value:10**(Number($('threshold').value)/20)});
  return fallbackUsed;
 }
-async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!$('reference-sync').checked,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});try{if(!$('reference-sync').checked&&track.getCapabilities?.().echoCancellation?.includes('all'))await track.applyConstraints({echoCancellation:'all'});}catch{/* Keep the browser's supported default AEC mode. */}if(token!==state.token)return;if($('reference-sync').checked){const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление для синхронизации. Выключите «Задержка по рисунку» или используйте браузер с доступом к необработанному микрофону.');}fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(hasAudibleBacking()?'Короткая подготовка входа. Затем можно играть; задержка подбирается отдельно.':'Слушаем микрофон. Играйте в выбранную сетку.'):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
-function stop(){const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;resetFilteredMeter();clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();referenceMerger?.disconnect();referenceMerger=null;referenceAvailable=false;silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
+async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!$('reference-sync').checked,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});try{if(!$('reference-sync').checked&&track.getCapabilities?.().echoCancellation?.includes('all'))await track.applyConstraints({echoCancellation:'all'});}catch{/* Keep the browser's supported default AEC mode. */}if(token!==state.token)return;if($('reference-sync').checked){const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление для синхронизации. Выключите «Задержка по рисунку» или используйте браузер с доступом к необработанному микрофону.');}fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(hasAudibleBacking()?'Короткая подготовка входа. Затем можно играть; задержка подбирается отдельно.':'Слушаем микрофон. Играйте в выбранную сетку.'):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
+function stop(){const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;resetFilteredMeter();resetDetection();clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();referenceMerger?.disconnect();referenceMerger=null;referenceAvailable=false;silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
 function beginCalibration(){if(!state.running||!processor||state.measuring)return;state.calibrating=true;state.calibrationWaiting=true;clearResults();/* Start training on the next complete loop; first loop settles AEC. */const cycle=cycleDuration();const start=state.epoch+Math.max(0,Math.ceil((context.currentTime-state.epoch)/cycle))*cycle;state.calibrationEnd=start+3*cycle;state.readyTime=state.calibrationEnd;sendDSP({type:'calibrate',start,duration:cycle});setControls();}
 function drawChart(){const canvas=$('chart'),rect=canvas.getBoundingClientRect();if(!rect.width)return;const dpr=window.devicePixelRatio||1;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);const c=canvas.getContext('2d');c.scale(dpr,dpr);const w=rect.width,h=rect.height,left=w<500?48:64,right=20,top=32,bottom=40,pw=w-left-right,ph=h-top-bottom,n=stepCount(),range=stepDuration()*500,tol=Math.min(range,Number($('tolerance').value));const y=e=>top+ph/2-e/range*ph/2;const x=i=>left+(i+.5)/n*pw;c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#edf7f2';c.fillRect(left,y(tol),pw,y(-tol)-y(tol));c.font='12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';c.textAlign='right';c.textBaseline='middle';for(const v of [-range,-range/2,0,range/2,range]){c.beginPath();c.strokeStyle=v===0?'#91b3a4':'#e9ecf0';c.setLineDash(v===0?[]:[3,4]);c.moveTo(left,y(v));c.lineTo(w-right,y(v));c.stroke();c.fillStyle='#75808b';c.fillText((v>0?'+':'')+Math.round(v),left-9,y(v));}c.setLineDash([]);for(let i=0;i<n;i++){if(i===state.drawStep){c.fillStyle='rgba(191,71,34,.05)';c.fillRect(left+i/n*pw,top,pw/n,ph);}c.strokeStyle=i%stepsPerBar()===0?'#ccd3da':'#eef0f3';c.beginPath();c.moveTo(left+i/n*pw,top);c.lineTo(left+i/n*pw,h-bottom);c.stroke();c.textAlign='center';c.fillStyle=i%(state.division/4)===0?'#414b56':'#8b939c';if(w>600||n<=16||i%2===0)c.fillText(labelForStep(i),x(i),h-bottom+17);}c.textAlign='left';c.fillStyle='#747d87';c.fillText('Позже, мс',left,14);c.fillText('Раньше',left,h-10);let latest=Math.max(0,state.stoppedCycle,...state.events.map(e=>e.cycle));if(state.running&&context)latest=Math.max(latest,Math.floor((audibleTime()-state.epoch)/cycleDuration()));const visible=state.events.filter(e=>e.cycle>=latest-5);visible.forEach((e,i)=>{const age=latest-e.cycle;c.globalAlpha=Math.max(.25,1-age*.13);c.fillStyle=inTolerance(e.error)?'#167657':e.error<0?'#3266ca':'#bf4248';c.beginPath();const jitter=(((i*17)%7)-3)*Math.min(1.8,pw/n/16);c.arc(x(e.step)+jitter,y(e.error),w<500?3.3:4,0,Math.PI*2);c.fill();});c.globalAlpha=1;}
 // Player phase and acoustic delay are different quantities. Acoustic references
@@ -1930,7 +1985,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&(state.running||state.pending||state.measuring)){stop();setStatus('Сессия остановлена при переходе в другую вкладку. Результаты сохранены.');}});
 window.addEventListener('pagehide',stop);
 new ResizeObserver(drawChart).observe($('chart').parentElement);
-resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetAdaptive();loadSavedSettings();renderGrid();updateStats();setControls();
+resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();resetAdaptive();loadSavedSettings();renderGrid();updateStats();setControls();
 /* Optional browser agent interface; no dependency and no access to raw microphone audio. */
 if(document.modelContext?.registerTool){try{document.modelContext.registerTool({name:'read_rhythm_results',description:'Read current rhythm settings and measured session statistics.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({bpm:state.bpm,bars:state.bars,beatsPerBar:state.beats,division:state.division,running:state.running,attacks:state.count,meanAbsoluteErrorMs:state.count?state.sumAbs/state.count:null,meanOffsetMs:state.count?state.sum/state.count:null,toleranceMs:Number($('tolerance').value)})});}catch{}}
 </script>

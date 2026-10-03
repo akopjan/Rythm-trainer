@@ -13,8 +13,9 @@ class EchoAttribution {
  }
  reset(){
   for(const array of [this.render,this.capture,this.lowRender,this.lowCapture])array.fill(0);
-  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};this.accepted=0;this.rejected=0;
+  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};this.accepted=0;this.rejected=0;this.lastDecision=null;
  }
+ reject(job,reason){this.rejected++;this.lastDecision={time:job.message?.time??this.baseTime+this.total/this.rate,reason};job.done=true;}
  process(render,capture,cleaned,t,meta={}){
   const n=capture?.length||0;if(!n)return;
   if(this.baseTime===null)this.baseTime=t;
@@ -28,6 +29,13 @@ class EchoAttribution {
    this.lowRender[at]=this.filters[0];this.lowCapture[at]=this.filters[1];
   }
   if(!this.pending.length)return;
+  // The harmonic classifier has a shorter rolling history than a queued
+  // waveform audit. Retain each event's source-time evidence after its future
+  // observation window closes, including jobs waiting behind the head.
+  const evidenceTime=Number.isFinite(meta.evidenceTime)?meta.evidenceTime:t+n/this.rate;
+  for(const job of this.pending)if(!job.evidenceSnapshot&&evidenceTime>=job.message.time+.13){
+   job.evidenceSnapshot={time:evidenceTime,own:typeof meta.instrumentEvidence==='function'&&meta.instrumentEvidence(job.message.time),tonal:meta.renderRecent===true&&typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(job.message.time),renderRecent:meta.renderRecent===true};
+  }
   // A missing, stale or unproven reference does not prove an own attack.
   if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){this.pending=[];return;}
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
@@ -51,8 +59,8 @@ class EchoAttribution {
  accept(job){
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
-  const ownEvidence=typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
-  const tonalEvidence=this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
+  const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  const tonalEvidence=job.evidenceSnapshot?job.evidenceSnapshot.tonal:this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
   if(job.message?.toneCheck===true){
    if(knownInstrument)confirmed=true;
@@ -63,7 +71,7 @@ class EchoAttribution {
   }
   else if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function')confirmed=ownEvidence;
   if(!confirmed){
-   this.rejected++;job.done=true;return;
+   this.reject(job,'tone-unconfirmed');return;
   }
   if(job.y){
    // Independent energy can be a held note. A backing-triggered candidate
@@ -71,9 +79,9 @@ class EchoAttribution {
    const removed=Math.max(0,job.original-job.energy),echo=Math.sqrt(removed/job.length),limit=job.eventIndex,afterStart=Math.min(job.length-1,limit+Math.round(.012*this.rate)),afterEnd=Math.min(job.length,limit+Math.round(.052*this.rate));let before=0,after=0;
    for(let i=0;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
    before=Math.sqrt(before/Math.max(1,limit));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.rejected++;job.done=true;return;}
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.reject(job,'held-tone');return;}
   }
-  this.accepted++;this.emit({...job.message});job.done=true;
+  this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;
  }
  // Harmonics alone are also present in clipped speaker percussion. Before
  // a background profile exists, require a steady independent harmonic tone in
@@ -165,7 +173,7 @@ class EchoAttribution {
   // a changing short FIR appears as an extra negative colored echo source.
   for(let i=0;i<job.length;i++){const x=this.at(this.capture,job.start+i);job.y[i]=x;job.original+=x*x;if(i%this.stride===0)job.low[i/this.stride]=this.at(this.lowCapture,job.start+i);}
   job.originalY=job.y.slice();job.atoms=[];
-  if(job.original<1e-16){this.rejected++;job.done=true;return true;}
+  if(job.original<1e-16){this.reject(job,'below-threshold');return true;}
   const anchored=this.meta.cancelReady&&Number.isFinite(this.meta.delayMs);
   job.anchor=anchored?this.meta.delayMs*this.rate/1000:0;
   job.lowLag=anchored?Math.max(0,job.anchor-this.rate*.12):0;job.highLag=anchored?Math.min(this.rate*.5,job.anchor+this.rate*.20):this.rate*.5;
@@ -222,7 +230,7 @@ class EchoAttribution {
    const rms=Math.sqrt(job.energy/job.length),explained=1-job.energy/job.original;
    // A loud echo may accompany a quiet instrument. The veto requires both
    // coherent attribution and absence of audible independent residual energy.
-   if(explained>.90&&rms<job.gate*.5){this.rejected++;job.done=true;return;}
+   if(explained>.90&&rms<job.gate*.5){this.reject(job,'speaker');return;}
    if(++job.iteration>=6){this.accept(job);return;}
    this.beginCoarse(job);
   }

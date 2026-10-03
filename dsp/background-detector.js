@@ -4,10 +4,13 @@ class RhythmDetector extends LegacyRhythmDetector {
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
   super(rate,emit);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
-  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];
+  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  const reject=this.attribution.reject.bind(this.attribution);
+  this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
+   this.scoredCount++;
    this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});
   };
  }
@@ -19,6 +22,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
  }
  onset(message,gate=this.currentGate||this.threshold){
+  this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
@@ -35,7 +39,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
   super.configure(m);
   if(m.type==='arm'){
-   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];
+   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
   if(m.type==='reference-sync'&&this.referenceEnabled){
    this.ensureBackground();this.background.configure({epoch:this.start,duration:this.duration,backing:m.backing,reset:true,oversubtraction:4});
@@ -64,7 +68,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   if(!this.referenceEnabled||this.probe)return super.process(samples,t,render);
   if(!samples?.length)return;
   const captured=samples,linear=this.reference.process(captured,render,t),isolation=this.reference.analysisInfo();
-  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,
+  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,
    instrumentEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&(e.harmonic||this.background?.ready&&this.mode==='percussive'&&e.reason==='unmatched-transient')),
    tonalEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&e.status==='instrument'&&e.reason==='persistent-tonal-energy')});
   this.ensureBackground();
@@ -83,6 +87,11 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.lastMeter=t;
   }
   const cal=this.backgroundCalibration;
+  if(t-this.lastDetectionEmit>=.20){
+   const pausedReason=cal?'calibration':!isolation.ready&&!isolation.canAudit?'reference':!r.cancelReady&&!this.background.ready&&this.background.status==='learning'?'learning':null;
+   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision});
+   this.lastDetectionEmit=t;
+  }
   if(cal){
    if((r.cancelReady&&r.modelCeiling<=.03||this.background.ready)&&cal.deadline!==null&&cal.deadline>Math.max(t,cal.requestedStart+3*cal.duration)){
     cal.deadline=Math.max(t,cal.requestedStart+3*cal.duration);
