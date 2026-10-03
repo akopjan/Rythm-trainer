@@ -4,9 +4,9 @@ const here=new URL('.',import.meta.url),htmlPath=Deno.args[0]??new URL('../index
 const html=await Deno.readTextFile(htmlPath),scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match=>match[1]);
 const dspScript=scripts.find(source=>source.includes('class ReferenceEcho {'));
 if(!dspScript)throw new Error('ReferenceEcho was not found in the supplied app HTML');
-const referenceStart=dspScript.indexOf('class ReferenceEcho {'),referenceEnd=dspScript.indexOf('\n}\n\n// Attribute candidate attacks',referenceStart);
+const referenceStart=dspScript.indexOf('class ReferenceEcho {'),referenceEnd=dspScript.indexOf('\n// GENERATED_ATTRIBUTION_BEGIN',referenceStart);
 if(referenceStart<0||referenceEnd<0)throw new Error('Could not isolate the embedded ReferenceEcho class');
-const ReferenceEcho=new Function(dspScript.slice(referenceStart,referenceEnd+2)+';return ReferenceEcho;')();
+const ReferenceEcho=new Function(dspScript.slice(referenceStart,referenceEnd)+';return ReferenceEcho;')();
 const main=scripts.find(source=>source.includes('function makeSound('));
 if(!main)throw new Error('makeSound was not found in the supplied app HTML');
 const rate=48000,context={sampleRate:rate,createBuffer:(_c,n)=>{const d=new Float32Array(n);return{getChannelData:()=>d};}},soundStart=main.indexOf('function makeSound('),soundEnd=main.indexOf('\nfunction playBuffer(',soundStart);

@@ -10,6 +10,7 @@ blocks={
  'WASM':'globalThis.RHYTHM_WASM_BYTES=new Uint8Array('+json.dumps(list((root/'dsp/phase-filter.wasm').read_bytes()),separators=(',',':'))+');\n',
  'STREAM':(root/'dsp/background-stream.js').read_text(),
  'BACKGROUND':(root/'dsp/adaptive-background.js').read_text(),
+ 'ATTRIBUTION':(root/'dsp/echo-attribution.js').read_text(),
  'DETECTOR':(root/'dsp/background-detector.js').read_text(),
 }
 for name,source in blocks.items():

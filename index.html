@@ -855,6 +855,7 @@ class ReferenceEcho {
  }
 }
 
+// GENERATED_ATTRIBUTION_BEGIN
 // Attribute candidate attacks to the known rendered backing after cancellation.
 // Projection changes no microphone samples and preserves an accepted onset time.
 // Coarse and full-rate searches are spread over subsequent audio blocks.
@@ -890,7 +891,7 @@ class EchoAttribution {
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
   const job=this.pending[0];
   if(!job.stage){
-   if(t+n/this.rate<job.signalTime+.052)return;
+   if(t+n/this.rate<job.signalTime+(job.message.toneCheck ? .132 : .052))return;
    if(!this.prepare(job)){this.pending.shift();return;}
   }
   this.advance(job);
@@ -908,7 +909,11 @@ class EchoAttribution {
  accept(job){
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
-  if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function'&&!this.meta.instrumentEvidence(job.message.time)){
+  const ownEvidence=typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  let confirmed=true;
+  if(job.message?.toneCheck===true)confirmed=job.message.profileReady===true?knownInstrument:ownEvidence&&this.stableInstrumentTone(job);
+  else if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function')confirmed=ownEvidence;
+  if(!confirmed){
    this.rejected++;job.done=true;return;
   }
   if(job.y){
@@ -920,6 +925,29 @@ class EchoAttribution {
    if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.rejected++;job.done=true;return;}
   }
   this.accepted++;this.emit({...job.message});job.done=true;
+ }
+ // Harmonics alone are also present in clipped speaker percussion. Before
+ // a background profile exists, require a steady independent harmonic tone in
+ // two short source-time windows after projection. Drum/click decays do not
+ // satisfy this; admitted events keep their original onset timestamp.
+ stableInstrumentTone(job){
+  if(!job.y||!Number.isFinite(job.eventIndex))return false;
+  const count=Math.max(16,Math.floor(.032*this.rate/this.stride)),first=job.eventIndex+Math.round(.020*this.rate),second=job.eventIndex+Math.round(.080*this.rate);
+  if(first<0||second+(count-1)*this.stride>=job.y.length)return false;
+  const windows=[new Float64Array(count),new Float64Array(count)],energies=[0,0];let sum=0;
+  for(let i=0;i<count;i++){const w=.5-.5*Math.cos(2*Math.PI*i/(count-1));sum+=w;for(let k=0;k<2;k++){const x=job.y[(k?second:first)+i*this.stride];windows[k][i]=x*w;energies[k]+=x*x/count;}}
+  if(energies[1]<job.gate*job.gate*.04)return false;
+  const sampledRate=this.rate/this.stride,high=Math.min(1400,sampledRate*.45/3);
+  const power=(values,frequency)=>{const c=2*Math.cos(2*Math.PI*frequency/sampledRate);let a=0,b=0;for(const x of values){const next=x+c*a-b;b=a;a=next;}return Math.max(0,a*a+b*b-c*a*b)/(sum*sum);};
+  for(let frequency=80;frequency<=high;frequency+=10){
+   const early=[1,2,3].map(h=>power(windows[0],frequency*h)),late=[1,2,3].map(h=>power(windows[1],frequency*h));
+   const a=early.reduce((x,y)=>x+y,0),b=late.reduce((x,y)=>x+y,0);
+   if(early[0]<energies[0]*.05||late[0]<energies[1]*.05||early[1]+early[2]<early[0]*.015||late[1]+late[2]<late[0]*.015)continue;
+   let dot=0,aa=0,bb=0;for(let h=0;h<3;h++){dot+=early[h]*late[h];aa+=early[h]**2;bb+=late[h]**2;}
+   const stableShape=aa*bb>1e-30&&dot/Math.sqrt(aa*bb)>=.85;
+   if(stableShape&&2*a>=energies[0]*.55&&2*b>=energies[1]*.55&&b>=a*.65*.65)return true;
+  }
+  return false;
  }
  // Equal Hann windows distinguish a legato pitch change from a held tone.
  // The small bank runs near8k samples per second, only for candidate jobs.
@@ -955,7 +983,7 @@ class EchoAttribution {
  prepare(job){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
-  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-.024)*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+.052)*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-.024)*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total||job.start<this.total-this.size)return false;
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;
   // Audit the captured waveform, rather than the subtraction error: otherwise
@@ -1064,6 +1092,7 @@ class EchoAttribution {
  }
 }
 
+// GENERATED_ATTRIBUTION_END
 class SustainedOnset {
  constructor(rate,emit){
   this.rate=rate;this.emit=emit;this.n=2048;this.hop=256;
@@ -1161,7 +1190,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
    // audits those source samples, while the score keeps its onset timestamp.
-   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&!linearTrusted),captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
+   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(this.mode==='sustained'||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
   }else this.emit(message);
  }
  configure(m){

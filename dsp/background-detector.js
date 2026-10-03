@@ -17,7 +17,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
    // audits those source samples, while the score keeps its onset timestamp.
-   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&!linearTrusted),captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
+   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(this.mode==='sustained'||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
   }else this.emit(message);
  }
  configure(m){
