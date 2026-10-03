@@ -1,5 +1,7 @@
 .DS_Store
 rhythm-settings.json
+__pycache__/
+*.py[cod]
 test-results/
 test-results*.json
 test-results*.txt

@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "build": "deno run --allow-read --allow-write=. --allow-env --allow-sys npm:assemblyscript@0.28.20/asc phase-filter.ts --outFile phase-filter.wasm --optimize --runtime stub --use abort= --initialMemory 96 --maximumMemory 96 --noAssert"
+  }
+}
