@@ -12,15 +12,25 @@ class EchoAttribution {
   this.lowRender=new Float32Array(this.size);this.lowCapture=new Float32Array(this.size);
   this.alpha=1-Math.exp(-2*Math.PI*900/rate);this.reset();
  }
- reset(){
+ reset(options={}){
+  const preserve=options.preserveDiagnostics===true;
+  const diagnostic={accepted:preserve?this.accepted||0:0,rejected:preserve?this.rejected||0:0,lastDecision:preserve?this.lastDecision??null:null,lastDrop:preserve?this.lastDrop??null:null,dropCounts:preserve?this.dropCounts||{}:{}};
   for(const array of [this.render,this.capture,this.lowRender,this.lowCapture])array.fill(0);
-  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};this.accepted=0;this.rejected=0;this.lastDecision=null;
+  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};Object.assign(this,diagnostic);this.currentTime=0;this.renderBlockLength=0;this.captureBlockLength=0;
  }
- reject(job,reason){this.rejected++;this.lastDecision={time:job.message?.time??this.baseTime+this.total/this.rate,reason};job.done=true;}
+ reject(job,reason){const current=Number.isFinite(this.currentTime)?Math.max(0,this.currentTime):0,candidate=job.message?.time;this.rejected++;this.lastDecision={time:Number.isFinite(candidate)?Math.min(current,Math.max(0,candidate)):current,reason};job.done=true;}
+ drop(job,reason,details={}){
+  if(job.done)return;
+  const number=value=>Number.isFinite(value)?value:null,flag=value=>typeof value==='boolean'?value:null;
+  this.lastDrop={reason,stage:details.stage||null,candidateTime:number(job.message?.time),signalTime:number(job.signalTime),currentTime:number(this.currentTime),baseTime:number(this.baseTime),total:number(this.total),size:number(this.size),start:number(job.start),length:number(job.length),historyStart:number(job.historyStart),gap:number(details.gap),referencePresent:flag(this.meta.referencePresent),ready:flag(this.meta.ready),canAudit:flag(this.meta.canAudit),enabled:flag(this.meta.enabled),noEchoProof:flag(this.meta.noEchoProof),renderBlockLength:this.renderBlockLength,captureBlockLength:this.captureBlockLength};
+  this.dropCounts[reason]=(this.dropCounts[reason]||0)+1;this.reject(job,reason);
+ }
  process(render,capture,cleaned,t,meta={}){
   const n=capture?.length||0;if(!n)return;
+  this.currentTime=t+n/this.rate;this.renderBlockLength=render?.length||0;this.captureBlockLength=n;this.meta={...meta};
   if(this.baseTime===null)this.baseTime=t;
-  else if(Math.abs(t-(this.baseTime+this.total/this.rate))>.03){this.reset();this.baseTime=t;}
+  else if(Math.abs(t-(this.baseTime+this.total/this.rate))>.03){const gap=t-(this.baseTime+this.total/this.rate);for(const job of this.pending)this.drop(job,'clock-reset',{stage:'process',gap});this.reset({preserveDiagnostics:true});this.baseTime=t;}
+  this.currentTime=t+n/this.rate;this.renderBlockLength=render?.length||0;this.captureBlockLength=n;
   this.meta={...meta};
   for(let i=0;i<n;i++){
    const at=this.total++&this.mask,x=Number.isFinite(render?.[i])?render[i]:0;
@@ -38,7 +48,7 @@ class EchoAttribution {
    job.evidenceSnapshot={time:evidenceTime,own:typeof meta.instrumentEvidence==='function'&&meta.instrumentEvidence(job.message.time),tonal:meta.renderRecent===true&&typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(job.message.time),renderRecent:meta.renderRecent===true};
   }
   // A missing, stale or unproven reference does not prove an own attack.
-  if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){this.pending=[];return;}
+  if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){for(const job of this.pending)this.drop(job,'reference-unavailable',{stage:'process'});this.pending=[];return;}
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
   const job=this.pending[0];
   if(!job.stage){
@@ -49,10 +59,10 @@ class EchoAttribution {
   if(job.done)this.pending.shift();
  }
  queue(message,gate=.004){
-  if(message?.type!=='onset'||!Number.isFinite(message.time))return;
+  if(message?.type!=='onset'||!Number.isFinite(message.time)){this.drop({message},'invalid-candidate',{stage:'queue'});return;}
   if(this.meta.enabled===false||this.meta.noEchoProof&&!this.meta.renderRecent){this.accept({message});return;}
-  if(!this.meta.ready&&!this.meta.noEchoProof&&!this.meta.canAudit)return;
-  if(this.pending.length>=8)return;
+  if(!this.meta.ready&&!this.meta.noEchoProof&&!this.meta.canAudit){this.drop({message},'reference-unavailable',{stage:'queue'});return;}
+  if(this.pending.length>=8){this.drop({message},'queue-full',{stage:'queue'});return;}
   // Spectral detectors may backdate their timestamp. Audit the waveform being
   // observed now while preserving the original timestamp used by the score.
   this.pending.push({message:{...message},signalTime:Number.isFinite(message.captureTime)?Math.min(this.baseTime+this.total/this.rate,message.captureTime):this.baseTime+this.total/this.rate,gate:Number.isFinite(gate)&&gate>0?gate:.004});
@@ -190,7 +200,8 @@ class EchoAttribution {
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
   job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
-  if(job.start+job.length>this.total||job.start<this.total-this.size)return false;
+  if(job.start+job.length>this.total){this.drop(job,'capture-window-incomplete',{stage:'prepare'});return false;}
+  if(job.start<this.total-this.size){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;
   // Audit the captured waveform, rather than the subtraction error: otherwise
   // a changing short FIR appears as an extra negative colored echo source.
@@ -203,7 +214,7 @@ class EchoAttribution {
   // Snapshot every template used by this job. A low-rate callback or a pending
   // queue must not let live ring overwrites change a partially completed fit.
   job.historyStart=Math.max(0,Math.floor(job.start-job.highLag-4));
-  if(job.historyStart<Math.max(0,this.total-this.size))return false;
+  if(job.historyStart<Math.max(0,this.total-this.size)){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   const historyLength=job.start+job.length-job.historyStart+4;
   for(const name of ['render','lowRender']){const array=new Float32Array(historyLength);for(let i=0;i<historyLength;i++)array[i]=this.at(this[name],job.historyStart+i);job[name]=array;}
   job.iteration=0;job.energy=job.original;this.beginCoarse(job);return true;

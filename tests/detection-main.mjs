@@ -34,6 +34,12 @@ for(const [i,reason,needle]of[[0,'speaker','похоже на барабаны �
 }
 api.acceptDetection(message({candidates:7,accepted:1,rejected:4,pending:1,lastDecision:{time:time-10,reason:'speaker'}}));check('Old rejection is not shown for a new pending attack',label().includes('Проверяем')&&!label().includes('Предыдущее начало'));
 api.acceptDetection(message({candidates:7,accepted:1,rejected:4,pending:1,pausedReason:'calibration',lastDecision:{time:time+.5,reason:'speaker'}}));check('Calibration pause keeps priority over pending and rejection explanation',label().includes('Калибровка')&&!label().includes('Проверяем')&&!label().includes('Предыдущее начало'));
+for(const [reason,needle]of[['invalid-candidate','не удалось проверить'],['reference-unavailable','нет звука рисунка'],['queue-full','не успевает'],['clock-reset','время звука изменилось'],['capture-window-incomplete','не хватает записи'],['history-unavailable','фрагмент записи уже недоступен']]){
+ api.acceptDetection(message({candidates:7,accepted:1,rejected:4,pending:0,lastDecision:{time:time+.5,reason},dropCounts:{[reason]:1},lastDrop:{time:time+.5,reason}}));
+ check('Drop '+reason+' is accepted and explained',state.detection.lastDecision.reason===reason&&label().includes(needle));
+ api.acceptDetection(message({candidates:7,accepted:1,rejected:4,pending:1,lastDecision:{time:time+.5,reason}}));
+ check('Pending work does not hide '+reason+' drop',label().includes('Проверяем')&&label().includes(needle));
+}
 const old=state.detection;
 const valid={id:8,time:100,mode:'sustained',level:.03,gate:.01,pausedReason:null,candidates:7,accepted:1,rejected:4,pending:0,lastDecision:null};
 for(const change of[{id:7},{time:old.time},{time:NaN},{mode:'bad'},{level:-1},{level:NaN},{gate:NaN},{pausedReason:'bad'},{candidates:.2},{candidates:1},{accepted:0},{accepted:4},{rejected:-1},{pending:-1},{pending:.5},{pending:8},{lastDecision:{time:101,reason:'speaker'}},{lastDecision:{time:99,reason:'bad'}}]){
