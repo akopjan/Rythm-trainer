@@ -23,4 +23,30 @@ const utility=await eval('(async()=>{'+utilityPrefix+';return {backing,sample};}
 const duration=7.2,render=utility.backing(rate,duration,'mixed',100),known=make({backing:true}),knownStarts=[4.5,5.8];
 const knownSignal=t=>.6*utility.sample(render,(t-.1)*rate)+knownStarts.reduce((sum,start)=>sum+reed(t,start,.8,330,.04,.22),0);
 feed(known,knownSignal,0,duration,{render});check('Soft periodic notes over known rendered drums survive source attribution once',known,knownStarts,{tolerance:.1});
-const summary={target,passed:results.filter(r=>r.status==='PASS').length,failed:results.filter(r=>r.status==='FAIL').length,scope:'Actual embedded detector, WASM residual front end and source attribution with no audible backing; synthetic reed-like signals.',results};console.log(JSON.stringify(summary,null,2));Deno.exitCode=summary.failed?1:0;
+
+for(const threshold of [-48,-38]){
+ const coldDuration=5.6,coldRender=utility.backing(rate,coldDuration,'mixed',100),cold=make({backing:true,threshold}),coldStarts=[1.6,2.8,4],proofJobs=[],queue=cold.detector.attribution.queue.bind(cold.detector.attribution);
+ cold.detector.attribution.queue=(message,gate)=>{proofJobs.push({time:message.time,source:message.source,waveformReady:message.waveformReady,profileReady:message.profileReady});queue(message,gate);};
+
+ // This fixture exercises an already verified linear acoustic path. Delay and
+ // gain are exact synthetic truth, not an automatically estimated microphone
+ // result. The separate cold-estimator experiment is not claimed to pass.
+ const knownReference=cold.detector.reference;knownReference.cancelReady=true;knownReference.cancelDelayMs=100;knownReference.delayMs=100;knownReference.locked=true;knownReference.anchorMethod='waveform';knownReference.gain=.6;knownReference.modelCeiling=.0001;knownReference.h.fill(0);knownReference.h[8]=.6;
+ const coldSignal=t=>.6*utility.sample(coldRender,(t-.1)*rate)+coldStarts.reduce((sum,start)=>sum+reed(t,start,.75,220,.045,.22),0);
+ feed(cold,coldSignal,0,coldDuration,{render:coldRender});check('An already verified synthetic linear filter scores soft notes before a spectral profile exists at'+threshold+'dB',cold,coldStarts,{tolerance:.1});
+ const observed=proofJobs.filter(job=>job.source==='periodic'&&job.waveformReady===true&&job.profileReady===false);results.push({name:'Known linear waveform proof is exercised independently of a spectral profile at'+threshold+'dB',status:observed.length>0?'PASS':'FAIL',evidence:observed,finalReference:cold.detector.reference.analysisInfo(),backgroundReady:cold.detector.background?.ready});
+}
+
+const knownOnly=make({backing:true}),knownOnlyRender=utility.backing(rate,5.6,'mixed',100),knownOnlyReference=knownOnly.detector.reference;
+knownOnlyReference.cancelReady=true;knownOnlyReference.cancelDelayMs=100;knownOnlyReference.delayMs=100;knownOnlyReference.locked=true;knownOnlyReference.anchorMethod='waveform';knownOnlyReference.gain=.6;knownOnlyReference.modelCeiling=.0001;knownOnlyReference.h.fill(0);knownOnlyReference.h[8]=.6;
+feed(knownOnly,t=>.6*utility.sample(knownOnlyRender,(t-.1)*rate),0,5.6,{render:knownOnlyRender});check('The same verified linear waveform path scores no points from its own drums',knownOnly,[]);
+
+for(const threshold of [-48,-38]){
+ const untrainedDuration=5.6,untrainedRender=utility.backing(rate,untrainedDuration,'mixed',100),untrained=make({backing:true,threshold}),untrainedStarts=[1.6,2.8,4],jobs=[],queue=untrained.detector.attribution.queue.bind(untrained.detector.attribution);
+ untrained.detector.attribution.queue=(message,gate)=>{jobs.push({time:message.time,source:message.source,waveformReady:message.waveformReady,profileReady:message.profileReady,canAudit:untrained.detector.attribution.meta.canAudit});queue(message,gate);};
+ const untrainedSignal=t=>.6*utility.sample(untrainedRender,(t-.1)*rate)+untrainedStarts.reduce((sum,start)=>sum+reed(t,start,.75,220,.045,.22),0);
+ feed(untrained,untrainedSignal,0,untrainedDuration,{render:untrainedRender});check('Automatic cold input uses verified projected note growth at'+threshold+'dB',untrained,untrainedStarts,{tolerance:.1});
+ const eligible=jobs.filter(job=>job.source==='periodic'&&job.canAudit===true&&job.waveformReady===false&&job.profileReady===false);results.push({name:'Actual cold audit path is exercised without a seeded cancellation model at'+threshold+'dB',status:eligible.length===3?'PASS':'FAIL',evidence:eligible,finalReference:untrained.detector.reference.analysisInfo(),backgroundReady:untrained.detector.background?.ready});
+ const untrainedOnly=make({backing:true,threshold});feed(untrainedOnly,t=>.6*utility.sample(untrainedRender,(t-.1)*rate),0,untrainedDuration,{render:untrainedRender});check('The same automatic cold input draws no own-drum points at'+threshold+'dB',untrainedOnly,[]);
+}
+const summary={target,passed:results.filter(r=>r.status==='PASS').length,failed:results.filter(r=>r.status==='FAIL').length,scope:'Actual embedded detector, WASM residual front end and source attribution with synthetic reed notes and known rendered drum mixtures. Analytically seeded waveform and unseeded source-audit paths are exercised separately; these timings do not measure hardware latency.',results};console.log(JSON.stringify(summary,null,2));Deno.exitCode=summary.failed?1:0;

@@ -1,5 +1,6 @@
 // Attribute candidate attacks to the known rendered backing after cancellation.
-// Projection changes no microphone samples and preserves an accepted onset time.
+// Projection changes no microphone samples. Verified periodic starts may refine
+// an accepted timestamp using earlier independent harmonic energy.
 // Coarse and full-rate searches are spread over subsequent audio blocks.
 // The raw rendered dictionary avoids treating cancellation-filter artifacts
 // as a second sound source, or fitting a learned microphone filter to a player.
@@ -60,6 +61,9 @@ class EchoAttribution {
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
   const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  // Source projection can verify an independent rise before a long-term
+  // profile exists. The exception below also requires a stable residual tone.
+  const knownPeriodicSource=ownEvidence&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
   const tonalEvidence=job.evidenceSnapshot?job.evidenceSnapshot.tonal:this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
   if(job.message?.toneCheck===true){
@@ -77,16 +81,35 @@ class EchoAttribution {
    // Independent energy can be a held note. A backing-triggered candidate
    // needs its own amplitude rise or pitch change after source projection.
    const removed=Math.max(0,job.original-job.energy),echo=Math.sqrt(removed/job.length),limit=job.eventIndex,afterStart=Math.min(job.length-1,limit+Math.round(.012*this.rate)),afterEnd=Math.min(job.length,limit+Math.round(.052*this.rate));let before=0,after=0;
-   for(let i=0;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
-   before=Math.sqrt(before/Math.max(1,limit));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.reject(job,'held-tone');return;}
+   const beforeStart=Math.max(0,limit-Math.round(.024*this.rate));
+   for(let i=beforeStart;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
+   before=Math.sqrt(before/Math.max(1,limit-beforeStart));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
   }
   this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;
+ }
+
+ // Verify a tracked note against an earlier projected source window. A slow
+ // onset can already be sounding when its level crosses the attack threshold.
+ periodicSourceRise(job){
+  const frequency=job.message?.frequency;if(!Number.isFinite(frequency)||frequency<80||frequency>1400||!job.y)return false;
+  const count=Math.floor(.032*this.rate/this.stride),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round(.02*this.rate);
+  if(count<16||early<0||late+(count-1)*this.stride>=job.y.length)return false;
+  const energy=start=>{const values=new Float64Array(count);let norm=0,total=0;for(let i=0;i<count;i++){const x=job.y[start+i*this.stride],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}let sum=0,fundamental=0;for(let h=1;h<=3;h++){const c=2*Math.cos(2*Math.PI*frequency*h/(this.rate/this.stride));let a=0,b=0;for(const x of values){const n=x+c*a-b;b=a;a=n;}const power=Math.max(0,a*a+b*b-c*a*b)/(norm*norm);if(h===1)fundamental=power;sum+=power;}return{sum,fundamental,total};};
+  const before=energy(early),after=energy(late);
+  if(!(after.fundamental>after.total*.025&&2*after.sum>after.total*.35&&after.sum>before.sum*2.5&&Math.sqrt(2*after.sum)-Math.sqrt(2*before.sum)>job.gate*.3))return false;
+  const onsetPower=before.sum+(after.sum-before.sum)*.06,step=Math.max(this.stride,Math.round(.008*this.rate)),limit=job.eventIndex-Math.round(.020*this.rate);
+  for(let start=early;start<=limit;start+=step){
+   const observed=energy(start);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;
+   const sourceTime=this.baseTime+(job.start+start+(count-1)*this.stride/2)/this.rate;
+   job.message.originalPeriodicTime=job.message.time;job.message.time=Math.min(job.message.time,sourceTime);break;
+  }
+  return true;
  }
  // Harmonics alone are also present in clipped speaker percussion. Before
  // a background profile exists, require a steady independent harmonic tone in
  // two short source-time windows after projection. Drum/click decays do not
- // satisfy this; admitted events keep their original onset timestamp.
+ // satisfy this; only the separate periodic rise check may refine onset time.
  stableInstrumentTone(job){
   job.tonalFamilyCount=0;
   if(!job.y||!Number.isFinite(job.eventIndex))return false;
@@ -166,7 +189,7 @@ class EchoAttribution {
  prepare(job){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
-  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-.024)*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total||job.start<this.total-this.size)return false;
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;
   // Audit the captured waveform, rather than the subtraction error: otherwise

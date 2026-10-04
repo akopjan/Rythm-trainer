@@ -16,7 +16,8 @@
 .track-label{flex-direction:column;align-items:stretch;gap:5px}.track-switch{display:flex;align-items:center;gap:5px;font-size:13px}.track-volume{display:flex;align-items:center;gap:6px}.track-volume input{max-width:95px}.track-volume output{font-size:11px;min-width:30px;color:var(--muted)}
 .audio-meters{display:flex;flex-direction:column;gap:5px;flex-shrink:0;padding:7px 0}.audio-meter-row{display:grid;grid-template-columns:86px 78px;gap:8px;align-items:center}.audio-meter-row .mic-label{display:inline;white-space:nowrap}.meter-state{font-size:11px;line-height:1.2;text-align:right;color:var(--muted)}.filtered-meter[data-active="false"] div{background:var(--muted)}
 @media(max-width:480px){.status{flex-wrap:wrap;gap:8px;padding:8px 0}.status #status{flex-basis:100%}.audio-meters{margin-left:auto}}
-.detection-info{font-variant-numeric:tabular-nums}
+.detection-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;width:min(100%,390px);margin-bottom:5px}.detection-count{display:grid;grid-template-rows:auto auto;min-width:0}.detection-count span{font-size:12px;white-space:nowrap}.detection-count strong{font-size:16px;line-height:1.5;font-weight:600;font-variant-numeric:tabular-nums}.detection-message{margin:0;line-height:1.45;min-height:2.9em}
+@media(max-width:540px){.detection-counts{gap:8px}.detection-message{min-height:4.35em}}
 </style>
 </head>
 <body>
@@ -38,7 +39,7 @@
 </section>
 <section aria-labelledby="results-title">
 <div class="results-head"><h2 id="results-title">Точность</h2><div class="tolerance"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><label class="check"><input id="reference-sync" type="checkbox" checked>Задержка по рисунку</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю атак по медиане с учётом соседних долей; пересчитывает график и ошибки каждого такта.">Нормализовать</button><button class="quiet" id="reset">Сбросить</button></div></div>
-<p id="detection-info" class="notes detection-info">Распознавание остановлено.</p>
+<div id="detection-info" class="notes detection-info"><div id="detection-counts" class="detection-counts" aria-label="Распознавание звуков"><div class="detection-count"><span>Найдено</span><strong id="detection-candidates">0</strong></div><div class="detection-count"><span>Подтверждено</span><strong id="detection-accepted">0</strong></div><div class="detection-count"><span>Отсеяно</span><strong id="detection-rejected">0</strong></div></div><p id="detection-message" class="detection-message">Распознавание остановлено.</p></div>
 <p id="isolation-info" class="notes">Рисунок и метроном не входят в оценку игры. Перед началом проверяем отделение фона.</p>
 <p id="background-info" class="notes">Фон обновляется в паузах игры. При звучании инструмента обучение приостанавливается.</p>
 <p id="reference-info" class="notes">Слушаем барабанный рисунок для привязки задержки и вычитаем его из входа.</p>
@@ -864,7 +865,8 @@ class ReferenceEcho {
 
 // GENERATED_ATTRIBUTION_BEGIN
 // Attribute candidate attacks to the known rendered backing after cancellation.
-// Projection changes no microphone samples and preserves an accepted onset time.
+// Projection changes no microphone samples. Verified periodic starts may refine
+// an accepted timestamp using earlier independent harmonic energy.
 // Coarse and full-rate searches are spread over subsequent audio blocks.
 // The raw rendered dictionary avoids treating cancellation-filter artifacts
 // as a second sound source, or fitting a learned microphone filter to a player.
@@ -925,6 +927,9 @@ class EchoAttribution {
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
   const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
+  // Source projection can verify an independent rise before a long-term
+  // profile exists. The exception below also requires a stable residual tone.
+  const knownPeriodicSource=ownEvidence&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
   const tonalEvidence=job.evidenceSnapshot?job.evidenceSnapshot.tonal:this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
   if(job.message?.toneCheck===true){
@@ -942,16 +947,35 @@ class EchoAttribution {
    // Independent energy can be a held note. A backing-triggered candidate
    // needs its own amplitude rise or pitch change after source projection.
    const removed=Math.max(0,job.original-job.energy),echo=Math.sqrt(removed/job.length),limit=job.eventIndex,afterStart=Math.min(job.length-1,limit+Math.round(.012*this.rate)),afterEnd=Math.min(job.length,limit+Math.round(.052*this.rate));let before=0,after=0;
-   for(let i=0;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
-   before=Math.sqrt(before/Math.max(1,limit));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)){this.reject(job,'held-tone');return;}
+   const beforeStart=Math.max(0,limit-Math.round(.024*this.rate));
+   for(let i=beforeStart;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
+   before=Math.sqrt(before/Math.max(1,limit-beforeStart));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
   }
   this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;
+ }
+
+ // Verify a tracked note against an earlier projected source window. A slow
+ // onset can already be sounding when its level crosses the attack threshold.
+ periodicSourceRise(job){
+  const frequency=job.message?.frequency;if(!Number.isFinite(frequency)||frequency<80||frequency>1400||!job.y)return false;
+  const count=Math.floor(.032*this.rate/this.stride),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round(.02*this.rate);
+  if(count<16||early<0||late+(count-1)*this.stride>=job.y.length)return false;
+  const energy=start=>{const values=new Float64Array(count);let norm=0,total=0;for(let i=0;i<count;i++){const x=job.y[start+i*this.stride],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}let sum=0,fundamental=0;for(let h=1;h<=3;h++){const c=2*Math.cos(2*Math.PI*frequency*h/(this.rate/this.stride));let a=0,b=0;for(const x of values){const n=x+c*a-b;b=a;a=n;}const power=Math.max(0,a*a+b*b-c*a*b)/(norm*norm);if(h===1)fundamental=power;sum+=power;}return{sum,fundamental,total};};
+  const before=energy(early),after=energy(late);
+  if(!(after.fundamental>after.total*.025&&2*after.sum>after.total*.35&&after.sum>before.sum*2.5&&Math.sqrt(2*after.sum)-Math.sqrt(2*before.sum)>job.gate*.3))return false;
+  const onsetPower=before.sum+(after.sum-before.sum)*.06,step=Math.max(this.stride,Math.round(.008*this.rate)),limit=job.eventIndex-Math.round(.020*this.rate);
+  for(let start=early;start<=limit;start+=step){
+   const observed=energy(start);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;
+   const sourceTime=this.baseTime+(job.start+start+(count-1)*this.stride/2)/this.rate;
+   job.message.originalPeriodicTime=job.message.time;job.message.time=Math.min(job.message.time,sourceTime);break;
+  }
+  return true;
  }
  // Harmonics alone are also present in clipped speaker percussion. Before
  // a background profile exists, require a steady independent harmonic tone in
  // two short source-time windows after projection. Drum/click decays do not
- // satisfy this; admitted events keep their original onset timestamp.
+ // satisfy this; only the separate periodic rise check may refine onset time.
  stableInstrumentTone(job){
   job.tonalFamilyCount=0;
   if(!job.y||!Number.isFinite(job.eventIndex))return false;
@@ -1031,7 +1055,7 @@ class EchoAttribution {
  prepare(job){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
-  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-.024)*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total||job.start<this.total-this.size)return false;
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;
   // Audit the captured waveform, rather than the subtraction error: otherwise
@@ -1302,7 +1326,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
    // audits those source samples, while the score keeps its onset timestamp.
-   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(this.mode==='sustained'||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
+   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(this.mode==='sustained'||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,waveformReady:linearTrusted,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
   }else this.emit(message);
  }
  configure(m){
@@ -1511,23 +1535,30 @@ function resetDetection(){
  updateDetectionInfo();
 }
 function updateDetectionInfo(){
- const target=$('detection-info');if(!target)return;
+ const target=$('detection-message');if(!target)return;
+ const d=state.detection;
+ for(const [key,id]of[['candidates','detection-candidates'],['accepted','detection-accepted'],['rejected','detection-rejected']]){const counter=$(id);if(counter)counter.textContent=String(d[key]);}
  if(!$('mic').checked){target.textContent='Распознавание: микрофон выключен.';return;}
  if(state.pending){target.textContent='Распознавание: подготовка входа…';return;}
  if(!state.running){target.textContent='Распознавание остановлено.';return;}
- const d=state.detection;
  if(!Number.isFinite(d.time)){target.textContent='Распознавание: ждём звук микрофона…';return;}
  let message;
  if(d.pausedReason==='calibration')message='Калибровка: пока не играйте.';
  else if(d.pausedReason==='reference')message='Нет звуковой опоры для проверки входа. Остановите тренировку и нажмите Start.';
  else if(d.pausedReason==='learning')message='Запоминаем фон: дайте рисунку прозвучать без игры.';
- else if(d.pending>0)message='Начало звука найдено. Проверяем, что это инструмент.';
+ else if(d.pending>0){
+  message='Начало звука найдено. Проверяем, что это инструмент.';
+  if(d.lastDecision&&d.time-d.lastDecision.time<=1.5&&d.lastDecision.reason!=='instrument'){
+   const reason=d.lastDecision.reason;
+   message+=' Предыдущее начало: '+(reason==='speaker'?'похоже на барабаны или метроном.':reason==='tone-unconfirmed'?'нота пока не подтверждена.':reason==='held-tone'?'продолжается прежняя нота.':'слишком тихое для выбранного порога.');
+  }
+ }
  else if(d.lastDecision&&d.time-d.lastDecision.time<=1.5){
   const reason=d.lastDecision.reason;
   message=reason==='instrument'?'Ноты распознаются.':reason==='speaker'?'Начало найдено, но звук похож на барабаны или метроном.':reason==='tone-unconfirmed'?'Начало найдено, но нота пока не подтверждена.':reason==='held-tone'?'Нота продолжается: нового начала нет.':'Начало слишком тихое для выбранного порога.';
  }else if(d.level<d.gate)message='После фильтра звук ниже порога распознавания.';
  else message=d.mode==='percussive'?'Звук слышен. Ищем начало удара.':'Звук слышен. Ищем начало или смену ноты.';
- target.textContent=message+' Найдено: '+d.candidates+' · подтверждено: '+d.accepted+' · отсеяно: '+d.rejected+'.';
+ target.textContent=message;
 }
 function acceptDetection(m){
  const old=state.detection;
