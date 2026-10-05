@@ -1,115 +1,40 @@
-// Exercise the shipped audio-thread wrapper. Heavy recognition must stay out
-// of capture mode; signal ownership, source clocks and control order are part
-// of the transport contract. No microphone or browser timing is simulated.
-const target=Deno.args[0]??new URL('../index.html',import.meta.url);
-const html=await Deno.readTextFile(target);
-const source=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)][0]?.[1];
-if(!source)throw new Error('DSP script missing');
+// The actual audio-thread wrapper batches paired PCM, preserving clocks and
+// FIFO controls while keeping heavy analysis and quantum allocations out.
+const target=Deno.args[0]??new URL('../index.html',import.meta.url),text=await Deno.readTextFile(target);
+const source=[...text.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)][0]?.[1]??'let RhythmDetector;\n'+text;
 const results=[];
-function assert(value,message){if(!value)throw new Error(message);}
+function assert(value,message){if(!value)throw Error(message);}
 function equal(a,b,message){assert(JSON.stringify(a)===JSON.stringify(b),message);}
 function test(name,run){try{results.push({name,status:'PASS',evidence:run()});}catch(error){results.push({name,status:'FAIL',error:String(error)});}}
-function port(){
- return {messages:[],started:0,closed:0,onmessage:null,
-  postMessage(message,transfers=[]){
-   const sizes=transfers.map(buffer=>buffer.byteLength);
-   this.messages.push({message:structuredClone(message,{transfer:transfers}),sizes});
-  },start(){this.started++;},close(){this.closed++;}};
-}
+function port(){return {messages:[],onmessage:null,postMessage(message,transfers=[]){const sizes=transfers.map(b=>b.byteLength);this.messages.push({message:structuredClone(message,{transfer:transfers}),sizes});},start(){},close(){}};}
 function fixture(rate=48000,options={analysisWorker:true,referenceRouted:true}){
- const constructors=[],calls=[],controls=[],registered={};
- class Base {constructor(){this.port=port();}}
- const api=new Function('AudioWorkletProcessor','registerProcessor','sampleRate','currentFrame','constructors','calls','controls',source+`
-  RhythmDetector=class {
-   constructor(...args){constructors.push(args);this.referenceEnabled=false;this.reference={options:{routed:false}};}
-   configure(message){controls.push(message);}
-   process(mic,time,reference){calls.push({mic:mic.slice(),time,reference:reference?.slice()});}
-  };
-  return {setFrame(frame){currentFrame=frame;}};
- `)(Base,(name,processor)=>{registered[name]=processor;},rate,0,constructors,calls,controls);
- assert(registered['rhythm-detector'],'Audio processor was not registered');
- const node=new registered['rhythm-detector']({processorOptions:options});
- const worker=port();
- const send=message=>node.port.onmessage({data:message});
- const attach=()=>send({type:'analysis-port',port:worker});
- const process=(frame,mic,reference)=>{
-  api.setFrame(frame);
-  const output=[Float32Array.from({length:128},()=>.7),Float32Array.from({length:128},()=>-.4)];
-  const returned=node.process([mic?[mic]:[],reference?[reference]:[]],[output]);
-  assert(output.every(channel=>channel.every(x=>x===0)),'Raw input leaked into audible output');
-  return returned;
- };
- return {node,worker,constructors,calls,controls,send,attach,process};
+ const constructors=[],calls=[],controls=[],registered={},allocations=[];
+ class Base{constructor(){this.port=port();}}
+ class PCM extends Float32Array{constructor(...args){super(...args);allocations.push(this.length);}}
+ const api=new Function('AudioWorkletProcessor','registerProcessor','sampleRate','currentFrame','constructors','calls','controls','Float32Array',source+`
+ RhythmDetector=class {constructor(...args){constructors.push(args);this.referenceEnabled=false;this.reference={options:{routed:false}};}configure(m){controls.push(m);}process(mic,time,reference){calls.push({mic:mic.slice(),time,reference:reference?.slice()});}};
+ return {setFrame(frame){currentFrame=frame;}};
+ `)(Base,(name,processor)=>registered[name]=processor,rate,0,constructors,calls,controls,PCM);
+ assert(registered['rhythm-detector'],'Audio processor missing');const node=new registered['rhythm-detector']({processorOptions:options}),worker=port();
+ const send=message=>node.port.onmessage({data:message}),attach=()=>send({type:'analysis-port',port:worker});
+ const process=(frame,mic,reference)=>{api.setFrame(frame);const output=[new Float32Array(mic?.length||128).fill(.7),new Float32Array(mic?.length||128).fill(-.4)];const result=node.process([mic?[mic]:[],reference?[reference]:[]],[output]);assert(output.every(a=>a.every(x=>x===0)),'Input leaked to audible output');return result;};
+ return {node,worker,constructors,calls,controls,allocations,send,attach,process};
 }
-const mic=()=>Float32Array.from({length:128},(_,i)=>(i-64)/256);
-const reference=()=>Float32Array.from({length:128},(_,i)=>Math.sin(i*.23)*.2);
+const mic=(length=128,offset=0)=>Float32Array.from({length},(_,i)=>((offset+i)%193-96)/256),reference=(length=128,offset=0)=>Float32Array.from({length},(_,i)=>Math.sin((offset+i)*.23)*.2);
+function quantum(f,frame,length=128,offset=0){const a=mic(length,offset),b=reference(length,offset),x=[...a],y=[...b];assert(f.process(frame,a,b)===true,'Capture stopped');equal([...a],x,'Browser input was detached or modified');equal([...b],y,'Browser reference was detached or modified');return {a:x,b:y};}
 
-test('Capture construction and configuration never instantiate heavy recognition',()=>{
- const f=fixture();f.send({type:'threshold',value:.004});f.attach();f.process(1923328,mic(),reference());
- assert(f.constructors.length===0&&f.calls.length===0&&f.controls.length===0,'Capture mode ran the detector');
- return {detectorConstructions:0,detectorCalls:0};
-});
-test('Unattached audio writes zeros and sends no capture or input through the control port',()=>{
- const f=fixture();assert(f.process(640,mic(),reference())===true,'Capture processor stopped while waiting for its worker');
- assert(f.worker.messages.length===0&&f.node.port.messages.length===0,'Audio was sent before attachment');
- assert(f.constructors.length===0&&f.calls.length===0,'Unattached capture ran recognition');
- return {framesDiscardedBeforeAttachment:128};
-});
-for(const rate of [8000,44100,48000])test(`Paired 128-frame signals retain their source clock at ${rate} Hz`,()=>{
- const f=fixture(rate),input=mic(),render=reference(),expectedMic=[...input],expectedRender=[...render],frame=rate*40+128;
- f.attach();assert(f.process(frame,input,render)===true,'Live capture processor stopped');
- assert(f.worker.messages.length===1,'One source quantum did not produce one paired packet');
- const {message,sizes}=f.worker.messages[0];
- assert(message.type==='capture'&&message.frame===frame,'Absolute source-frame clock was changed');
- assert(message.mic instanceof Float32Array&&message.reference instanceof Float32Array,'Paired signals are not Float32 PCM');
- equal([...message.mic],expectedMic,'Microphone samples changed');equal([...message.reference],expectedRender,'Render samples changed');
- equal(sizes,[512,512],'Paired PCM buffers were not transferred together');
- assert(input.byteLength===512&&render.byteLength===512,'Browser input buffers were detached');
- equal([...input],expectedMic,'Capture mutated browser microphone input');equal([...render],expectedRender,'Capture mutated browser reference input');
- assert(f.constructors.length===0&&f.calls.length===0,'Capture ran heavy recognition');
- return {frame,microphoneSamples:128,referenceSamples:128,transferredBytes:1024};
-});
-test('A silent routed master input remains a paired zero waveform',()=>{
- const f=fixture();f.attach();f.process(1024,mic(),undefined);
- const {message,sizes}=f.worker.messages[0];
- assert(message.reference instanceof Float32Array&&message.reference.length===128&&message.reference.every(x=>x===0),'Routed silence was mistaken for missing reference');
- equal(sizes,[512,512],'Routed silence was not transferred with capture');
- return {referenceSamples:128,referenceIsZero:true};
-});
-test('An intentionally unrouted reference remains absent',()=>{
- const f=fixture(48000,{analysisWorker:true,referenceRouted:false});f.attach();f.process(1024,mic(),undefined);
- const {message,sizes}=f.worker.messages[0];
- assert(message.reference===null,'Unrouted input fabricated a reference source');equal(sizes,[512],'Unrouted capture transferred a reference buffer');
- return {reference:null,transferredBytes:512};
-});
-test('A missing microphone block does not fabricate a capture packet',()=>{
- const f=fixture();f.attach();assert(f.process(1024,undefined,reference())===true,'Missing input terminated live capture');
- assert(f.worker.messages.length===0,'An absent microphone input became player audio');
- return {capturedPackets:0};
-});
-test('Source clock gaps remain visible and paired packet order is preserved',()=>{
- const f=fixture();f.attach();f.process(2048,mic(),reference());f.process(2176,undefined,reference());f.process(2304,mic(),reference());f.process(2432,mic(),reference());
- equal(f.worker.messages.map(x=>x.message.frame),[2048,2304,2432],'A clock gap was compressed or packets reordered');
- assert(f.worker.messages.every(x=>x.message.type==='capture'&&x.message.mic.length===128&&x.message.reference.length===128),'A gap broke paired quantum sizes');
- return {sourceFrames:[2048,2304,2432],gapFrames:128};
-});
-test('Configuration queued before attachment flushes in FIFO order before capture',()=>{
- const f=fixture(),commands=[{type:'mode',value:'sustained'},{type:'threshold',value:.004},{type:'arm',start:40.25,duration:3.6}];
- f.send(commands[0]);f.send(commands[1]);assert(f.worker.messages.length===0,'Configuration was sent without a transport');
- f.attach();f.send(commands[2]);f.process(1920000,mic(),reference());
- equal(f.worker.messages.map(x=>x.message.type),['configure','configure','configure','capture'],'Configuration/capture transfer order changed');
- equal(f.worker.messages.slice(0,3).map(x=>x.message.message),commands,'Configuration payload or FIFO order changed');
- assert(f.controls.length===0&&f.constructors.length===0,'Forwarded control also configured an audio-thread detector');
- return {controlTypes:commands.map(x=>x.type),captureFollowsControls:true};
-});
-test('The ordinary processor branch retains configuration, time and zero output',()=>{
- const f=fixture(48000,{analysisWorker:false}),command={type:'threshold',value:.004},input=mic(),render=reference();
- f.send(command);assert(f.process(1920000,input,render)===true,'Ordinary processor stopped');
- assert(f.constructors.length===1&&f.calls.length===1,'Ordinary detector lifecycle changed');
- equal(f.controls,[command],'Ordinary configuration was not delivered');assert(f.calls[0].time===40,'Ordinary source timestamp changed');
- equal([...f.calls[0].mic],[...input],'Ordinary microphone samples changed');equal([...f.calls[0].reference],[...render],'Ordinary reference samples changed');
- return {detectorConstructions:1,detectorCalls:1,sourceTime:40};
-});
-const failed=results.filter(x=>x.status==='FAIL').length;
-console.log(JSON.stringify({target:String(target),passed:results.length-failed,failed,scope:'Actual shipped audio capture wrapper with paired transferable PCM, exact source frames, silence routing and FIFO control handoff. No browser deadline or physical-device claims.',results},null,2));
-Deno.exitCode=failed?1:0;
+test('Worker capture never constructs or runs a heavy detector',()=>{const f=fixture();f.send({type:'threshold',value:.004});f.attach();for(let i=0;i<8;i++)quantum(f,1923328+i*128);assert(!f.constructors.length&&!f.calls.length&&!f.controls.length,'Audio thread ran recognition');return {detectorCalls:0};});
+test('Unattached audio remains silent and produces no packets',()=>{const f=fixture();quantum(f,640);assert(!f.worker.messages.length&&!f.node.port.messages.length&&!f.node.captureUsed,'Captured before attachment');return {packets:0};});
+for(const rate of [8000,44100,48000])test(`A1024-frame batch preserves paired samples and absolute frames at${rate}Hz`,()=>{const f=fixture(rate),frame=rate*40+128,a=[],b=[];f.attach();for(let i=0;i<8;i++){const q=quantum(f,frame+i*128,128,i*128);a.push(...q.a);b.push(...q.b);if(i<7)assert(!f.worker.messages.length,'Quantum was transferred before the batch filled');}assert(f.worker.messages.length===1,'Eight quanta did not form one batch');const {message,sizes}=f.worker.messages[0];assert(message.frame===frame&&message.mic.length===1024&&message.reference.length===1024,'Batch clock or pairing changed');equal([...message.mic],a,'Microphone sequence changed');equal([...message.reference],b,'Reference sequence changed');equal(sizes,[4096,4096],'Full buffers were not transferred');return {frame,samples:1024,packets:1};});
+test('Non-flushing quanta perform no PCM allocations and replace buffers only on full transfer',()=>{const f=fixture();f.attach();const initial=f.allocations.length;for(let i=0;i<7;i++)quantum(f,1000+i*128);assert(f.allocations.length===initial,'A partial quantum allocated PCM');quantum(f,1000+7*128);assert(f.allocations.length===initial+2,'Full transfer did not replace exactly two buffers');for(let i=0;i<7;i++)quantum(f,1000+(8+i)*128);assert(f.allocations.length===initial+2,'Next partial batch allocated PCM');return {initialAllocations:initial,fullBatchReplacementAllocations:2};});
+test('Routed silence remains a full paired zero waveform',()=>{const f=fixture();f.attach();for(let i=0;i<8;i++)f.process(1024+i*128,mic(),undefined);const {message,sizes}=f.worker.messages[0];assert(message.reference?.length===1024&&message.reference.every(x=>x===0),'Routed silence became unavailable');equal(sizes,[4096,4096],'Routed reference not transferred');return {samples:1024,referenceIsZero:true};});
+test('An intentionally unrouted source retains null reference',()=>{const f=fixture(48000,{analysisWorker:true,referenceRouted:false});f.attach();for(let i=0;i<8;i++)f.process(1024+i*128,mic(),undefined);const {message,sizes}=f.worker.messages[0];assert(message.reference===null,'Unrouted source fabricated reference');equal(sizes,[4096],'Unexpected reference transfer');return {reference:null};});
+test('Variable quantum lengths cross batch bounds without changing samples or source frames',()=>{const f=fixture(),first=1923328,a=[],b=[];f.attach();let count=0;for(const length of [64,256,900,300]){const q=quantum(f,first+count,length,count);a.push(...q.a);b.push(...q.b);count+=length;}f.send({type:'analysis-flush'});const packets=f.worker.messages.map(x=>x.message);equal(packets.map(p=>[p.frame,p.mic.length]),[[first,1024],[first+1024,496]],'Variable quantum packet boundaries changed');equal(packets.flatMap(p=>[...p.mic]),a,'Variable microphone samples changed');equal(packets.flatMap(p=>[...p.reference]),b,'Variable reference samples changed');return {packetSizes:packets.map(p=>p.mic.length)};});
+test('Every configuration flushes earlier audio before its own FIFO control message',()=>{const f=fixture(),before={type:'threshold',value:.004},after={type:'mode',value:'sustained'};f.send(before);f.attach();quantum(f,1920000);quantum(f,1920128);f.send(after);quantum(f,1920256);f.send({type:'analysis-flush'});const packets=f.worker.messages.map(x=>x.message);equal(packets.map(p=>p.type),['configure','capture','configure','capture'],'Capture/configuration order changed');equal(packets.filter(p=>p.type==='configure').map(p=>p.message),[before,after],'Configuration payload changed');equal(packets.filter(p=>p.type==='capture').map(p=>[p.frame,p.mic.length]),[[1920000,256],[1920256,128]],'Partial control flush changed clocks');return {types:packets.map(p=>p.type)};});
+test('Clock gaps flush the old partial batch and restart at the actual new frame',()=>{const f=fixture();f.attach();quantum(f,2048);quantum(f,2176);quantum(f,2560);quantum(f,2688);f.send({type:'analysis-flush'});equal(f.worker.messages.map(x=>[x.message.frame,x.message.mic.length]),[[2048,256],[2560,256]],'Clock gap was compressed into a batch');return {frames:[2048,2560],gapFrames:256};});
+test('Missing microphone flushes prior samples without inventing the missing quantum',()=>{const f=fixture();f.attach();quantum(f,2048);f.process(2176,undefined,reference());assert(f.worker.messages.length===1&&f.worker.messages[0].message.mic.length===128,'Prior partial batch lost or missing input fabricated');quantum(f,2304);f.send({type:'analysis-flush'});equal(f.worker.messages.map(x=>x.message.frame),[2048,2304],'Post-gap frame changed');return {sourceFrames:[2048,2304]};});
+test('Explicit flush sends only the partial source tail and never configures a detector',()=>{const f=fixture();f.attach();quantum(f,4096);f.send({type:'analysis-flush'});f.send({type:'analysis-flush'});assert(f.worker.messages.length===1&&f.worker.messages[0].message.type==='capture'&&f.worker.messages[0].message.mic.length===128,'Flush invented control or repeated audio');return {tailFrames:128};});
+test('A short present reference stays malformed for the Worker to reject',()=>{const f=fixture();f.attach();quantum(f,1024);f.process(1152,mic(),reference(64));const packets=f.worker.messages.map(x=>x.message);equal(packets.map(p=>[p.mic.length,p.reference.length]),[[128,128],[128,64]],'A partial reference was disguised as valid silence');return {pairedLengths:packets.map(p=>[p.mic.length,p.reference.length])};});
+test('Changing un-routed reference presence flushes without rewriting earlier pair ownership',()=>{const f=fixture(48000,{analysisWorker:true,referenceRouted:false});f.attach();quantum(f,1024);f.process(1152,mic(),undefined);f.send({type:'analysis-flush'});const packets=f.worker.messages.map(x=>x.message);assert(packets.length===2&&packets[0].reference?.length===128&&packets[1].reference===null,'Presence change lost an earlier reference');return {references:['present','absent']};});
+test('Legacy detector configuration, source time and zero output remain unchanged',()=>{const f=fixture(48000,{analysisWorker:false}),m={type:'threshold',value:.004},a=mic(),b=reference();f.send(m);f.process(1920000,a,b);assert(f.constructors.length===1&&f.calls.length===1&&f.calls[0].time===40,'Legacy detector lifecycle changed');equal(f.controls,[m],'Legacy configuration changed');equal([...f.calls[0].mic],[...a],'Legacy input changed');equal([...f.calls[0].reference],[...b],'Legacy reference changed');return {sourceTime:40,detectorCalls:1};});
+const failed=results.filter(x=>x.status==='FAIL').length;console.log(JSON.stringify({target:String(target),passed:results.length-failed,failed,scope:'Actual audio capture wrapper batches transferable paired PCM with exact source frames, partial/control/gap flushes and no heavy detector or non-flushing quantum PCM allocation. It does not measure browser deadlines.',results},null,2));Deno.exitCode=failed?1:0;

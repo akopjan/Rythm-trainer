@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="recording-recovery-v4">
+<meta name="rhythm-trainer-version" content="clock-gap-recovery-v5">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -1456,31 +1456,50 @@ if(typeof AudioWorkletProcessor!=='undefined'){
    super();const config=options?.processorOptions||{};
    this.workerMode=config.analysisWorker===true;this.referenceRouted=config.referenceRouted===true;
    this.referenceSilence=new Float32Array(128);this.analysisPort=null;this.pendingMessages=[];
+   this.captureBatch=1024;this.captureUsed=0;this.captureFrame=null;this.capturePaired=false;
+   if(this.workerMode){this.captureMic=new Float32Array(this.captureBatch);this.captureReference=new Float32Array(this.captureBatch);}
    if(!this.workerMode)this.detector=new RhythmDetector(sampleRate,m=>this.port.postMessage(m),config.wasmModule);
    this.port.onmessage=e=>{
     if(this.workerMode){
      if(e.data.type==='analysis-port'){
+      this.flushCapture();
       this.analysisPort=e.data.port;
       for(const message of this.pendingMessages)this.analysisPort.postMessage({type:'configure',message});
       this.pendingMessages=[];
-     }else if(this.analysisPort)this.analysisPort.postMessage({type:'configure',message:e.data});
+     }else if(e.data.type==='analysis-flush')this.flushCapture();
+     else if(this.analysisPort){this.flushCapture();this.analysisPort.postMessage({type:'configure',message:e.data});}
      else this.pendingMessages.push(e.data);
     }else this.detector.configure(e.data);
    };
+  }
+  flushCapture(){
+   if(!this.analysisPort||!this.captureUsed)return;
+   const full=this.captureUsed===this.captureBatch,mic=full?this.captureMic:this.captureMic.slice(0,this.captureUsed),paired=this.capturePaired?(full?this.captureReference:this.captureReference.slice(0,this.captureUsed)):null;
+   this.analysisPort.postMessage({type:'capture',frame:this.captureFrame,mic,reference:paired},paired?[mic.buffer,paired.buffer]:[mic.buffer]);
+   if(full){this.captureMic=new Float32Array(this.captureBatch);if(paired)this.captureReference=new Float32Array(this.captureBatch);}
+   this.captureUsed=0;this.captureFrame=null;
   }
   process(inputs,outputs){
    // Rendering only captures samples in worker mode. It never runs a source
    // fit, FFT or instrument classifier on the shared speaker render thread.
    for(const output of outputs)for(const channel of output)channel.fill(0);
    const channel=inputs[0]?.[0];let reference=inputs[1]?.[0];
-   if(!channel)return true;
    if(this.workerMode){
-    if(this.analysisPort){
-     const mic=channel.slice(),paired=reference?reference.slice(0,channel.length):this.referenceRouted?new Float32Array(channel.length):null;
-     this.analysisPort.postMessage({type:'capture',frame:currentFrame,mic,reference:paired},paired?[mic.buffer,paired.buffer]:[mic.buffer]);
+    if(!channel){this.flushCapture();return true;}
+    if(!this.analysisPort)return true;
+    const paired=Boolean(reference)||this.referenceRouted;
+    if(this.captureUsed&&(currentFrame!==this.captureFrame+this.captureUsed||paired!==this.capturePaired))this.flushCapture();
+    // Preserve a malformed partial reference as an error for the Worker,
+    // rather than disguising it as a known silent rendered waveform.
+    if(reference&&reference.length<channel.length){this.flushCapture();const mic=channel.slice(),render=reference.slice();this.analysisPort.postMessage({type:'capture',frame:currentFrame,mic,reference:render},[mic.buffer,render.buffer]);return true;}
+    for(let i=0;i<channel.length;i++){
+     if(!this.captureUsed){this.captureFrame=currentFrame+i;this.capturePaired=paired;}
+     this.captureMic[this.captureUsed]=channel[i];this.captureReference[this.captureUsed]=reference?reference[i]:0;this.captureUsed++;
+     if(this.captureUsed===this.captureBatch)this.flushCapture();
     }
     return true;
    }
+   if(!channel)return true;
    if(!reference&&this.detector.referenceEnabled&&this.detector.reference.options.routed){if(this.referenceSilence.length!==channel.length)this.referenceSilence=new Float32Array(channel.length);reference=this.referenceSilence;}
    for(let i=0;i<channel.length;i+=128)this.detector.process(channel.subarray(i,i+128),(currentFrame+i)/sampleRate,reference?.subarray(i,i+128));
    return true;
@@ -1588,10 +1607,17 @@ function updateTrackGain(row){if(trackGains[row]&&context)trackGains[row].gain.s
 // Hooks: initSampleRecorder(), recordSampleDiagnostics(message), stopSampleRecording(reason).
 const sampleRecorderWorklet=String.raw`
 class RhythmSampleCapture extends AudioWorkletProcessor {
- constructor(options){super();const p=options.processorOptions||{};this.limit=Math.max(1,Math.min(Math.round(sampleRate*20),Math.round(p.samples)||1));this.batch=Math.max(128,Math.round(sampleRate/4));this.mic=new Float32Array(this.batch);this.reference=new Float32Array(this.batch);this.used=0;this.count=0;this.first=null;this.finished=false;this.referenceMissing=0;this.port.onmessage=e=>{if(e.data?.type==='stop')this.finish('manual');};}
+ constructor(options){super();const p=options.processorOptions||{};this.limit=Math.max(1,Math.min(Math.round(sampleRate*20),Math.round(p.samples)||1));this.batch=Math.max(128,Math.round(sampleRate/4));this.mic=new Float32Array(this.batch);this.reference=new Float32Array(this.batch);this.used=0;this.count=0;this.first=null;this.finished=false;this.referenceMissing=0;this.gapCount=0;this.port.onmessage=e=>{if(e.data?.type==='stop')this.finish('manual');};}
  flush(){if(!this.used)return;const mic=this.mic.slice(0,this.used),reference=this.reference.slice(0,this.used);this.port.postMessage({type:'chunk',offset:this.count-this.used,mic,reference},[mic.buffer,reference.buffer]);this.used=0;}
- finish(reason,details={}){if(this.finished)return;this.flush();this.finished=true;this.port.postMessage({type:['clock-gap','missing-input'].includes(reason)?'error':'done',reason,samples:this.count,startFrame:this.first,endFrame:this.first===null?null:this.first+this.count,referenceMissingSamples:this.referenceMissing,...details});}
- process(inputs,outputs){for(const output of outputs)for(const channel of output)channel.fill(0);if(this.finished)return true;const mic=inputs[0]?.[0],reference=inputs[1]?.[0];if(this.first!==null&&(!mic?.length||currentFrame!==this.first+this.count)){this.finish(!mic?.length?'missing-input':'clock-gap',{expectedFrame:this.first+this.count,actualFrame:currentFrame,inputLength:mic?.length||0,referenceLength:reference?.length||0});return true;}if(!mic?.length)return true;if(this.first===null){this.first=currentFrame;this.port.postMessage({type:'started',startFrame:this.first});}const n=Math.min(mic.length,this.limit-this.count);if(!reference)this.referenceMissing+=n;for(let i=0;i<n;i++){this.mic[this.used]=mic[i];this.reference[this.used]=reference?.[i]||0;this.used++;this.count++;if(this.used===this.batch)this.flush();}if(this.count===this.limit)this.finish('complete');return true;}
+ finish(reason,details={}){if(this.finished)return;this.flush();this.finished=true;this.port.postMessage({type:['clock-gap','clock-backward','missing-input','too-many-gaps'].includes(reason)?'error':'done',reason,samples:this.count,startFrame:this.first,endFrame:this.first===null?null:this.first+this.count,referenceMissingSamples:this.referenceMissing,...details});}
+ process(inputs,outputs){
+  for(const output of outputs)for(const channel of output)channel.fill(0);if(this.finished)return true;const mic=inputs[0]?.[0],reference=inputs[1]?.[0];
+  if(this.first!==null){const expected=this.first+this.count,details={expectedFrame:expected,actualFrame:currentFrame,inputLength:mic?.length||0,referenceLength:reference?.length||0};
+   if(!mic?.length||currentFrame<expected){this.finish(!mic?.length?'missing-input':'clock-backward',details);return true;}
+   if(currentFrame>expected){if(this.gapCount>=64){this.finish('too-many-gaps',details);return true;}this.flush();const length=Math.min(currentFrame-expected,this.limit-this.count);this.port.postMessage({type:'gap',reason:'clock-gap',offset:this.count,length,startFrame:expected,endFrame:expected+length,expectedFrame:expected,actualFrame:currentFrame});this.count+=length;this.gapCount++;if(this.count===this.limit){this.finish('complete');return true;}}
+  }
+  if(!mic?.length)return true;if(this.first===null){this.first=currentFrame;this.port.postMessage({type:'started',startFrame:this.first});}const n=Math.min(mic.length,this.limit-this.count);if(!reference)this.referenceMissing+=n;for(let i=0;i<n;i++){this.mic[this.used]=mic[i];this.reference[this.used]=reference?.[i]||0;this.used++;this.count++;if(this.used===this.batch)this.flush();}if(this.count===this.limit)this.finish('complete');return true;
+ }
 }
 registerProcessor('rhythm-sample-capture',RhythmSampleCapture);
 `;
@@ -1633,12 +1659,12 @@ function sampleRecorderControls(){
 }
 function updateSampleControls(){sampleRecorderControls();}
 function sampleRecordFolder(kind){return {'with':'with-bayan','without':'without-bayan','with-error':'with-bayan-error','without-error':'without-bayan-error'}[kind];}
-function sampleErrorLabel(error){const reason=error?.reason||'unknown';return ({'missing-input':'Микрофон прервал передачу звука','clock-gap':'Пропуск в аудиочасах','processor-error':'Ошибка обработчика записи','chunk-order':'Нарушен порядок звуковых блоков','transfer-incomplete':'Получены не все звуковые блоки'}[reason]||'Запись прервана')+` (${reason}).`;}
+function sampleErrorLabel(error){const reason=error?.reason||'unknown';return ({'missing-input':'Микрофон прервал передачу звука','clock-gap':'Пропуск в аудиочасах','clock-backward':'Аудиочасы пошли назад','too-many-gaps':'В записи слишком много пропусков','gap-invalid':'Нарушились сведения о пропуске','processor-error':'Ошибка обработчика записи','chunk-order':'Нарушен порядок звуковых блоков','transfer-incomplete':'Получены не все звуковые блоки'}[reason]||'Запись прервана')+` (${reason}).`;}
 function sampleRenderList(){
  for(const url of sampleRecorderState.objectURLs)URL.revokeObjectURL(url);sampleRecorderState.objectURLs=[];
  const list=$('sample-list');if(!list)return;list.replaceChildren();
  for(const kind of ['without','with','without-error','with-error']){const record=sampleRecorderState.records.get(kind);if(!record)continue;const item=document.createElement('div'),label=document.createElement('p'),button=document.createElement('button'),withBayan=kind==='with'||kind==='with-error',failed=kind.endsWith('-error');
-  label.textContent=`${withBayan?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${new Date(record.metadata.createdAt).toLocaleTimeString()}${failed?' · неполная запись · '+sampleErrorLabel(record.metadata.captureError):record.metadata.stopReason==='complete'?'':' · остановлена раньше'}${failed&&record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
+  label.textContent=`${withBayan?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${new Date(record.metadata.createdAt).toLocaleTimeString()}${record.metadata.hasGaps?' · запись с пропусками: '+(record.metadata.missingSamples/record.metadata.sampleRate*1000).toFixed(1)+' мс':''}${failed&&(!record.metadata.hasGaps||record.metadata.captureError)?' · неполная запись · '+sampleErrorLabel(record.metadata.captureError):!failed&&record.metadata.stopReason!=='complete'?' · остановлена раньше':''}${failed&&record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
   item.append(label);if(record.metadata.samples!==0){const player=document.createElement('audio');player.controls=true;player.preload='metadata';player.setAttribute('aria-label',withBayan?'Запись микрофона с баяном':'Запись микрофона без баяна');player.addEventListener('play',()=>{if(state.running)stop();});const url=URL.createObjectURL(record.mic);sampleRecorderState.objectURLs.push(url);player.src=url;item.append(player);}button.type='button';button.textContent=failed?'Скачать запись и ошибку':'Скачать эту запись';button.addEventListener('click',()=>sampleDownload([record]));item.append(button);list.append(item);
  }
  sampleRecorderControls();
@@ -1659,9 +1685,16 @@ function sampleReceive(recording,message){
  if(sampleRecorderState.active!==recording||recording.finished)return;
  if(message.type==='error'){sampleCaptureFailure(recording,message);return;}
  if(message.type==='started'){recording.startFrame=message.startFrame;sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запись идёт — баян пока не играйте. Осталось 8 с.');return;}
+ if(message.type==='gap'){
+  const gaps=recording.gaps||[],length=message.length,start=recording.startFrame+recording.count;
+  if(!Number.isInteger(message.offset)||message.offset!==recording.count||!Number.isInteger(length)||length<=0||recording.count+length>recording.limit||!Number.isInteger(recording.startFrame)||message.startFrame!==start||message.expectedFrame!==start||message.endFrame!==start+length||!Number.isInteger(message.actualFrame)||message.actualFrame<message.endFrame||message.reason!=='clock-gap'||gaps.length>=64){sampleCaptureFailure(recording,{...message,reason:'gap-invalid'});return;}
+  // WAV cannot encode absent frames: declared zero placeholders preserve time.
+  // Analysis must exclude these exact intervals rather than treating them as silence.
+  recording.mic.push(new Float32Array(length));recording.reference.push(new Float32Array(length));recording.gaps=gaps;gaps.push({offset:message.offset,length,startFrame:message.startFrame,endFrame:message.endFrame,reason:message.reason,expectedFrame:message.expectedFrame,actualFrame:message.actualFrame});recording.missingSamples=(recording.missingSamples||0)+length;recording.count+=length;sampleSetStatus('В звуке был пропуск. Запись продолжается; пропущенное место будет отмечено.');return;
+ }
  if(message.type==='chunk'){
   const mic=message.mic,reference=message.reference;if(!(mic instanceof Float32Array)||!(reference instanceof Float32Array)||mic.length!==reference.length||message.offset!==recording.count||recording.count+mic.length>recording.limit){sampleCaptureFailure(recording,{reason:'chunk-order',offset:message.offset,inputLength:mic?.length,referenceLength:reference?.length});return;}
-  recording.mic.push(mic);recording.reference.push(reference);recording.count+=mic.length;if(recording.count-(recording.progressAt||0)>=recording.sampleRate/4||recording.count===recording.limit){recording.progressAt=recording.count;const remaining=Math.max(0,(recording.limit-recording.count)/recording.sampleRate);sampleSetStatus(`Запись ${recording.kind==='with'?'с баяном':'без баяна'}: ${Math.ceil(remaining)} с осталось. ${recording.kind==='with'?'Играйте.':'Не играйте на баяне.'}`);}return;
+  recording.mic.push(mic);recording.reference.push(reference);recording.count+=mic.length;if(recording.count-(recording.progressAt||0)>=recording.sampleRate/4||recording.count===recording.limit){recording.progressAt=recording.count;const remaining=Math.max(0,(recording.limit-recording.count)/recording.sampleRate);sampleSetStatus(`Запись ${recording.kind==='with'?'с баяном':'без баяна'}: ${Math.ceil(remaining)} с осталось. ${recording.kind==='with'?'Играйте.':'Не играйте на баяне.'}${recording.gaps?.length?' Есть отмеченные пропуски.':''}`);}return;
  }
  if(message.type==='done'){
   if(message.samples!==recording.count){sampleCaptureFailure(recording,{...message,reason:'transfer-incomplete'});return;}
@@ -1681,12 +1714,12 @@ function sampleDisconnect(recording){
 }
 async function sampleFinish(recording,reason,errorText=''){
  if(recording.finished)return;recording.finished=true;sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;sampleRecorderState.pending=false;sampleRecorderControls();
- const failed=reason==='capture-error';if(!failed&&recording.count===0){sampleSetStatus(errorText||'Запись остановлена до получения звука. Повторите её.');return;}
+ const hasGaps=Boolean(recording.gaps?.length),failed=reason==='capture-error'||hasGaps;if(!failed&&recording.count===0){sampleSetStatus(errorText||'Запись остановлена до получения звука. Повторите её.');return;}
  const join=chunks=>{const result=new Float32Array(recording.count);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}return result;};
- const completed=reason==='complete'&&recording.count===recording.limit;const metadata={...recording.metadata,startFrame:recording.startFrame,startContextTime:Number.isFinite(recording.startFrame)?recording.startFrame/recording.sampleRate:null,endContextTime:Number.isFinite(recording.startFrame)?(recording.startFrame+recording.count)/recording.sampleRate:null,samples:recording.count,durationSeconds:recording.count/recording.sampleRate,stopReason:reason,completed,incomplete:!completed,captureError:recording.captureError||null,unflushedTailPossible:failed||reason==='trainer-stop'||reason==='manual-interrupted'||reason==='audio-interrupted',referenceMissingSamples:recording.referenceMissingSamples??null,missingReferenceNote:'An inactive master-bus input is represented by zeros and counted; it can mean silence between backing sounds. Null means the worklet final counter was not received.',diagnostics:recording.diagnostics,diagnosticLatest:recording.diagnosticLatest,diagnosticsDropped:recording.diagnosticsDropped};
- const record={kind:recording.kind+(failed?'-error':''),mic:sampleWav(join(recording.mic),recording.sampleRate),reference:sampleWav(join(recording.reference),recording.sampleRate),metadata};sampleRecorderState.records.set(record.kind,record);sampleRenderList();if(failed)sampleSetStatus(`${errorText||sampleErrorLabel(recording.captureError)} Сохранены ${recording.count?'полученный фрагмент и':'только'} сведения об ошибке. Нажмите «Скачать записи».`);
+ const timelineComplete=reason==='complete'&&recording.count===recording.limit,completed=timelineComplete&&!hasGaps,missingSamples=recording.missingSamples||0;const metadata={...recording.metadata,startFrame:recording.startFrame,startContextTime:Number.isFinite(recording.startFrame)?recording.startFrame/recording.sampleRate:null,endContextTime:Number.isFinite(recording.startFrame)?(recording.startFrame+recording.count)/recording.sampleRate:null,samples:recording.count,durationSeconds:recording.count/recording.sampleRate,stopReason:reason,completed,incomplete:!completed,timelineComplete,hasGaps,gaps:recording.gaps||[],missingSamples,recordedSamples:recording.count-missingSamples,gapEncoding:hasGaps?'Paired zero placeholders represent missing data only at gaps[]. Exclude those intervals from audio analysis. No time compression.':null,captureError:recording.captureError||null,unflushedTailPossible:reason==='capture-error'||reason==='trainer-stop'||reason==='manual-interrupted'||reason==='audio-interrupted',referenceMissingSamples:recording.referenceMissingSamples??null,missingReferenceNote:'An inactive master-bus input is represented by zeros and counted; it can mean silence between backing sounds. Null means the worklet final counter was not received.',diagnostics:recording.diagnostics,diagnosticLatest:recording.diagnosticLatest,diagnosticsDropped:recording.diagnosticsDropped};
+ const warning=hasGaps?`Запись с пропусками: ${(missingSamples/recording.sampleRate*1000).toFixed(1)} мс отсутствующего звука.${recording.captureError?' '+sampleErrorLabel(recording.captureError):''}`:errorText||sampleErrorLabel(recording.captureError);const record={kind:recording.kind+(failed?'-error':''),mic:sampleWav(join(recording.mic),recording.sampleRate),reference:sampleWav(join(recording.reference),recording.sampleRate),metadata};sampleRecorderState.records.set(record.kind,record);sampleRenderList();if(failed)sampleSetStatus(`${warning} Сохранены ${recording.count?'полученный звук и':'только'} сведения о пропусках. Нажмите «Скачать записи».`);
  const statusGeneration=sampleRecorderState.generation;const mayUpdateStatus=()=>sampleRecorderState.generation===statusGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending&&sampleRecorderState.records.get(record.kind)===record;
- try{await sampleStore(record);if(mayUpdateStatus())sampleSetStatus(failed?`${errorText||sampleErrorLabel(recording.captureError)} ${recording.count?'Полученный фрагмент и диагностика сохранены':'Звук не получен; диагностика сохранена'} в этом браузере. Нажмите «Скачать записи».`:`${record.kind==='with'?'Запись с баяном':'Запись без баяна'} сохранена в этом браузере. ${sampleRecorderState.records.has('with')&&sampleRecorderState.records.has('without')?'Обе записи готовы — нажмите «Скачать записи» и сообщите в чате, что ZIP скачан.':'Можно записать второй образец или скачать этот.'}`);}catch(error){if(mayUpdateStatus())sampleSetStatus(`${failed?(errorText||sampleErrorLabel(recording.captureError))+' ':''}Запись доступна до закрытия страницы. Скачайте её сейчас: ${error.message}`);}
+ try{await sampleStore(record);if(mayUpdateStatus())sampleSetStatus(failed?`${warning} ${recording.count?'Полученный звук и диагностика сохранены':'Звук не получен; диагностика сохранена'} в этом браузере. Нажмите «Скачать записи».`:`${record.kind==='with'?'Запись с баяном':'Запись без баяна'} сохранена в этом браузере. ${sampleRecorderState.records.has('with')&&sampleRecorderState.records.has('without')?'Обе записи готовы — нажмите «Скачать записи» и сообщите в чате, что ZIP скачан.':'Можно записать второй образец или скачать этот.'}`);}catch(error){if(mayUpdateStatus())sampleSetStatus(`${failed?warning+' ':''}Запись доступна до закрытия страницы. Скачайте её сейчас: ${error.message}`);}
 }
 async function startSampleRecording(kind){
  if(!['with','without'].includes(kind)||sampleRecorderState.pending||sampleRecorderState.active)return;
