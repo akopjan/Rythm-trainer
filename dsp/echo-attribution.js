@@ -139,6 +139,9 @@ class EchoAttribution {
   if(!confirmed){
    this.reject(job,'tone-unconfirmed');return;
   }
+  if(job.message.source==='periodic'&&job.message.frequency>=1600){
+   if(!(knownPeriodicSource&&this.highStableInstrumentTone(job)&&this.highPeriodicSourceRise(job))){this.reject(job,'tone-unconfirmed');return;}
+  }
   if(job.y){
    // Independent energy can be a held note. A backing-triggered candidate
    // needs its own amplitude rise or pitch change after source projection.
@@ -146,7 +149,7 @@ class EchoAttribution {
    const beforeStart=Math.max(0,limit-Math.round(.024*this.rate));
    for(let i=beforeStart;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
    before=Math.sqrt(before/Math.max(1,limit-beforeStart));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(knownInstrument&&this.harmonicFamilyRise(job))&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(knownInstrument&&(this.harmonicFamilyRise(job)||this.highHarmonicFamilyRise(job)))&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
   }
   this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;this.finishTiming(job);
  }
@@ -182,9 +185,110 @@ class EchoAttribution {
   return false;
  }
 
+
+ // Scan only with a vetted profile and frozen own-source evidence. A native
+ // recheck prevents the faster scan from treating aliases as harmonic notes.
+ highHarmonicFamilyRise(job){
+  const rate=this.rate,stride=Math.max(1,Math.round(rate/16000)),limit=job.eventIndex,sampledRate=rate/stride;
+  if(!job.y||!Number.isFinite(limit))return false;
+  const beforeCount=Math.floor(.024*rate/stride),afterCount=Math.floor(.032*rate/stride);
+  const beforeStart=limit-beforeCount*stride,firstStart=limit+Math.round(.012*rate),secondStart=limit+Math.round(.045*rate);
+  if(beforeCount<16||afterCount<16||beforeStart<0||secondStart+(afterCount-1)*stride>=job.y.length)return false;
+  const make=(start,count,step=stride)=>{const values=new Float64Array(count);let norm=0,energy=0;for(let i=0;i<count;i++){const x=job.y[start+i*step],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;energy+=x*x/count;}return {values,norm,energy};};
+  const before=make(beforeStart,beforeCount),first=make(firstStart,afterCount),second=make(secondStart,afterCount);
+  const power=(frame,frequency,analysisRate=sampledRate)=>{const c=2*Math.cos(2*Math.PI*frequency/analysisRate);let a=0,b=0;for(const x of frame.values){const n=x+c*a-b;b=a;a=n;}return Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);};
+  const high=Math.min(4000,sampledRate*.45/2),floor=Math.max(1e-16,job.gate*job.gate*.012);
+  let native=null;
+  for(let frequency=1600;frequency<=high;frequency+=10){
+   const o1=power(before,frequency),a1=power(first,frequency),b1=power(second,frequency);
+   if(!(a1>o1*1.6+floor&&b1>o1*1.6+floor&&a1>first.energy*.01&&b1>second.energy*.01))continue;
+   const o2=power(before,frequency*2),a2=power(first,frequency*2),b2=power(second,frequency*2);
+   if(!(a2>o2*1.6+floor&&b2>o2*1.6+floor&&a2>a1*.012&&b2>b1*.012))continue;
+   const third=frequency*3<=sampledRate*.45,o3=third?power(before,frequency*3):0,a3=third?power(first,frequency*3):0,b3=third?power(second,frequency*3):0;
+   const oldSum=o1+o2+o3,aSum=a1+a2+a3,bSum=b1+b2+b3;
+   const oldFraction=2*oldSum/Math.max(1e-20,before.energy),aFraction=2*aSum/Math.max(1e-20,first.energy),bFraction=2*bSum/Math.max(1e-20,second.energy);
+   if(aFraction<.035||bFraction<.035||aFraction<=oldFraction*1.3||bFraction<=oldFraction*1.3)continue;
+   if(Math.sqrt(2*Math.min(aSum,bSum))-Math.sqrt(2*oldSum)<=job.gate*.3||bSum<aSum*.65*.65)continue;
+   // A narrow fixed bin can rise when vibrato moves an unchanged tone.
+   // Center both post windows on a persistent local peak and compare with
+   // the strongest nearby pre-existing fundamental, not only the same bin.
+   let oldNeighbour=o1,firstPeak=a1,secondPeak=b1;const neighbourhood=Math.max(40,frequency*.02);
+   for(let offset=-neighbourhood;offset<=neighbourhood;offset+=10){const neighbour=frequency+offset;if(neighbour<1600||neighbour>high)continue;oldNeighbour=Math.max(oldNeighbour,power(before,neighbour));firstPeak=Math.max(firstPeak,power(first,neighbour));secondPeak=Math.max(secondPeak,power(second,neighbour));}
+   if(a1<firstPeak*.8||b1<secondPeak*.8||!(a1>oldNeighbour*1.6+floor&&b1>oldNeighbour*1.6+floor))continue;
+   const dot=a1*b1+a2*b2+a3*b3,aa=a1*a1+a2*a2+a3*a3,bb=b1*b1+b2*b2+b3*b3;
+   if(!(aa*bb>1e-30&&dot/Math.sqrt(aa*bb)>=.92))continue;
+   // The fast search has no anti-alias filter. An out-of-band source can
+   // fold onto a convincing family, so it cannot itself establish evidence.
+   // Verify only this candidate's partials against native projected PCM;
+   // never run a full native-rate frequency search.
+   if(!native){
+    const nativeBeforeCount=Math.floor(.024*rate),nativeAfterCount=Math.floor(.032*rate),nativeBeforeStart=limit-nativeBeforeCount;
+    if(nativeBeforeStart<0||secondStart+nativeAfterCount>job.y.length)return false;
+    native=[make(nativeBeforeStart,nativeBeforeCount,1),make(firstStart,nativeAfterCount,1),make(secondStart,nativeAfterCount,1)];
+   }
+   const nativePartials=native.map(frame=>[power(frame,frequency,rate),power(frame,frequency*2,rate),third?power(frame,frequency*3,rate):0]);
+   const [oldNative,firstNative,secondNative]=nativePartials;
+   if(![firstNative,secondNative].every((partial,i)=>partial[0]>oldNative[0]*1.6+floor&&partial[1]>oldNative[1]*1.6+floor&&partial[0]>native[i+1].energy*.01&&partial[1]>partial[0]*.012))continue;
+   const sums=nativePartials.map(partial=>partial.reduce((sum,value)=>sum+value,0)),fractions=sums.map((sum,i)=>2*sum/Math.max(1e-20,native[i].energy));
+   if(fractions[1]<.035||fractions[2]<.035||fractions[1]<=fractions[0]*1.3||fractions[2]<=fractions[0]*1.3)continue;
+   if(Math.sqrt(2*Math.min(sums[1],sums[2]))-Math.sqrt(2*sums[0])<=job.gate*.3||sums[2]<sums[1]*.65*.65)continue;
+   let nativeDot=0,nativeAA=0,nativeBB=0;for(let h=0;h<3;h++){nativeDot+=firstNative[h]*secondNative[h];nativeAA+=firstNative[h]**2;nativeBB+=secondNative[h]**2;}
+   if(!(nativeAA*nativeBB>1e-30&&nativeDot/Math.sqrt(nativeAA*nativeBB)>=.92))continue;
+   return true;
+  }
+  return false;
+ }
+
+ // High proposals must prove their named family in native projected
+ // PCM before any amplitude/novelty shortcut. Decimated aliases cannot do so.
+ highNativeFrame(job,start,count){
+  if(start<0||start+count>job.y.length)return null;
+  const values=new Float64Array(count);let norm=0,total=0;
+  for(let i=0;i<count;i++){const x=job.y[start+i],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}
+  return {values,norm,total};
+ }
+ highNativePower(frame,frequency){
+  const c=2*Math.cos(2*Math.PI*frequency/this.rate);let a=0,b=0;
+  for(const x of frame.values){const n=x+c*a-b;b=a;a=n;}
+  return Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);
+ }
+ highStableInstrumentTone(job){
+  const frequency=job.message?.frequency;
+  if(!job.y||!Number.isFinite(frequency)||frequency<1600||frequency>Math.min(4000,this.rate*.45/2))return false;
+  // Quiet known notes need not dominate the remaining backing energy. Cold
+  // input keeps the stronger concentration and power-shape requirements.
+  const knownInstrument=job.message?.profileReady===true&&job.evidenceSnapshot?.own===true;
+  const count=Math.floor(.032*this.rate),starts=(knownInstrument?[.050,.080]:[.020,.050,.080]).map(t=>job.eventIndex+Math.round(t*this.rate));
+  const frames=starts.map(start=>this.highNativeFrame(job,start,count));if(frames.some(f=>!f))return false;
+  const radius=Math.max(30,frequency*.02),best=[];
+  for(const frame of frames){let peak=0,f=frequency;for(let offset=-radius;offset<=radius;offset+=10){const q=frequency+offset,p=this.highNativePower(frame,q);if(p>peak){peak=p;f=q;}}best.push({f,fundamental:peak,second:this.highNativePower(frame,f*2),third:f*3<=this.rate*.45?this.highNativePower(frame,f*3):0,total:frame.total});}
+  if(Math.max(...best.map(x=>x.f))-Math.min(...best.map(x=>x.f))>Math.max(15,frequency*.006))return false;
+  if(best.some(x=>x.fundamental<x.total*(knownInstrument ? .01 : .025)||x.second+x.third<x.fundamental*.012||2*(x.fundamental+x.second+x.third)<x.total*(knownInstrument ? .12 : .35)))return false;
+  const a=best[0],b=best.at(-1),left=[a.fundamental,a.second,a.third],right=[b.fundamental,b.second,b.third];
+  let dot=0,aa=0,bb=0;for(let h=0;h<3;h++){const x=knownInstrument?Math.sqrt(left[h]):left[h],y=knownInstrument?Math.sqrt(right[h]):right[h];dot+=x*y;aa+=x*x;bb+=y*y;}
+  if(b.fundamental+b.second+b.third<(a.fundamental+a.second+a.third)*.65*.65||aa*bb<=1e-30||dot/Math.sqrt(aa*bb)<.92)return false;
+  job.highNativeFrequency=best[Math.floor(best.length/2)].f;return true;
+ }
+ highPeriodicSourceRise(job){
+  if(job.highPeriodicVerified)return true;
+  const frequency=job.highNativeFrequency??job.message?.frequency;
+  if(!job.y||!Number.isFinite(frequency)||frequency<1600||frequency>Math.min(4000,this.rate*.45/2))return false;
+  const knownInstrument=job.message?.profileReady===true&&job.evidenceSnapshot?.own===true;
+  const count=Math.floor(.032*this.rate),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round((knownInstrument ? .05 : .02)*this.rate);
+  const before=this.highNativeFrame(job,early,count),after=this.highNativeFrame(job,late,count);if(!before||!after)return false;
+  const energy=frame=>{const fundamental=this.highNativePower(frame,frequency),second=this.highNativePower(frame,frequency*2),third=frequency*3<=this.rate*.45?this.highNativePower(frame,frequency*3):0;return {fundamental,second,third,sum:fundamental+second+third,total:frame.total};};
+  const old=energy(before),now=energy(after);let oldNeighbour=old.fundamental,oldSecond=old.second,oldThird=old.third;const radius=Math.max(60,frequency*.04);
+  for(let offset=-radius;offset<=radius;offset+=10){const q=frequency+offset;oldNeighbour=Math.max(oldNeighbour,this.highNativePower(before,q));oldSecond=Math.max(oldSecond,this.highNativePower(before,q*2));if(q*3<=this.rate*.45)oldThird=Math.max(oldThird,this.highNativePower(before,q*3));}
+  if(!(now.fundamental>after.total*(knownInstrument ? .01 : .025)&&now.second+now.third>now.fundamental*.012&&2*now.sum>after.total*(knownInstrument ? .12 : .35)&&now.fundamental>oldNeighbour*2.5&&((now.second>now.fundamental*.012&&now.second>oldSecond*2.5)||(now.third>now.fundamental*.012&&now.third>oldThird*2.5))&&2*now.sum/Math.max(1e-20,after.total)>2*old.sum/Math.max(1e-20,before.total)*1.3&&Math.sqrt(2*now.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return false;
+  const onsetPower=old.sum+(now.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*this.rate)),limit=job.eventIndex-Math.round(.020*this.rate);
+  for(let start=early;start<=limit;start+=step){const frame=this.highNativeFrame(job,start,count),observed=energy(frame);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;const sourceTime=this.baseTime+(job.start+start+(count-1)/2)/this.rate;job.message.originalPeriodicTime=job.message.time;job.message.time=Math.min(job.message.time,sourceTime);break;}
+  job.highPeriodicVerified=true;return true;
+ }
+
  // Verify a tracked note against an earlier projected source window. A slow
  // onset can already be sounding when its level crosses the attack threshold.
  periodicSourceRise(job){
+  if(job.message?.frequency>=1600)return this.highPeriodicSourceRise(job);
   const frequency=job.message?.frequency;if(!Number.isFinite(frequency)||frequency<80||frequency>1400||!job.y)return false;
   const count=Math.floor(.032*this.rate/this.stride),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round(.02*this.rate);
   if(count<16||early<0||late+(count-1)*this.stride>=job.y.length)return false;
@@ -204,6 +308,7 @@ class EchoAttribution {
  // two short source-time windows after projection. Drum/click decays do not
  // satisfy this; only the separate periodic rise check may refine onset time.
  stableInstrumentTone(job){
+  if(job.message?.source==='periodic'&&job.message?.frequency>=1600)return this.highStableInstrumentTone(job);
   job.tonalFamilyCount=0;
   if(!job.y||!Number.isFinite(job.eventIndex))return false;
   const count=Math.max(16,Math.floor(.032*this.rate/this.stride)),first=job.eventIndex+Math.round(.020*this.rate),second=job.eventIndex+Math.round(.080*this.rate);

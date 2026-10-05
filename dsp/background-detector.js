@@ -7,7 +7,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.confirmedAnchor=null;this.provenMatchFloor=0;this.lastCaptureEnd=null;this.lastReferenceAvailable=false;this.delayJumpEvidence=null;
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
-  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
@@ -75,7 +75,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    return;
   }
   if(m.type==='calibrate'&&this.referenceEnabled){
-   this.periodic.reset();
+   this.periodic.reset();this.highPeriodic.reset();
    this.clearConfirmedAnchor();
    this.ensureBackground();this.backgroundCalibration={requestedStart:m.start,duration:m.duration,deadline:null,watchdog:m.start+Math.max(30,m.duration*5)};
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});
@@ -86,7 +86,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   super.configure(m);
   if(m.type==='arm'){
    this.clearConfirmedAnchor();this.lastCaptureEnd=null;this.lastReferenceAvailable=false;
-   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.highPeriodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
   if(m.type==='reference-sync')this.clearConfirmedAnchor();
   if(m.type==='reference-sync'&&this.referenceEnabled){
@@ -96,7 +96,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:m.backing,oversubtraction:4});
   }
   if(m.type==='backing-state'&&this.background){if(m.backing!==this.background.backing)this.clearConfirmedAnchor(true);this.background.configure({backing:m.backing});}
-  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate')this.periodic.reset();
+  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate'){this.periodic.reset();this.highPeriodic.reset();}
   if(m.type==='invalidate'){this.clearConfirmedAnchor();if(this.background){this.background.invalidate();this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});}}
  }
  independentHarmonics(frame){
@@ -106,7 +106,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    const nearby=[];for(let j=Math.max(0,bin-6);j<=Math.min(p.length-1,bin+6);j++)nearby.push(p[j]);nearby.sort((a,b)=>a-b);
    return p[bin]>Math.max(1e-16,nearby[Math.floor(nearby.length/2)]*8);
   };
-  for(let bin=Math.ceil(80*this.background.n/this.rate);bin<=Math.floor(1600*this.background.n/this.rate);bin++){
+  for(let bin=Math.ceil(80*this.background.n/this.rate);bin<=Math.floor(Math.min(4000,this.rate*.45/2)*this.background.n/this.rate);bin++){
    if(!peak(bin))continue;
    for(const harmonic of [2,3]){const center=bin*harmonic;for(let j=center-1;j<=center+1&&j<p.length;j++)if(j>=0&&j*this.rate/this.background.n>=180&&peak(j))return true;}
   }
@@ -177,7 +177,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.referenceEnabled=false;this.auditEnabled=true;this.auditTime=sourceTime+captured.length/this.rate;
   try{
    super.process(analysisSamples,sourceTime,undefined);
-   if(this.mode==='sustained'&&this.active&&sourceTime>=this.start)this.periodic.process(analysisSamples,sourceTime,this.currentGate||this.threshold);
+   if(this.mode==='sustained'&&this.active&&sourceTime>=this.start){this.periodic.process(analysisSamples,sourceTime,this.currentGate||this.threshold);this.highPeriodic.process(analysisSamples,sourceTime,this.currentGate||this.threshold);}
   }
   finally{this.referenceEnabled=wasEnabled;this.auditEnabled=false;this.profile=oldProfile;}
  }

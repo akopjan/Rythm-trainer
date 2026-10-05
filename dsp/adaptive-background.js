@@ -150,7 +150,7 @@ class AdaptiveBackgroundSpectrum {
   for(let bin=0;bin<this.bins;bin++){
    const p=power[bin],m=Math.sqrt(p),weight=bin===0||bin===this.bins-1?1:2;total+=p*weight;expected+=predicted.background[bin]*this.gain*weight;excess+=Math.max(0,p-(predicted.background[bin]+3*predicted.spread[bin])*this.gain)*weight;flux+=Math.max(0,m-this.lastMagnitude[bin]);magnitudeSum+=m;this.lastMagnitude[bin]=m;
    const hz=bin*this.rate/this.n;if(hz>=600&&hz<=9000){log+=Math.log(Math.max(1e-20,p));flatSum+=p;flatN++;}
-   if(hz>=80&&hz<=3500){const nearby=[];for(let k=Math.max(0,bin-6);k<=Math.min(this.bins-1,bin+6);k++)nearby.push(power[k]);nearby.sort((a,b)=>a-b);const local=nearby[Math.floor(nearby.length/2)],known=(predicted.background[bin]+4*predicted.spread[bin])*this.gain;
+   if(hz>=80&&hz<=Math.min(9000,this.rate*.45)){const nearby=[];for(let k=Math.max(0,bin-6);k<=Math.min(this.bins-1,bin+6);k++)nearby.push(power[k]);nearby.sort((a,b)=>a-b);const local=nearby[Math.floor(nearby.length/2)],known=(predicted.background[bin]+4*predicted.spread[bin])*this.gain;
     if(p>Math.max(1e-16,known*3,this.noise[bin]*6)&&p>local*8){peaks[bin]=1;nextPersistence[bin]=Math.min(65535,1+Math.max(this.persistence[Math.max(0,bin-1)],this.persistence[bin],this.persistence[Math.min(this.bins-1,bin+1)]));}
    }
   }

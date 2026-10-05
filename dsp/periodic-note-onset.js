@@ -51,3 +51,34 @@ class PeriodicNoteOnset {
   this.lastHit=time;this.emit({type:'onset',time:Math.max(this.baseTime,candidate.time),level:candidate.level,frequency:2**(candidate.pitch/1200),source:'periodic'});
  }
 }
+
+// Upper notes use a parallel follower; the lower follower and its admission
+// clock remain unchanged. Every proposal still requires native source proof.
+class HighPeriodicNoteOnset extends PeriodicNoteOnset {
+ constructor(rate,emit){
+  super(rate,emit);
+  this.rate=rate;this.emit=emit;this.stride=Math.max(1,Math.round(rate/16000));this.sampledRate=rate/this.stride;
+  this.n=1024;this.hop=128;this.ring=new Float64Array(this.n);this.frame=new Float64Array(this.n);this.correlations=new Float64Array(256);
+  this.window=new Float64Array(this.n);this.windowSum=0;for(let i=0;i<this.n;i++){this.window[i]=.5-.5*Math.cos(2*Math.PI*i/(this.n-1));this.windowSum+=this.window[i];}
+  this.alpha=1-Math.exp(-2*Math.PI*6000/rate);this.reset();
+ }
+ feature(gate){
+  const x=this.frame,n=this.n;let mean=0;for(let i=0;i<n;i++){x[i]=this.ring[(this.cursor+i)%n];mean+=x[i];}mean/=n;
+  let energy=0,early=0,late=0;for(let i=0;i<n;i++){x[i]-=mean;const p=x[i]*x[i];energy+=p;if(i<n/2)early+=p;else late+=p;}
+  const rms=Math.sqrt(energy/n);if(rms<gate*.85||late<early*.58)return null;
+  const highest=Math.min(3300,this.sampledRate*.45/2),minimum=Math.max(2,Math.floor(this.sampledRate/highest)-1),maximum=Math.min(this.correlations.length-2,Math.ceil(this.sampledRate/1600)+1);let best=0;
+  for(let lag=minimum;lag<=maximum;lag++){let dot=0,a=0,b=0;for(let i=lag;i<n;i++){dot+=x[i]*x[i-lag];a+=x[i]*x[i];b+=x[i-lag]*x[i-lag];}const c=a*b>1e-20?dot/Math.sqrt(a*b):0;this.correlations[lag]=c;if(c>best)best=c;}
+  if(best<.78)return null;
+  let selected=-1;for(let lag=minimum+1;lag<maximum;lag++)if(this.correlations[lag]>=Math.max(.78,best*.94)&&this.correlations[lag]>=this.correlations[lag-1]&&this.correlations[lag]>this.correlations[lag+1]){selected=lag;break;}
+  if(selected<0)return null;
+  const a=this.correlations[selected-1],b=this.correlations[selected],c=this.correlations[selected+1],offset=Math.abs(a-2*b+c)>1e-12?.5*(a-c)/(a-2*b+c):0;
+  let frequency=this.sampledRate/(selected+Math.max(-.5,Math.min(.5,offset)));const coefficient=f=>2*Math.cos(2*Math.PI*f/this.sampledRate);
+  const power=f=>{let p=0,q=0;const k=coefficient(f);for(let i=0;i<n;i++){const value=x[i]*this.window[i]+k*p-q;q=p;p=value;}return Math.max(0,p*p+q*q-k*p*q)/(this.windowSum*this.windowSum);};
+  const coarse=frequency,radius=coarse*.02;let strongest=power(frequency);for(let offset=-radius;offset<=radius;offset+=5){const f=coarse+offset;if(f<1600||f>highest)continue;const observed=power(f);if(observed>strongest){strongest=observed;frequency=f;}}
+  if(frequency<1600||frequency>highest)return null;
+  const fundamental=power(frequency),second=power(frequency*2),harmonics=second+(frequency*3<=this.sampledRate*.45?power(frequency*3):0),fraction=2*fundamental/(energy/n);
+  // Autocorrelation alone also follows repetitive broadband transients.
+  if(fraction<.08||harmonics<fundamental*.012&&b<.96)return null;
+  return {frequency,cents:1200*Math.log2(frequency),rms,correlation:b,retention:late/Math.max(1e-20,early)};
+ }
+}
