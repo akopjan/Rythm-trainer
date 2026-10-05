@@ -72,6 +72,8 @@ async function sampleDelete(record){
 function sampleSetStatus(text){const node=$('sample-status');if(node)node.textContent=text;}
 function sampleRecorderControls(){
  const busy=sampleRecorderState.pending||Boolean(sampleRecorderState.active);
+ if($('calibrate'))$('calibrate').disabled=busy||state.pending||state.calibrating||state.measuring||!$('mic').checked;
+ if(typeof updateFilterSetupControls==='function')updateFilterSetupControls();
  for(const id of ['sample-with','sample-without'])if($(id))$(id).disabled=busy||sampleRecorderState.deleting||state.pending||state.measuring||state.calibrating;
  if($('sample-stop'))$('sample-stop').disabled=!busy;
  if($('sample-save'))$('sample-save').disabled=busy||sampleRecorderState.deleting||sampleRecorderState.exporting||sampleRecorderState.records.size===0;

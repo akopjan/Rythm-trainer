@@ -44,8 +44,10 @@ class PeriodicNoteOnset {
   if(!this.pending||Math.abs(f.cents-this.pending.pitch)>38){this.pending={time,pitch:f.cents,count:1,level:f.rms};return;}
   this.pending.count++;this.pending.pitch+=(f.cents-this.pending.pitch)*.2;this.pending.level=Math.max(this.pending.level,f.rms);
   if(time-this.pending.time<.032||this.pending.count<4)return;
+  // Throttle admission at the observation clock without adopting an unadmitted
+  // pitch. Its stable candidate keeps the original source-center timestamp.
+  if(time-this.lastHit<.090)return;
   const candidate=this.pending;this.pitch=candidate.pitch;this.pending=null;
-  if(candidate.time-this.lastHit<.090)return;
-  this.lastHit=candidate.time;this.emit({type:'onset',time:Math.max(this.baseTime,candidate.time),level:candidate.level,frequency:2**(candidate.pitch/1200),source:'periodic'});
+  this.lastHit=time;this.emit({type:'onset',time:Math.max(this.baseTime,candidate.time),level:candidate.level,frequency:2**(candidate.pitch/1200),source:'periodic'});
  }
 }

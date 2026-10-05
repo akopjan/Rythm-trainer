@@ -11,9 +11,44 @@ check('Equal-RMS legato pitch changes',legato,4,changes,{tolerance:.10});
 const adjacent=t=>{if(t<.4||t>=2.8)return 0;const i=Math.min(2,Math.floor((t-.4)/.8)),freq=[330,349.63,369.99][i],age=t-(.4+i*.8),env=t<.48?(t-.4)/.08:1;return .065*env*(Math.sin(2*Math.PI*freq*age)+.36*Math.sin(2*Math.PI*freq*2*age)+.19*Math.sin(2*Math.PI*freq*3*age));};
 check('Adjacent-semitone legato changes',adjacent,3.2,[.4,1.2,2],{tolerance:.11});
 
+// Phase-continuous notes isolate the note follower from click-like pitch-boundary
+// attacks. All distinct notes here last100ms, just above its90ms refractory time.
+const fastStarts=Array.from({length:9},(_,i)=>.4+i*.1),fastFrequencies=fastStarts.map((_,i)=>650*2**(i/12));
+function steppedTone(t,step=.1,count=9){
+ if(t<.4||t>=.4+step*count)return 0;
+ const segment=Math.min(count-1,Math.floor((t-.4)/step)),age=t-(.4+segment*step);let cycles=0;
+ for(let i=0;i<segment;i++)cycles+=fastFrequencies[i%fastFrequencies.length]*step;
+ cycles+=fastFrequencies[segment%fastFrequencies.length]*age;
+ const phase=2*Math.PI*cycles,env=Math.min(1,(t-.4)/.08,(.4+step*count-t)/.025);
+ return .065*env*(Math.sin(phase)+.36*Math.sin(2*phase)+.19*Math.sin(3*phase));
+}
+const fastNotes=check('100ms phase-continuous semitone notes are not committed before admission',t=>steppedTone(t),1.6,fastStarts,{tolerance:.10});
+results.push({name:'100ms note candidates retain each distinct semitone',status:fastNotes.length===fastFrequencies.length&&fastNotes.every((hit,i)=>Math.abs(1200*Math.log2(hit.frequency/fastFrequencies[i]))<25)?'PASS':'FAIL',frequencies:fastFrequencies,hits:fastNotes});
+const fast512=simulate(t=>steppedTone(t),1.6,{chunk:512});
+results.push({name:'100ms notes have128/512 callback parity',status:JSON.stringify(fastNotes)===JSON.stringify(fast512)?'PASS':'FAIL',hits128:fastNotes,hits512:fast512});
+{
+ const hits=[],follower=new Follower(rate,message=>hits.push(message));follower.baseTime=0;follower.pitch=10000;follower.lastHit=0;
+ follower.feature=()=>({cents:10100,rms:.05});
+ for(const time of [.032,.040,.048,.056,.064,.072,.088])follower.observe(time+.032,.004);
+ results.push({name:'90ms admission throttle retains pending pitch without committing it',status:follower.pitch===10000&&follower.pending?.time===.032&&hits.length===0?'PASS':'FAIL',pitch:follower.pitch,pending:follower.pending,hits:[...hits]});
+ follower.observe(.096+.032,.004);
+ results.push({name:'Deferred stable candidate keeps its original source-center timestamp',status:hits.length===1&&hits[0].time===.032&&follower.pitch===10100&&follower.lastHit===.096?'PASS':'FAIL',hits});
+}
+{
+ const hits=[],follower=new Follower(rate,message=>hits.push(message));follower.baseTime=0;follower.pitch=10000;follower.lastHit=0;
+ follower.feature=()=>({cents:10100,rms:.05});
+ for(const time of [.032,.040,.048,.056,.064])follower.observe(time+.032,.004);
+ follower.feature=()=>({cents:10000,rms:.05});follower.observe(.080+.032,.004);
+ results.push({name:'A pitch excursion that ends during throttle never poisons held pitch',status:follower.pitch===10000&&follower.pending===null&&hits.length===0?'PASS':'FAIL',pitch:follower.pitch,pending:follower.pending,hits});
+}
+
 check('Held periodic note produces one event',t=>note(t,.4,4.5,220),5.2,[.4]);
 check('Held note with bellows amplitude modulation',t=>note(t,.4,4.5,220)*(1+.35*Math.sin(2*Math.PI*1.3*t)),5.2,[.4]);
 check('Held vibrato does not create new notes',t=>{if(t<.4||t>=4.9)return 0;const age=t-.4,phase=2*Math.PI*330*age+330*.012/5*Math.sin(2*Math.PI*5*age),env=Math.min(1,age/.12);return .065*env*(Math.sin(phase)+.36*Math.sin(2*phase)+.19*Math.sin(3*phase));},5.2,[.4]);
+const rapidExcursions=t=>{if(t<.4||t>=3.4)return 0;const age=t-.4,active=Math.max(0,t-.8),cycles=Math.floor(active/.12),remainder=active-cycles*.12,highTime=cycles*.024+Math.min(.024,remainder),phase=2*Math.PI*(330*age+330*highTime),env=Math.min(1,age/.08);return .065*env*(Math.sin(phase)+.36*Math.sin(2*phase)+.19*Math.sin(3*phase));};
+const rapid128=check('Repeated24ms octave excursions do not create extra notes',rapidExcursions,3.8,[.4]);
+const rapid512=simulate(rapidExcursions,3.8,{chunk:512});
+results.push({name:'Rapid negative signal has128/512 callback parity',status:JSON.stringify(rapid128)===JSON.stringify(rapid512)?'PASS':'FAIL',hits128:rapid128,hits512:rapid512});
 let random=0x784fa124;const noise=()=>{random=(Math.imul(random,1664525)+1013904223)>>>0;return (random/2**32-.5)*.045;};check('Broadband noise creates no periodic notes',noise,3,[]);
 check('Subthreshold tonal background remains silent',t=>.001*(Math.sin(2*Math.PI*220*t)+.4*Math.sin(2*Math.PI*440*t)),3,[]);
 check('Pitch-sweeping kicks and short clicks create no periodic notes',t=>{let s=0;for(let at=.3;at<3;at+=.3){const age=t-at;if(age>=0&&age<.18)s+=.18*Math.exp(-age/0.04)*Math.sin(2*Math.PI*(52*age+100*(1-Math.exp(-age/0.03))*.03));if(age>=0&&age<.020)s+=.04*Math.exp(-age/.006)*Math.sin(2*Math.PI*1100*age);}return s;},3.5,[]);

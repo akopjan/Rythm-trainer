@@ -146,9 +146,40 @@ class EchoAttribution {
    const beforeStart=Math.max(0,limit-Math.round(.024*this.rate));
    for(let i=beforeStart;i<limit;i++)before+=job.y[i]**2;for(let i=afterStart;i<afterEnd;i++)after+=job.y[i]**2;
    before=Math.sqrt(before/Math.max(1,limit-beforeStart));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
-   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
+   if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(knownInstrument&&this.harmonicFamilyRise(job))&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
   }
   this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;this.finishTiming(job);
+ }
+
+ // A new upper note over a held bass need not raise the whole signal by45%.
+ // Only with a vetted background profile, frozen instrument evidence, and
+ // source projection may a new family replace that global-rise requirement.
+ // Cold-start waveform/periodic proof alone keeps the older held-tone veto.
+ // Relative family growth rejects a uniform bellows-volume change; two
+ // post-onset windows reject brief inharmonic or decaying backing transients.
+ harmonicFamilyRise(job){
+  const rate=this.rate,stride=this.stride,limit=job.eventIndex;
+  if(!job.y||!Number.isFinite(limit))return false;
+  const beforeCount=Math.floor(.024*rate/stride),afterCount=Math.floor(.032*rate/stride);
+  const beforeStart=limit-beforeCount*stride,firstStart=limit+Math.round(.012*rate),secondStart=limit+Math.round(.045*rate);
+  if(beforeCount<16||afterCount<16||beforeStart<0||secondStart+(afterCount-1)*stride>=job.y.length)return false;
+  const make=(start,count)=>{const values=new Float64Array(count);let norm=0,energy=0;for(let i=0;i<count;i++){const x=job.y[start+i*stride],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;energy+=x*x/count;}return {values,norm,energy};};
+  const before=make(beforeStart,beforeCount),first=make(firstStart,afterCount),second=make(secondStart,afterCount),sampledRate=rate/stride;
+  const power=(frame,frequency)=>{const c=2*Math.cos(2*Math.PI*frequency/sampledRate);let a=0,b=0;for(const x of frame.values){const n=x+c*a-b;b=a;a=n;}return Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);};
+  const maxFundamental=Math.min(1400,sampledRate*.45/3),floor=Math.max(1e-16,job.gate*job.gate*.012);
+  for(let frequency=80;frequency<=maxFundamental;frequency+=10){
+   const old=[1,2,3].map(h=>power(before,frequency*h)),a=[1,2,3].map(h=>power(first,frequency*h)),b=[1,2,3].map(h=>power(second,frequency*h));
+   if(!(a[0]>old[0]*1.6+floor&&b[0]>old[0]*1.6+floor&&a[0]>first.energy*.01&&b[0]>second.energy*.01))continue;
+   const newHarmonic=[1,2].some(h=>a[h]>old[h]*1.6+floor&&b[h]>old[h]*1.6+floor&&a[h]>a[0]*.012&&b[h]>b[0]*.012);
+   if(!newHarmonic)continue;
+   const oldSum=old.reduce((x,y)=>x+y,0),aSum=a.reduce((x,y)=>x+y,0),bSum=b.reduce((x,y)=>x+y,0);
+   const oldFraction=2*oldSum/Math.max(1e-20,before.energy),aFraction=2*aSum/Math.max(1e-20,first.energy),bFraction=2*bSum/Math.max(1e-20,second.energy);
+   if(aFraction<.035||bFraction<.035||aFraction<=oldFraction*1.3||bFraction<=oldFraction*1.3)continue;
+   if(Math.sqrt(2*Math.min(aSum,bSum))-Math.sqrt(2*oldSum)<=job.gate*.3||bSum<aSum*.65*.65)continue;
+   let dot=0,aa=0,bb=0;for(let h=0;h<3;h++){dot+=a[h]*b[h];aa+=a[h]*a[h];bb+=b[h]*b[h];}
+   if(aa*bb>1e-30&&dot/Math.sqrt(aa*bb)>=.92)return true;
+  }
+  return false;
  }
 
  // Verify a tracked note against an earlier projected source window. A slow
