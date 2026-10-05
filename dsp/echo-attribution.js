@@ -7,7 +7,10 @@
 class EchoAttribution {
  constructor(rate,emit){
   this.rate=rate;this.emit=emit;this.stride=Math.max(1,Math.round(rate/8000));
-  this.size=2**Math.ceil(Math.log2(rate*1.1+512));this.mask=this.size-1;
+  // Queued audits may wait about a second behind earlier source fits. Keep
+  // their capture pre-roll and up to 500 ms of delayed render history too.
+  // This bounded ring does not change observation time or scoring timestamps.
+  this.size=2**Math.ceil(Math.log2(rate*2.5+512));this.mask=this.size-1;
   this.render=new Float32Array(this.size);this.capture=new Float32Array(this.size);
   this.lowRender=new Float32Array(this.size);this.lowCapture=new Float32Array(this.size);
   this.alpha=1-Math.exp(-2*Math.PI*900/rate);this.reset();

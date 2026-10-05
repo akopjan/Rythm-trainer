@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="approved-filter-v11">
+<meta name="rhythm-trainer-version" content="attribution-history-v12">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -943,7 +943,10 @@ class ReferenceEcho {
 class EchoAttribution {
  constructor(rate,emit){
   this.rate=rate;this.emit=emit;this.stride=Math.max(1,Math.round(rate/8000));
-  this.size=2**Math.ceil(Math.log2(rate*1.1+512));this.mask=this.size-1;
+  // Queued audits may wait about a second behind earlier source fits. Keep
+  // their capture pre-roll and up to 500 ms of delayed render history too.
+  // This bounded ring does not change observation time or scoring timestamps.
+  this.size=2**Math.ceil(Math.log2(rate*2.5+512));this.mask=this.size-1;
   this.render=new Float32Array(this.size);this.capture=new Float32Array(this.size);
   this.lowRender=new Float32Array(this.size);this.lowCapture=new Float32Array(this.size);
   this.alpha=1-Math.exp(-2*Math.PI*900/rate);this.reset();
