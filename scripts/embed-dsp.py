@@ -14,6 +14,7 @@ blocks={
  'PERIODIC':(root/'dsp/periodic-note-onset.js').read_text(),
  'DETECTOR':(root/'dsp/background-detector.js').read_text(),
  'SAMPLE_RECORDER':(root/'js/sample-recorder.js').read_text(),
+ 'ANALYSIS_WORKER':(root/'js/analysis-worker.js').read_text(),
 }
 for name,source in blocks.items():
  begin='// GENERATED_'+name+'_BEGIN';end='// GENERATED_'+name+'_END'

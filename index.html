@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="attribution-diagnostics-v2">
+<meta name="rhythm-trainer-version" content="isolated-analysis-v3">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -1452,8 +1452,39 @@ class RhythmDetector extends LegacyRhythmDetector {
 
 if(typeof AudioWorkletProcessor!=='undefined'){
  class RhythmProcessor extends AudioWorkletProcessor{
-  constructor(options){super();this.referenceSilence=new Float32Array(128);this.detector=new RhythmDetector(sampleRate,m=>this.port.postMessage(m),options?.processorOptions?.wasmModule);this.port.onmessage=e=>this.detector.configure(e.data);}
-  process(inputs,outputs){const channel=inputs[0]?.[0];let reference=inputs[1]?.[0];if(channel){if(!reference&&this.detector.referenceEnabled&&this.detector.reference.options.routed){if(this.referenceSilence.length!==channel.length)this.referenceSilence=new Float32Array(channel.length);reference=this.referenceSilence;}for(let i=0;i<channel.length;i+=128)this.detector.process(channel.subarray(i,i+128),(currentFrame+i)/sampleRate,reference?.subarray(i,i+128));}for(const output of outputs)for(const c of output)c.fill(0);return true;}
+  constructor(options){
+   super();const config=options?.processorOptions||{};
+   this.workerMode=config.analysisWorker===true;this.referenceRouted=config.referenceRouted===true;
+   this.referenceSilence=new Float32Array(128);this.analysisPort=null;this.pendingMessages=[];
+   if(!this.workerMode)this.detector=new RhythmDetector(sampleRate,m=>this.port.postMessage(m),config.wasmModule);
+   this.port.onmessage=e=>{
+    if(this.workerMode){
+     if(e.data.type==='analysis-port'){
+      this.analysisPort=e.data.port;
+      for(const message of this.pendingMessages)this.analysisPort.postMessage({type:'configure',message});
+      this.pendingMessages=[];
+     }else if(this.analysisPort)this.analysisPort.postMessage({type:'configure',message:e.data});
+     else this.pendingMessages.push(e.data);
+    }else this.detector.configure(e.data);
+   };
+  }
+  process(inputs,outputs){
+   // Rendering only captures samples in worker mode. It never runs a source
+   // fit, FFT or instrument classifier on the shared speaker render thread.
+   for(const output of outputs)for(const channel of output)channel.fill(0);
+   const channel=inputs[0]?.[0];let reference=inputs[1]?.[0];
+   if(!channel)return true;
+   if(this.workerMode){
+    if(this.analysisPort){
+     const mic=channel.slice(),paired=reference?reference.slice(0,channel.length):this.referenceRouted?new Float32Array(channel.length):null;
+     this.analysisPort.postMessage({type:'capture',frame:currentFrame,mic,reference:paired},paired?[mic.buffer,paired.buffer]:[mic.buffer]);
+    }
+    return true;
+   }
+   if(!reference&&this.detector.referenceEnabled&&this.detector.reference.options.routed){if(this.referenceSilence.length!==channel.length)this.referenceSilence=new Float32Array(channel.length);reference=this.referenceSilence;}
+   for(let i=0;i<channel.length;i+=128)this.detector.process(channel.subarray(i,i+128),(currentFrame+i)/sampleRate,reference?.subarray(i,i+128));
+   return true;
+  }
  }
  registerProcessor('rhythm-detector',RhythmProcessor);
 }
@@ -1465,7 +1496,7 @@ const tracks=[{name:'Бочка',color:'#bf5435'},{name:'Малый',color:'#a87
 const pattern=sanitizeSettings({}).pattern;
 // The basic groove is independent of the optional metronome.
 const state={running:false,pending:false,token:0,bpm:100,bars:1,beats:4,division:8,events:[],attacks:[],showAllBars:false,adaptive:null,background:{status:'unknown',reason:'startup',time:-Infinity,version:0,ready:false},isolation:{status:'preparing',time:-Infinity,reason:'startup'},reference:{status:'waiting',delayMs:null,lastTime:-Infinity,confidence:0,locked:false,waitUntil:0},trackEnabled:[true,true,true,true],trackVolumes:[100,100,100,100],scoreAfter:0,count:0,sum:0,sumAbs:0,sumSq:0,errors:[],epoch:0,next:0,drawStep:-1,stoppedCycle:0,lastBar:-1,calibrating:false,calibrationEnd:0,readyTime:0,measuring:false,measurementEnd:0,measureDeadline:0};
-let context=null,stream=null,source=null,processor=null,referenceMerger=null,referenceAvailable=false,silent=null,master=null,scheduler=null,raf=null,buffers=[],clickBuffers=[],trackGains=[],clickGain=null,fallback=null,activeSources=new Set();
+let context=null,stream=null,source=null,processor=null,referenceMerger=null,referenceAvailable=false,silent=null,master=null,scheduler=null,raf=null,buffers=[],clickBuffers=[],trackGains=[],clickGain=null,fallback=null,analysisWorker=null,activeSources=new Set();
 const stepDuration=()=>60/state.bpm*4/state.division;
 const stepsPerBar=()=>state.beats*state.division/4;
 const stepCount=()=>state.bars*stepsPerBar();
@@ -1864,25 +1895,132 @@ function playBuffer(buffer,when,output=master){if(!context||!master)return;const
 function schedule(){if(!state.running||!context)return;const now=context.currentTime,step=stepDuration();if(state.epoch+state.next*step<now-.06){stop();setStatus('Воспроизведение прервалось. Нажмите Start для новой сессии.',true);return;}while(state.epoch+state.next*step<now+.12){const when=state.epoch+state.next*step,i=state.next%stepCount(),p=patternIndex(i);tracks.forEach((_,r)=>{if(state.trackEnabled[r]&&pattern[r][p])playBuffer(buffers[r],when,trackGains[r]||master);});if($('click').checked&&i%(state.division/4)===0)playBuffer(clickBuffers[i%stepsPerBar()===0?1:0],when,clickGain||master);state.next++;}}
 function audibleTime(eventTime=performance.now()){if(!context)return 0;const stamp=context.getOutputTimestamp?.();if(stamp&&stamp.contextTime>0&&stamp.performanceTime>0)return stamp.contextTime+(eventTime-stamp.performanceTime)/1000;return context.currentTime-(context.outputLatency||context.baseLatency||0)+(eventTime-performance.now())/1000;}
 function animate(){if(!state.running)return;const t=audibleTime();const n=Math.floor((t-state.epoch)/stepDuration());const step=n>=0?n%stepCount():-1;if(step!==state.drawStep){document.querySelectorAll('[data-step],[data-head]').forEach(el=>el.classList.toggle('current',Number(el.dataset.step??el.dataset.head)===step));state.drawStep=step;$('position').textContent=n<0?'Приготовьтесь':`Такт ${Math.floor(step/stepsPerBar())+1} / ${state.bars} · цикл ${Math.floor(n/stepCount())+1}`;drawChart();updateBarStats();}if(state.calibrating){const remain=Math.max(0,state.calibrationEnd-context.currentTime);setStatus(state.calibrationWaiting?'Калибровка: не играйте. Сначала находим задержку рисунка.':`Калибровка: не играйте, звучит только ритм. Осталось ${Math.ceil(remain)} с.`);}raf=requestAnimationFrame(animate);}
+// GENERATED_ANALYSIS_WORKER_BEGIN
+// The audio thread forwards paired samples; expensive analysis runs in a Worker.
+// Capture/configuration messages from a producer must use the same FIFO port.
+const analysisWorkerBoot = `
+(() => {
+ let detector=null,inputPort=null,rate=0,token=null,closed=false;
+ const fail=error=>self.postMessage({type:'analysis-error',token,message:String(error&&error.message||error).slice(0,240)});
+ const receive=event=>{
+  if(closed)return;
+  try{
+   const message=event.data;
+   if(!message||typeof message!=='object')throw new Error('Invalid analysis message');
+   if(message.type==='analysis-init'){
+    if(detector)throw new Error('Analysis is already initialized');
+    rate=message.sampleRate;token=message.token;
+    if(!Number.isFinite(rate)||rate<8000)throw new Error('Invalid analysis sample rate');
+    detector=new RhythmDetector(rate,value=>self.postMessage(value),message.wasmModule||null);
+    inputPort=message.port;
+    if(!inputPort||typeof inputPort.postMessage!=='function')throw new Error('Analysis input port is missing');
+    inputPort.onmessage=receive;inputPort.onmessageerror=()=>fail(new Error('Analysis input could not be decoded'));inputPort.start();
+    self.postMessage({type:'analysis-ready',token});return;
+   }
+   if(!detector)throw new Error('Analysis is not initialized');
+   if(message.type==='analysis-close'){closed=true;inputPort.close();self.close();return;}
+   if(message.type==='configure'){detector.configure(message.message);return;}
+   if(message.type!=='capture')throw new Error('Unknown analysis message');
+   const mic=message.mic,reference=message.reference;
+   if(!(mic instanceof Float32Array)||!Number.isFinite(message.frame)||message.frame<0)throw new Error('Invalid captured audio block');
+   if(message.sampleRate!==undefined&&message.sampleRate!==rate)throw new Error('Captured audio sample rate changed');
+   if(reference!==null&&reference!==undefined&&(!(reference instanceof Float32Array)||reference.length!==mic.length))throw new Error('Unpaired rendered audio block');
+   let rendered=reference;
+   if(!rendered&&detector.referenceEnabled&&detector.reference.options.routed)rendered=new Float32Array(mic.length);
+   for(let i=0;i<mic.length;i+=128)detector.process(mic.subarray(i,i+128),(message.frame+i)/rate,rendered&&rendered.subarray(i,i+128));
+  }catch(error){closed=true;fail(error);if(inputPort)inputPort.close();}
+ };
+ self.onmessage=receive;
+})();
+`;
+
+async function createAnalysisWorker(ctx,token,wasmModule,handleDSP,dspSource,onFailure){
+ if(!ctx||!Number.isFinite(ctx.sampleRate)||ctx.sampleRate<8000)throw new Error('Invalid audio context');
+ if(ctx.state==='closed')throw new Error('Audio context is closed');
+ if(typeof Worker!=='function'||typeof MessageChannel!=='function')throw new Error('Background audio analysis is unavailable');
+ let worker=null,channel=null,url=null,timer=null,closed=false,settled=false,resolveReady,rejectReady;
+ const ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
+ const removeListener=()=>{if(typeof ctx.removeEventListener==='function')ctx.removeEventListener('statechange',contextChanged);};
+ const release=()=>{
+  if(timer!==null){clearTimeout(timer);timer=null;}
+  removeListener();
+  if(url!==null){URL.revokeObjectURL(url);url=null;}
+ };
+ const close=()=>{
+  if(closed)return;closed=true;release();
+  if(channel){channel.port1.close();channel.port2.close();}
+  if(worker){worker.onmessage=null;worker.onerror=null;worker.onmessageerror=null;worker.terminate();}
+ };
+ const fail=(error,notify=true)=>{
+  if(closed)return;
+  const value=error instanceof Error?error:new Error(String(error));
+  close();if(!settled){settled=true;rejectReady(value);}
+  if(notify&&typeof onFailure==='function'){try{onFailure(value);}catch{/* Transport is already closed. */}}
+ };
+ function contextChanged(){if(ctx.state==='closed')fail(new Error('Audio context closed during analysis initialization'),false);}
+ try{
+  channel=new MessageChannel();url=URL.createObjectURL(new Blob([String(dspSource), '\n',analysisWorkerBoot],{type:'application/javascript'}));
+  worker=new Worker(url);
+  worker.onmessage=event=>{
+   if(closed)return;const message=event.data;
+   if(message&&message.type==='analysis-ready'){
+    if(message.token!==token)return;
+    if(ctx.state==='closed'){contextChanged();return;}
+    release();settled=true;resolveReady();return;
+   }
+   if(message&&message.type==='analysis-error'){fail(new Error(message.message||'Background audio analysis failed'));return;}
+   try{if(typeof handleDSP==='function')handleDSP(message);}catch(error){fail(error);}
+  };
+  worker.onerror=event=>{if(typeof event.preventDefault==='function')event.preventDefault();fail(new Error(event.message||'Background audio analysis could not start'));};
+  worker.onmessageerror=()=>fail(new Error('Background analysis response could not be decoded'));
+  if(typeof ctx.addEventListener==='function')ctx.addEventListener('statechange',contextChanged);
+  timer=setTimeout(()=>fail(new Error('Background audio analysis initialization timed out')),5000);
+  worker.postMessage({type:'analysis-init',sampleRate:ctx.sampleRate,token,wasmModule,port:channel.port1},[channel.port1]);
+ }catch(error){fail(error);}
+ await ready;
+ return {worker,port:channel.port2,
+  postMessage(message,transfer){
+   if(closed)return false;
+   const envelope=message&&message.type==='capture'||message&&message.type==='configure'?message:{type:'configure',message};
+   const buffers=transfer|| (envelope.type==='capture'?[envelope.mic?.buffer,envelope.reference?.buffer].filter((value,index,list)=>value instanceof ArrayBuffer&&list.indexOf(value)===index):[]);
+   try{worker.postMessage(envelope,buffers);return true;}catch(error){fail(error);return false;}
+  },close};
+}
+
+// GENERATED_ANALYSIS_WORKER_END
+
 async function connectMic(myContext,myStream){
  source=myContext.createMediaStreamSource(myStream);silent=myContext.createGain();silent.gain.value=0;
- const wasmModule=RhythmDetector.compileWasm();
- let fallbackUsed=false,referenceRouted=!state.measuring&&Boolean(master);
+ const wasmModule=RhythmDetector.compileWasm(),token=state.token;
+ let fallbackUsed=false,referenceRouted=!state.measuring&&Boolean(master),transport=null;
+ const fail=()=>{if(context===myContext&&token===state.token){stop();setStatus('Обработка микрофона прервалась. Нажмите Start для новой сессии.',true);}};
+ if(typeof window.Worker==='function'&&typeof window.MessageChannel==='function'){
+  transport=await createAnalysisWorker(myContext,token,wasmModule,m=>{if(context===myContext&&token===state.token)handleDSP(m);},$('rhythm-dsp').textContent,fail);
+  if(context!==myContext||token!==state.token){transport.close();return;}
+  analysisWorker=transport;
+ }
  if(myContext.audioWorklet&&window.AudioWorkletNode){
   const url=URL.createObjectURL(new Blob([$ ('rhythm-dsp').textContent],{type:'application/javascript'}));
-  try{await myContext.audioWorklet.addModule(url);if(context!==myContext)return;
-   processor=new AudioWorkletNode(myContext,'rhythm-detector',{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[1],channelCount:1,channelCountMode:'explicit',processorOptions:{wasmModule}});processor.port.onmessage=e=>handleDSP(e.data);
+  try{await myContext.audioWorklet.addModule(url);if(context!==myContext||token!==state.token){transport?.close();return;}
+   processor=new AudioWorkletNode(myContext,'rhythm-detector',{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[1],channelCount:1,channelCountMode:'explicit',processorOptions:{wasmModule:transport?undefined:wasmModule,analysisWorker:Boolean(transport),referenceRouted}});processor.port.onmessage=e=>handleDSP(e.data);
+   if(transport)processor.port.postMessage({type:'analysis-port',port:transport.port},[transport.port]);
+   processor.onprocessorerror=fail;
   }catch{fallbackUsed=true;}finally{URL.revokeObjectURL(url);}
  }else fallbackUsed=true;
- if(context!==myContext)return;
+ if(context!==myContext||token!==state.token){transport?.close();return;}
  if(fallbackUsed){
   referenceRouted=referenceRouted&&Boolean(myContext.createChannelMerger);
-  processor=myContext.createScriptProcessor(512,referenceRouted?2:1,1);fallback=new RhythmDetector(myContext.sampleRate,handleDSP,wasmModule);
+  processor=myContext.createScriptProcessor(512,referenceRouted?2:1,1);
+  fallback=transport?{configure:message=>transport.postMessage({type:'configure',message})}:new RhythmDetector(myContext.sampleRate,handleDSP,wasmModule);
   processor.onaudioprocess=e=>{
+   e.outputBuffer.getChannelData(0).fill(0);
+   if(context!==myContext)return;
    const input=e.inputBuffer.getChannelData(0),reference=referenceRouted?e.inputBuffer.getChannelData(1):null;
    const t=e.playbackTime-e.inputBuffer.duration;
-   for(let i=0;i<input.length;i+=128)fallback.process(input.subarray(i,i+128),t+i/myContext.sampleRate,reference?.subarray(i,i+128));
-   e.outputBuffer.getChannelData(0).fill(0);
+   if(transport){
+    const mic=input.slice(),paired=reference?.slice()||null;
+    transport.postMessage({type:'capture',frame:Math.round(t*myContext.sampleRate),mic,reference:paired},paired?[mic.buffer,paired.buffer]:[mic.buffer]);
+   }else for(let i=0;i<input.length;i+=128)fallback.process(input.subarray(i,i+128),t+i/myContext.sampleRate,reference?.subarray(i,i+128));
   };
   if(referenceRouted){referenceMerger=myContext.createChannelMerger(2);source.connect(referenceMerger,0,0);master.connect(referenceMerger,0,1);referenceMerger.connect(processor);}else source.connect(processor);
  }else{source.connect(processor,0,0);if(referenceRouted)master.connect(processor,0,1);}
@@ -1890,8 +2028,8 @@ async function connectMic(myContext,myStream){
  sendDSP({type:'mode',value:$('input-mode').value});sendDSP({type:'threshold',value:10**(Number($('threshold').value)/20)});
  return fallbackUsed;
 }
-async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!$('reference-sync').checked,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});try{if(!$('reference-sync').checked&&track.getCapabilities?.().echoCancellation?.includes('all'))await track.applyConstraints({echoCancellation:'all'});}catch{/* Keep the browser's supported default AEC mode. */}if(token!==state.token)return;if($('reference-sync').checked){const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление для синхронизации. Выключите «Задержка по рисунку» или используйте браузер с доступом к необработанному микрофону.');}fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(hasAudibleBacking()?'Короткая подготовка входа. Затем можно играть; задержка подбирается отдельно.':'Слушаем микрофон. Играйте в выбранную сетку.'):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
-function stop(){stopSampleRecording('trainer-stop');const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;resetFilteredMeter();resetDetection();clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();referenceMerger?.disconnect();referenceMerger=null;referenceAvailable=false;silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
+async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!$('reference-sync').checked,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});try{if(!$('reference-sync').checked&&track.getCapabilities?.().echoCancellation?.includes('all'))await track.applyConstraints({echoCancellation:'all'});}catch{/* Keep the browser's supported default AEC mode. */}if(token!==state.token)return;if($('reference-sync').checked){const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление для синхронизации. Выключите «Задержка по рисунку» или используйте браузер с доступом к необработанному микрофону.');}fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${analysisWorker?'Микрофон обрабатывается отдельно от ритма.':fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(hasAudibleBacking()?'Короткая подготовка входа. Затем можно играть; задержка подбирается отдельно.':'Слушаем микрофон. Играйте в выбранную сетку.'):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
+function stop(){stopSampleRecording('trainer-stop');const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;resetFilteredMeter();resetDetection();analysisWorker?.close();analysisWorker=null;clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();referenceMerger?.disconnect();referenceMerger=null;referenceAvailable=false;silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
 function beginCalibration(){if(!state.running||!processor||state.measuring)return;state.calibrating=true;state.calibrationWaiting=true;clearResults();/* Start training on the next complete loop; first loop settles AEC. */const cycle=cycleDuration();const start=state.epoch+Math.max(0,Math.ceil((context.currentTime-state.epoch)/cycle))*cycle;state.calibrationEnd=start+3*cycle;state.readyTime=state.calibrationEnd;sendDSP({type:'calibrate',start,duration:cycle});setControls();}
 function drawChart(){const canvas=$('chart'),rect=canvas.getBoundingClientRect();if(!rect.width)return;const dpr=window.devicePixelRatio||1;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);const c=canvas.getContext('2d');c.scale(dpr,dpr);const w=rect.width,h=rect.height,left=w<500?48:64,right=20,top=32,bottom=40,pw=w-left-right,ph=h-top-bottom,n=stepCount(),range=stepDuration()*500,tol=Math.min(range,Number($('tolerance').value));const y=e=>top+ph/2-e/range*ph/2;const x=i=>left+(i+.5)/n*pw;c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#edf7f2';c.fillRect(left,y(tol),pw,y(-tol)-y(tol));c.font='12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';c.textAlign='right';c.textBaseline='middle';for(const v of [-range,-range/2,0,range/2,range]){c.beginPath();c.strokeStyle=v===0?'#91b3a4':'#e9ecf0';c.setLineDash(v===0?[]:[3,4]);c.moveTo(left,y(v));c.lineTo(w-right,y(v));c.stroke();c.fillStyle='#75808b';c.fillText((v>0?'+':'')+Math.round(v),left-9,y(v));}c.setLineDash([]);for(let i=0;i<n;i++){if(i===state.drawStep){c.fillStyle='rgba(191,71,34,.05)';c.fillRect(left+i/n*pw,top,pw/n,ph);}c.strokeStyle=i%stepsPerBar()===0?'#ccd3da':'#eef0f3';c.beginPath();c.moveTo(left+i/n*pw,top);c.lineTo(left+i/n*pw,h-bottom);c.stroke();c.textAlign='center';c.fillStyle=i%(state.division/4)===0?'#414b56':'#8b939c';if(w>600||n<=16||i%2===0)c.fillText(labelForStep(i),x(i),h-bottom+17);}c.textAlign='left';c.fillStyle='#747d87';c.fillText('Позже, мс',left,14);c.fillText('Раньше',left,h-10);let latest=Math.max(0,state.stoppedCycle,...state.events.map(e=>e.cycle));if(state.running&&context)latest=Math.max(latest,Math.floor((audibleTime()-state.epoch)/cycleDuration()));const visible=state.events.filter(e=>e.cycle>=latest-5);visible.forEach((e,i)=>{const age=latest-e.cycle;c.globalAlpha=Math.max(.25,1-age*.13);c.fillStyle=inTolerance(e.error)?'#167657':e.error<0?'#3266ca':'#bf4248';c.beginPath();const jitter=(((i*17)%7)-3)*Math.min(1.8,pw/n/16);c.arc(x(e.step)+jitter,y(e.error),w<500?3.3:4,0,Math.PI*2);c.fill();});c.globalAlpha=1;}
 // Player phase and acoustic delay are different quantities. Acoustic references
