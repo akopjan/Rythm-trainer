@@ -134,7 +134,7 @@ function sampleClockSummary(recording,message){
 function sampleReceive(recording,message){
  if(sampleRecorderState.active!==recording||recording.finished)return;
  if(message.type==='error'){sampleClockSummary(recording,message);sampleCaptureFailure(recording,message);return;}
- if(message.type==='started'){recording.startFrame=message.startFrame;sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запись идёт — баян пока не играйте. Осталось 8 с.');return;}
+ if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запоминаем фон — баян пока не играйте. Осталось 8 с.');return;}
  if(message.type==='clock-boundary'){
   if(!Number.isInteger(message.offset)||message.offset!==recording.count||!Number.isInteger(message.expectedFrame)||!Number.isInteger(message.actualFrame)||message.deltaFrames!==message.actualFrame-message.expectedFrame||message.deltaFrames===0){sampleCaptureFailure(recording,{...message,reason:'clock-boundary-invalid'});return;}
   recording.clockBoundaryCount=(recording.clockBoundaryCount||0)+1;recording.clockBoundaries??=[];
@@ -151,6 +151,22 @@ function sampleReceive(recording,message){
   if(Number.isFinite(message.startFrame))recording.startFrame=message.startFrame;sampleClockSummary(recording,message);recording.referenceMissingSamples=message.referenceMissingSamples||0;sampleFinish(recording,message.reason==='complete'?'complete':'manual');
  }
 }
+function sampleBackgroundStart(recording){
+ if(recording.kind!=='without'||recording.backgroundCaptureId||!Number.isFinite(recording.startFrame)||typeof sendDSP!=='function'||state.token!==recording.sessionId||context!==recording.ctx)return;
+ const start=recording.startFrame/recording.sampleRate;
+ recording.backgroundCaptureId=`sample:${recording.sessionId}:${sampleRecorderState.generation}`;
+ sampleRecorderState.backgroundCaptureId=recording.backgroundCaptureId;sampleRecorderState.backgroundResult=null;
+ sendDSP({type:'background-capture-start',id:recording.sessionId,captureId:recording.backgroundCaptureId,kind:'without',start,end:start+recording.limit/recording.sampleRate});
+}
+function sampleBackgroundFinish(recording,reason){
+ if(!recording.backgroundCaptureId||typeof sendDSP!=='function'||state.token!==recording.sessionId||context!==recording.ctx)return;
+ sendDSP({type:'background-capture-end',id:recording.sessionId,captureId:recording.backgroundCaptureId,complete:reason==='complete'&&recording.count===recording.limit&&!recording.captureError});
+}
+function acceptSampleBackgroundResult(message){
+ if(message.id!==state.token||!state.running||message.captureId!==sampleRecorderState.backgroundCaptureId)return;
+ sampleRecorderState.backgroundResult=message;
+ $('echo-info').textContent=message.ready?'Фон из записи без баяна запомнен. Теперь можно играть.':message.reason==='declared-needs-two-cycles'?'Для этого длинного рисунка нужна кнопка «Калибровка»: не играйте до её завершения.':'Фон не удалось подтвердить. Повторите «Запись без баяна» или нажмите «Калибровка», не играя на инструменте.';
+}
 function sampleCaptureFailure(recording,message){
  const details={reason:typeof message.reason==='string'?message.reason.slice(0,80):'unknown',mode:recording.metadata.captureMode||'unknown',receivedSamples:recording.count};
  for(const key of ['expectedFrame','actualFrame','inputLength','referenceLength','samples','startFrame','endFrame','offset','referenceMissingSamples'])details[key]=Number.isFinite(message[key])?message[key]:null;
@@ -163,7 +179,7 @@ function sampleDisconnect(recording){
  try{recording.merger?.disconnect();}catch{}try{recording.node?.disconnect();}catch{}try{recording.silent?.disconnect();}catch{}
 }
 async function sampleFinish(recording,reason,errorText=''){
- if(recording.finished)return;recording.finished=true;sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;sampleRecorderState.pending=false;sampleRecorderControls();
+ if(recording.finished)return;recording.finished=true;sampleBackgroundFinish(recording,reason);sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;sampleRecorderState.pending=false;sampleRecorderControls();
  const timingReliable=!(recording.clockBoundaryCount||0),failed=reason==='capture-error'||!timingReliable;if(!failed&&recording.count===0){sampleSetStatus(errorText||'Запись остановлена до получения звука. Повторите её.');return;}
  const join=chunks=>{const result=new Float32Array(recording.count);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}return result;};
  const completed=reason==='complete'&&recording.count===recording.limit,clockBoundaries=recording.clockBoundaries||[],mappedEnd=recording.clockMetadataTruncatedAt??recording.count;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="capture-window-v10">
+<meta name="rhythm-trainer-version" content="approved-filter-v11">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -42,7 +42,7 @@
 </section>
 <section class="sample-panel" aria-labelledby="sample-title">
 <div class="section-head"><h2 id="sample-title">Записи для проверки</h2></div>
-<p class="sample-help">Сначала запишите 8 секунд только ритма, без баяна. Затем — 20 секунд игры на баяне под тот же рисунок. Кнопка записи сама запустит тренажёр, если он остановлен.</p>
+<p class="sample-help">Сначала запишите 8 секунд только ритма, без баяна — эта запись настроит фильтр. Затем можно играть и записать 20 секунд игры под тот же рисунок. Для длинного рисунка используйте «Калибровка». Кнопка записи сама запустит тренажёр, если он остановлен.</p>
 <div class="sample-actions"><button type="button" id="sample-without">Запись без баяна · 8 с</button><button type="button" id="sample-with">Запись с баяном · 20 с</button><button type="button" id="sample-stop" disabled>Остановить запись</button><button type="button" id="sample-save" disabled>Скачать записи</button></div>
 <p id="sample-status" class="sample-status" role="status" aria-live="polite">Записей пока нет.</p>
 <div id="sample-list" class="sample-list"></div>
@@ -173,7 +173,7 @@ globalThis.RHYTHM_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,53,10,96,0,1
   const FFT_SIZE = 2048;
   const HOP_SIZE = 256;
   const DELAY_SAMPLES = FFT_SIZE;
-  const DEFAULT_FLOOR = 0.03;
+  const DEFAULT_FLOOR = 0.003;
   const DEFAULT_MARGIN = 3;
   const DEFAULT_OVERSUBTRACTION = 4;
 
@@ -280,6 +280,9 @@ globalThis.RHYTHM_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,53,10,96,0,1
       this.baseTime = Number.isFinite(baseTime) ? baseTime : null;
       this.lastResult = null;
       this.lastFilterActive = false;
+      // A retained phase profile belongs to this continuous capture clock.
+      // A fresh trusted frame is required after construction or a clock reset.
+      this.retainedClockConfirmed = false;
       if (typeof this.model.resetStream === 'function') this.model.resetStream();
     }
 
@@ -295,10 +298,10 @@ globalThis.RHYTHM_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,53,10,96,0,1
 
     _delay(context) {
       if (Number.isFinite(context.hardwareDelaySamples) && context.hardwareDelaySamples >= 0) return context.hardwareDelaySamples;
+      if (Number.isFinite(context.hardwareDelayMs) && context.hardwareDelayMs >= 0) return context.hardwareDelayMs * this.rate / 1000;
       const echo = context.referenceEcho || context.echo || null;
       if (echo && echo.locked && Number.isFinite(echo.delayMs)) return echo.delayMs * this.rate / 1000;
       if (echo && echo.cancelReady && Number.isFinite(echo.cancelDelayMs)) return echo.cancelDelayMs * this.rate / 1000;
-      if (Number.isFinite(context.hardwareDelayMs) && context.hardwareDelayMs >= 0) return context.hardwareDelayMs * this.rate / 1000;
       return 0;
     }
 
@@ -350,9 +353,13 @@ globalThis.RHYTHM_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,53,10,96,0,1
       const result = this.model.process(this.magnitudes, frameTime, info) || null;
       this.lastResult = result;
       const trusted = info.phaseTrusted && info.referenceTrusted;
+      if (trusted) this.retainedClockConfirmed = true;
+      // This application-only permission never reaches model.process(). The
+      // model continues to veto learning when current source trust is absent.
+      const retained = context.applyConfirmedProfile === true && this.retainedClockConfirmed;
       const ambientReady = info.backing === false && Number.isFinite(result && result.ambientFrames) && result.ambientFrames >= 2;
       this.lastFilterActive = false;
-      if (result && (result.ready === true && trusted || ambientReady) && Number.isFinite(result.gain) && result.gain >= 0) {
+      if (result && (result.ready === true && (trusted || retained) || ambientReady) && Number.isFinite(result.gain) && result.gain >= 0) {
         this.lastFilterActive = this.mic.applyProfile(result.background, result.spread, result.gain);
         if (!this.lastFilterActive) {
           this.emit({ type: 'background-filter-error', reason: 'invalid-profile', time: frameTime });
@@ -375,6 +382,7 @@ globalThis.RHYTHM_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,53,10,96,0,1
         this.reset(time);
         didReset = true;
       }
+      if (context.referenceTrusted === true && context.phaseTrusted === true) this.retainedClockConfirmed = true;
       for (let i = 0; i < length; i++) this.inputRing[(this.received + i) & this.ringMask] = Number.isFinite(samples[i]) ? samples[i] : 0;
       this.received += length;
 
@@ -461,11 +469,46 @@ class ProvisionalPhaseBootstrap {
  }
  info(){return {ready:this.ready,coverage:this.coverage,committedFrames:this.commits,provisionalFrames:this.frames.reduce((sum,row)=>sum+row.length,0),reason:this.reason,tonalDuty:this.tonalDuty};}
 }
+// User-declared rhythm-only capture uses the same per-phase mean and population
+// standard deviation as the listening-approved Python prototype. It remains
+// provisional until the complete capture ends and a real source lock was seen.
+class DeclaredBackgroundCapture {
+ constructor(rows,rate,bins,options={}){
+  this.rows=rows;this.rate=rate;this.bins=bins;this.id=options.captureId;
+  this.start=options.start;this.end=options.end;this.minAge=options.minAge??.45;
+  this.frames=Array.from({length:rows},()=>[]);this.sourceProven=false;this.anchorDelayMs=null;this.lastTime=-Infinity;
+ }
+ stage(power,time,phase,cycle,context,delayMs){
+  if(time<this.start+this.minAge||time>=this.end-.05||context.renderPresent!==true)return;
+  if(!power.every(x=>Number.isFinite(x)&&x>=0))return;
+  if(context.referenceTrusted===true&&context.phaseTrusted===true&&Number.isFinite(delayMs)){
+   this.sourceProven=true;this.anchorDelayMs=delayMs;
+  }
+  if(this.phaseOffset===undefined)this.phaseOffset=phase-Math.round(phase);
+  const row=Math.round(phase)%this.rows,list=this.frames[row],error=Math.abs(phase-Math.round(phase)),existing=list.findIndex(f=>f.cycle===cycle);
+  const frame={cycle,time,power:Float64Array.from(power),error};
+  if(existing<0)list.push(frame);else if(error<list[existing].error)list[existing]=frame;
+  if(list.length>5)list.shift();this.lastTime=Math.max(this.lastTime,time);
+ }
+ finalize(end=this.end){
+  const stop=Math.min(this.end,end),mean=Array.from({length:this.rows},()=>new Float64Array(this.bins)),spread=mean.map(()=>new Float64Array(this.bins)),counts=new Uint32Array(this.rows);
+  if(!this.sourceProven)return {ready:false,reason:'declared-source-unconfirmed'};
+  if(!Number.isFinite(stop)||stop<=this.start||this.lastTime<stop-.075)return {ready:false,reason:'declared-capture-incomplete'};
+  for(let row=0;row<this.rows;row++){
+   const frames=this.frames[row].filter(f=>f.time<stop-.05);counts[row]=frames.length;
+   if(frames.length<2)return {ready:false,reason:'declared-needs-two-cycles'};
+   for(const frame of frames)for(let bin=0;bin<this.bins;bin++)mean[row][bin]+=frame.power[bin]/frames.length;
+   for(const frame of frames)for(let bin=0;bin<this.bins;bin++)spread[row][bin]+=(frame.power[bin]-mean[row][bin])**2/frames.length;
+   for(let bin=0;bin<this.bins;bin++)spread[row][bin]=Math.sqrt(Math.max(0,spread[row][bin]));
+  }
+  return {ready:true,mean,spread,counts,gain:1,anchorDelayMs:this.anchorDelayMs,phaseOffset:this.phaseOffset,includesAmbient:true};
+ }
+}
 class AdaptiveBackgroundSpectrum {
  constructor(rate,emit=()=>{}){
   this.rate=rate;this.emit=emit;this.n=2048;this.hop=256;this.bins=this.n/2+1;this.windowSum=(this.n-1)/2;
   this.noise=new Float64Array(this.bins);this.noiseM2=new Float64Array(this.bins);this.noiseCount=0;this.version=0;this.learnedFrames=0;
-  this.epoch=0;this.duration=2.4;this.delayMs=0;this.backing=true;this.margin=3;this.oversubtraction=4;this.floor=.03;this.lastEmit=-Infinity;
+  this.epoch=0;this.duration=2.4;this.delayMs=0;this.backing=true;this.margin=3;this.oversubtraction=4;this.floor=.003;this.lastEmit=-Infinity;
   this.configure({epoch:0,duration:2.4,delayMs:0});
  }
  configure(options={}){
@@ -481,28 +524,42 @@ class AdaptiveBackgroundSpectrum {
  }
  resetLinked(){
   this.mean=Array.from({length:this.rows},()=>new Float64Array(this.bins));this.m2=this.mean.map(()=>new Float64Array(this.bins));this.upper=this.mean.map(()=>new Float64Array(this.bins));this.counts=new Uint32Array(this.rows);
-  this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.calibrating=false;this.ready=false;this.bootstrap=new ProvisionalPhaseBootstrap(this.rows,this.rate,this.n);this.profileAnchorDelayMs=0;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude=new Float64Array(this.bins);this.persistence=new Uint16Array(this.bins);this.status='unknown';this.reason='profile-needed';this.gain=1;this.coverage=0;this.version++;
+  this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.calibrating=false;this.ready=false;this.declaredCapture=null;this.bootstrap=new ProvisionalPhaseBootstrap(this.rows,this.rate,this.n);this.profileAnchorDelayMs=0;this.profilePhaseOffset=0;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude=new Float64Array(this.bins);this.persistence=new Uint16Array(this.bins);this.status='unknown';this.reason='profile-needed';this.gain=1;this.coverage=0;this.version++;
  }
  invalidate(){this.resetLinked();return this.info();}
- resetStream(){this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude.fill(0);this.persistence.fill(0);this.status='unknown';this.reason='stream-reset';this.lastEmit=-Infinity;return this.info();}
+ resetStream(){this.declaredCapture=null;this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude.fill(0);this.persistence.fill(0);this.status='unknown';this.reason='stream-reset';this.lastEmit=-Infinity;return this.info();}
  beginCalibration(options={}){this.configure(options);this.resetLinked();this.calibrating=true;this.reason='explicit-calibration';return this.info();}
  endCalibration(){this.calibrating=false;this.updateReadiness();return this.info();}
+ beginDeclaredCalibration(options={}){
+  if(!['string','number'].includes(typeof options.captureId)||!Number.isFinite(options.start)||!Number.isFinite(options.end)||options.end<=options.start)return false;
+  this.declaredCapture=new DeclaredBackgroundCapture(this.rows,this.rate,this.bins,options);
+  this.pending=[];this.cleanWindow=[];this.reason='declared-rhythm-only';return true;
+ }
+ cancelDeclaredCalibration(id){if(this.declaredCapture?.id!==id)return false;this.declaredCapture=null;this.reason='declared-capture-cancelled';return true;}
+ finishDeclaredCalibration(id,options={}){
+  const capture=this.declaredCapture;if(!capture||capture.id!==id)return {...this.info(),declaredReady:false,declaredReason:'declared-capture-stale'};
+  this.declaredCapture=null;const model=capture.finalize(Number.isFinite(options.end)?options.end:capture.end);
+  if(!model.ready){this.reason=model.reason;return {...this.info(),declaredReady:false,declaredReason:model.reason};}
+  this.seed(model);this.learnedFrames+=model.counts.reduce((a,b)=>a+b,0);this.bootstrap=null;this.calibrating=false;this.status='learning';this.reason='declared-rhythm-profile';
+  return {...this.info(),declaredReady:true,declaredReason:this.reason};
+ }
  seed(model={}){
   if(Number.isFinite(model.duration))this.configure({duration:model.duration});
   if(!Array.isArray(model.mean)||model.mean.length!==this.rows)throw new Error('Background profile row count differs');
   for(let row=0;row<this.rows;row++){
    if(model.mean[row].length!==this.bins)throw new Error('Background profile bin count differs');
    const count=model.counts?Math.max(0,Math.floor(Number(model.counts[row])||0)):2;this.counts[row]=count;
-   for(let bin=0;bin<this.bins;bin++){const value=Number(model.mean[row][bin]);if(!Number.isFinite(value)||value<0)throw new Error('Invalid background power');this.mean[row][bin]=value;const sd=Number(model.spread?.[row]?.[bin])||0;this.m2[row][bin]=Math.max(0,sd)**2*count;this.upper[row][bin]=Math.max(value,Number(model.upper?.[row]?.[bin])||value);}
+   for(let bin=0;bin<this.bins;bin++){const value=Number(model.mean[row][bin]);if(!Number.isFinite(value)||value<0)throw new Error('Invalid background power');this.mean[row][bin]=model.includesAmbient?Math.max(0,value-this.noise[bin]):value;const sd=Number(model.spread?.[row]?.[bin])||0;this.m2[row][bin]=Math.max(0,sd)**2*count;this.upper[row][bin]=Math.max(this.mean[row][bin],Number(model.upper?.[row]?.[bin])||this.mean[row][bin]);}
   }
   if(model.noise){if(model.noise.length!==this.bins)throw new Error('Ambient bin count differs');for(let bin=0;bin<this.bins;bin++)this.noise[bin]=Math.max(0,Number(model.noise[bin])||0);this.noiseCount=2;}
   if(Number.isFinite(model.gain)&&model.gain>0)this.gain=model.gain;
   this.profileAnchorDelayMs=Number.isFinite(model.anchorDelayMs)?model.anchorDelayMs:0;
+  this.profilePhaseOffset=Number.isFinite(model.phaseOffset)?model.phaseOffset:0;
   this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.version++;this.updateReadiness();return this.info();
  }
  updateReadiness(){let covered=0;for(const count of this.counts)if(count>=2)covered++;this.coverage=covered/this.rows;this.ready=this.coverage>=.85;}
  capturePhase(time){const value=(time-this.epoch)/this.duration,phase=((value%1)+1)%1*this.rows,nearest=Math.round(phase);return Math.abs(phase-nearest)<1e-7?nearest%this.rows:phase;}
- phase(time){return this.capturePhase(time-(this.delayMs-this.profileAnchorDelayMs)/1000);}
+ phase(time){return (this.capturePhase(time-(this.delayMs-this.profileAnchorDelayMs)/1000)-this.profilePhaseOffset+this.rows)%this.rows;}
  prediction(time){
   const phase=this.phase(time),row=Math.floor(phase),fraction=phase-row,pool=Math.min(2,Math.floor(.011/(this.duration/this.rows))),background=new Float64Array(this.bins),spread=new Float64Array(this.bins);
   for(let bin=0;bin<this.bins;bin++){
@@ -553,7 +610,9 @@ class AdaptiveBackgroundSpectrum {
   if(power?.length!==this.bins||!Number.isFinite(time))throw new Error('Expected1025 power bins and finite center time');
   if(time<=this.lastTime){this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;return {...this.info(),reason:'non-monotonic-time',power,magnitudes:Float64Array.from(power,x=>Math.sqrt(Math.max(0,x)))};}
   this.lastTime=time;const backing=typeof context.backing==='boolean'?context.backing:this.backing,trusted=context.referenceTrusted===true&&context.phaseTrusted!==false,calibration=this.calibrating||context.explicitCalibration===true;
-  if(!this.ready&&calibration&&backing&&this.bootstrap){
+  const declared=this.declaredCapture;
+  if(declared)declared.stage(power,time,this.capturePhase(time),Math.floor((time-this.epoch)/this.duration),context,this.delayMs);
+  if(!declared&&!this.ready&&calibration&&backing&&this.bootstrap){
    const phase=this.capturePhase(time),cycle=Math.floor((time-this.epoch)/this.duration),renderPresent=context.renderPresent===true||trusted;
    this.bootstrap.stage(power,time,phase,cycle,{explicit:true,renderPresent});
    const boot=this.bootstrap.confirm(time,{sourceTrusted:trusted});
@@ -576,10 +635,10 @@ class AdaptiveBackgroundSpectrum {
    const fraction=this.cleanWindow.length?this.cleanWindow.reduce((sum,frame)=>sum+(frame.confirmed?1:0),0)/this.cleanWindow.length:0;
    const rested=confirmed&&(calibration||this.cleanWindow.length&&time-this.cleanWindow[0].time>=1&&time-this.lastVeto>=1&&fraction>=.80);
    this.status=rested?'learning':'unknown';this.reason=rested?(quietNoise?'stationary-noise':quietTail?'trusted-quiet-tail':'matched-backing'):confirmed?'waiting-for-clean-rest':'background-unconfirmed';
-   if(rested)this.pending.push({time,row:predicted.row,power:Float64Array.from(power),ambient:quietNoise,calibration});
+   if(rested&&!declared)this.pending.push({time,row:predicted.row,power:Float64Array.from(power),ambient:quietNoise,calibration});
    // Unknown frames neither enter the bank nor release earlier frames. A
    // confirmed tone/transient veto discards the preceding150ms candidate bank.
-   if(rested)while(this.pending.length&&time-this.pending[0].time>=.15)this.commit(this.pending.shift());
+   if(rested&&!declared)while(this.pending.length&&time-this.pending[0].time>=.15)this.commit(this.pending.shift());
   }
   const residual=new Float64Array(this.bins),mask=new Float64Array(this.bins),filtered=new Float64Array(this.bins);
   for(let bin=0;bin<this.bins;bin++){
@@ -1329,6 +1388,9 @@ class RhythmDetector extends LegacyRhythmDetector {
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
   super(rate,emit);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
+  this.confirmedAnchor=null;this.provenMatchFloor=0;this.lastCaptureEnd=null;this.lastReferenceAvailable=false;this.delayJumpEvidence=null;
+  const referenceFail=this.reference.fail.bind(this.reference);
+  this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
   this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
@@ -1346,6 +1408,31 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.spectral=new BackgroundSpectralStream(this.rate,this.background,{module:this.wasmModule},m=>this.emit({...m,id:this.referenceId}));
   }
  }
+ clearConfirmedAnchor(revokeProfile=false){
+  this.confirmedAnchor=null;this.provenMatchFloor=this.reference.matches||0;this.delayJumpEvidence=null;
+  if(revokeProfile&&this.background)this.background.beginCalibration({epoch:this.start||0,duration:this.duration||2.4,backing:this.reference.options.backing,oversubtraction:4});
+ }
+ observeDelayJump(time,reason){
+  const r=this.reference,s=r.scan;
+  if(reason!=='delay-jump'||!s||s.stage!=='full'||s.ambiguous||!(s.confidence>=.65)||!Number.isFinite(s.bestLag))return;
+  const candidate=s.bestLag/this.rate*1000,previous=this.delayJumpEvidence;
+  if(!previous||time-previous.time>3||Math.abs(candidate-previous.delayMs)>4){this.delayJumpEvidence={time,delayMs:candidate};return;}
+  if(time-previous.time<.3)return;
+  // Two agreeing completed waveform fits indicate a changed acoustic path.
+  // A single coarse-envelope failure while playing never revokes the bank.
+  this.clearConfirmedAnchor(true);r.locked=false;r.cancelReady=false;r.h.fill(0);r.pending=null;
+ }
+ updateConfirmedAnchor(){
+  const r=this.reference,a=this.confirmedAnchor;
+  if(a&&(a.reference!==r||a.baseTime!==r.baseTime||a.id!==this.referenceId||a.epoch!==this.start||a.duration!==this.duration||!r.options.routed||!r.options.backing||!r.referencePresent))this.clearConfirmedAnchor(true);
+  if(r.matches<this.provenMatchFloor){this.clearConfirmedAnchor(true);this.provenMatchFloor=r.matches||0;}
+  const proven=r.locked&&r.referencePresent&&r.options.routed&&r.options.backing&&!r.noEchoProof&&(r.anchorMethod==='waveform'||r.anchorMethod==='envelope')&&r.matches>this.provenMatchFloor&&Number.isFinite(r.baseTime)&&Number.isFinite(r.delayMs)&&r.delayMs>=0&&r.delayMs<=500;
+  if(proven){
+   if(this.confirmedAnchor&&Math.abs(r.delayMs-this.confirmedAnchor.delayMs)>12)this.clearConfirmedAnchor(true);
+   this.confirmedAnchor={reference:r,baseTime:r.baseTime,id:this.referenceId,epoch:this.start,duration:this.duration,delayMs:r.delayMs};this.provenMatchFloor=r.matches;this.delayJumpEvidence=null;
+  }
+  return this.confirmedAnchor;
+ }
  onset(message,gate=this.currentGate||this.threshold){
   this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
@@ -1356,25 +1443,45 @@ class RhythmDetector extends LegacyRhythmDetector {
   }else this.emit(message);
  }
  configure(m){
+  if(m.type==='background-capture-start'){
+   if(this.referenceEnabled&&m.id===this.referenceId&&m.kind==='without'&&typeof m.captureId==='string'&&Number.isFinite(m.start)&&Number.isFinite(m.end)&&m.end>m.start){
+    this.ensureBackground();this.background.beginDeclaredCalibration({captureId:m.captureId,start:m.start,end:m.end,minAge:.45});
+   }
+   return;
+  }
+  if(m.type==='background-capture-end'){
+   if(this.background&&m.id===this.referenceId&&typeof m.captureId==='string'){
+    if(m.complete===true){
+     const info=this.background.finishDeclaredCalibration(m.captureId,{end:m.end});
+     this.emit({type:'background-capture-result',id:this.referenceId,captureId:m.captureId,ready:info.declaredReady===true,reason:info.declaredReason||info.reason});
+    }else this.background.cancelDeclaredCalibration(m.captureId);
+   }
+   return;
+  }
   if(m.type==='calibrate'&&this.referenceEnabled){
    this.periodic.reset();
+   this.clearConfirmedAnchor();
    this.ensureBackground();this.backgroundCalibration={requestedStart:m.start,duration:m.duration,deadline:null,watchdog:m.start+Math.max(30,m.duration*5)};
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});
+   this.backgroundCalibration.captureId='manual:'+this.referenceId+':'+m.start;
+   this.background.beginDeclaredCalibration({captureId:this.backgroundCalibration.captureId,start:m.start,end:this.backgroundCalibration.watchdog,minAge:.45});
    return;
   }
   super.configure(m);
   if(m.type==='arm'){
+   this.clearConfirmedAnchor();this.lastCaptureEnd=null;this.lastReferenceAvailable=false;
    this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
+  if(m.type==='reference-sync')this.clearConfirmedAnchor();
   if(m.type==='reference-sync'&&this.referenceEnabled){
    this.ensureBackground();this.background.configure({epoch:this.start,duration:this.duration,backing:m.backing,reset:true,oversubtraction:4});
    // A first profile is admitted only through the background-only guard. This
    // mode cannot learn a persistent independent tone or an unexplained tap.
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:m.backing,oversubtraction:4});
   }
-  if(m.type==='backing-state'&&this.background)this.background.configure({backing:m.backing});
+  if(m.type==='backing-state'&&this.background){if(m.backing!==this.background.backing)this.clearConfirmedAnchor(true);this.background.configure({backing:m.backing});}
   if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate')this.periodic.reset();
-  if(m.type==='invalidate'&&this.background){this.background.invalidate();this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});}
+  if(m.type==='invalidate'){this.clearConfirmedAnchor();if(this.background){this.background.invalidate();this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});}}
  }
  independentHarmonics(frame){
   const p=frame?.rawPower,persistence=this.background?.persistence;if(!p||!persistence)return false;
@@ -1392,16 +1499,23 @@ class RhythmDetector extends LegacyRhythmDetector {
  process(samples,t,render){
   if(!this.referenceEnabled||this.probe)return super.process(samples,t,render);
   if(!samples?.length)return;
+  if(this.lastCaptureEnd!==null&&Math.abs(t-this.lastCaptureEnd)>.03)this.clearConfirmedAnchor(true);
+  this.lastCaptureEnd=t+samples.length/this.rate;
   const captured=samples,linear=this.reference.process(captured,render,t),isolation=this.reference.analysisInfo();
+  const referenceAvailable=this.reference.referencePresent&&this.reference.options.routed;
+  if(!referenceAvailable&&(this.lastReferenceAvailable||this.confirmedAnchor))this.clearConfirmedAnchor(true);
+  this.lastReferenceAvailable=referenceAvailable;
+  const confirmedAnchor=this.updateConfirmedAnchor();
   this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,
    instrumentEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&(e.harmonic||this.background?.ready&&this.mode==='percussive'&&e.reason==='unmatched-transient')),
    tonalEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&e.status==='instrument'&&e.reason==='persistent-tonal-energy')});
   this.ensureBackground();
   const r=this.reference,backing=r.options.backing&&!r.noEchoProof;
-  if(r.locked)this.background.configure({delayMs:r.delayMs});
+  if(r.locked||confirmedAnchor)this.background.configure({delayMs:r.locked?r.delayMs:confirmedAnchor.delayMs});
   this.background.configure({backing});
   const renderPresent=r.referencePresent&&backing&&t-r.lastRenderActive<=this.duration+.5;
-  const result=this.spectral.process(captured,t,{referenceEcho:r,referenceTrusted:r.referencePresent&&(r.locked||r.noEchoProof),phaseTrusted:r.locked,backing,renderPresent,explicitCalibration:this.background.calibrating});
+  const phaseTrusted=r.locked&&Boolean(confirmedAnchor);
+  const result=this.spectral.process(captured,t,{referenceEcho:r,referenceTrusted:r.referencePresent&&(phaseTrusted||r.noEchoProof),phaseTrusted,backing,renderPresent,explicitCalibration:this.background.calibrating,applyConfirmedProfile:Boolean(confirmedAnchor&&this.background.ready&&backing&&referenceAvailable),hardwareDelayMs:confirmedAnchor&&!r.locked?confirmedAnchor.delayMs:undefined});
   if(this.background.lastTime!==this.ownEvidence.at(-1)?.time)this.ownEvidence.push({time:this.background.lastTime,status:this.background.status,reason:this.background.reason,harmonic:this.independentHarmonics(result.result)});
   while(this.ownEvidence.length&&t-this.ownEvidence[0].time>.6)this.ownEvidence.shift();
   const level=Math.sqrt(captured.reduce((sum,x)=>sum+x*x,0)/captured.length);
@@ -1427,6 +1541,7 @@ class RhythmDetector extends LegacyRhythmDetector {
     this.emit({type:'calibration-progress',id:this.referenceId,time:t,end:cal.deadline});
    }
    if(t>=(cal.deadline??cal.watchdog)){
+    this.background.finishDeclaredCalibration(cal.captureId,{end:t});
     const info=this.background.endCalibration();this.backgroundCalibration=null;
     this.emit({type:'calibrated',id:this.referenceId,time:t,ready:info.ready||r.cancelReady&&r.modelCeiling<=.03||!backing,reason:r.cancelReady&&r.modelCeiling<=.03?'waveform-profile':!backing?'no-audible-echo':info.reason});
    }
@@ -1743,7 +1858,7 @@ function sampleClockSummary(recording,message){
 function sampleReceive(recording,message){
  if(sampleRecorderState.active!==recording||recording.finished)return;
  if(message.type==='error'){sampleClockSummary(recording,message);sampleCaptureFailure(recording,message);return;}
- if(message.type==='started'){recording.startFrame=message.startFrame;sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запись идёт — баян пока не играйте. Осталось 8 с.');return;}
+ if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запоминаем фон — баян пока не играйте. Осталось 8 с.');return;}
  if(message.type==='clock-boundary'){
   if(!Number.isInteger(message.offset)||message.offset!==recording.count||!Number.isInteger(message.expectedFrame)||!Number.isInteger(message.actualFrame)||message.deltaFrames!==message.actualFrame-message.expectedFrame||message.deltaFrames===0){sampleCaptureFailure(recording,{...message,reason:'clock-boundary-invalid'});return;}
   recording.clockBoundaryCount=(recording.clockBoundaryCount||0)+1;recording.clockBoundaries??=[];
@@ -1760,6 +1875,22 @@ function sampleReceive(recording,message){
   if(Number.isFinite(message.startFrame))recording.startFrame=message.startFrame;sampleClockSummary(recording,message);recording.referenceMissingSamples=message.referenceMissingSamples||0;sampleFinish(recording,message.reason==='complete'?'complete':'manual');
  }
 }
+function sampleBackgroundStart(recording){
+ if(recording.kind!=='without'||recording.backgroundCaptureId||!Number.isFinite(recording.startFrame)||typeof sendDSP!=='function'||state.token!==recording.sessionId||context!==recording.ctx)return;
+ const start=recording.startFrame/recording.sampleRate;
+ recording.backgroundCaptureId=`sample:${recording.sessionId}:${sampleRecorderState.generation}`;
+ sampleRecorderState.backgroundCaptureId=recording.backgroundCaptureId;sampleRecorderState.backgroundResult=null;
+ sendDSP({type:'background-capture-start',id:recording.sessionId,captureId:recording.backgroundCaptureId,kind:'without',start,end:start+recording.limit/recording.sampleRate});
+}
+function sampleBackgroundFinish(recording,reason){
+ if(!recording.backgroundCaptureId||typeof sendDSP!=='function'||state.token!==recording.sessionId||context!==recording.ctx)return;
+ sendDSP({type:'background-capture-end',id:recording.sessionId,captureId:recording.backgroundCaptureId,complete:reason==='complete'&&recording.count===recording.limit&&!recording.captureError});
+}
+function acceptSampleBackgroundResult(message){
+ if(message.id!==state.token||!state.running||message.captureId!==sampleRecorderState.backgroundCaptureId)return;
+ sampleRecorderState.backgroundResult=message;
+ $('echo-info').textContent=message.ready?'Фон из записи без баяна запомнен. Теперь можно играть.':message.reason==='declared-needs-two-cycles'?'Для этого длинного рисунка нужна кнопка «Калибровка»: не играйте до её завершения.':'Фон не удалось подтвердить. Повторите «Запись без баяна» или нажмите «Калибровка», не играя на инструменте.';
+}
 function sampleCaptureFailure(recording,message){
  const details={reason:typeof message.reason==='string'?message.reason.slice(0,80):'unknown',mode:recording.metadata.captureMode||'unknown',receivedSamples:recording.count};
  for(const key of ['expectedFrame','actualFrame','inputLength','referenceLength','samples','startFrame','endFrame','offset','referenceMissingSamples'])details[key]=Number.isFinite(message[key])?message[key]:null;
@@ -1772,7 +1903,7 @@ function sampleDisconnect(recording){
  try{recording.merger?.disconnect();}catch{}try{recording.node?.disconnect();}catch{}try{recording.silent?.disconnect();}catch{}
 }
 async function sampleFinish(recording,reason,errorText=''){
- if(recording.finished)return;recording.finished=true;sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;sampleRecorderState.pending=false;sampleRecorderControls();
+ if(recording.finished)return;recording.finished=true;sampleBackgroundFinish(recording,reason);sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;sampleRecorderState.pending=false;sampleRecorderControls();
  const timingReliable=!(recording.clockBoundaryCount||0),failed=reason==='capture-error'||!timingReliable;if(!failed&&recording.count===0){sampleSetStatus(errorText||'Запись остановлена до получения звука. Повторите её.');return;}
  const join=chunks=>{const result=new Float32Array(recording.count);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}return result;};
  const completed=reason==='complete'&&recording.count===recording.limit,clockBoundaries=recording.clockBoundaries||[],mappedEnd=recording.clockMetadataTruncatedAt??recording.count;
@@ -2002,7 +2133,7 @@ function updateStats(){
  updateBarStats();updateAdaptiveInfo();
 }
 function addHit(time,kind='mic'){if(!state.running||state.pending||state.calibrating||state.measuring)return;if(kind==='mic'&&time<state.reference.acceptAfter)return;const corrected=time-(kind==='mic'?Number($('latency').value)/1000:0);if(corrected<state.readyTime)return;const pos=(corrected-state.epoch)/stepDuration();const nearest=Math.round(pos);if(nearest<0)return;const err=(pos-nearest)*stepDuration()*1000;const step=((nearest%stepCount())+stepCount())%stepCount();const cycle=Math.floor(nearest/stepCount());const event={step,error:err,cycle,kind,rawMs:(time-state.epoch)*1000,correctionMs:kind==='mic'?(Number($('latency').value)||0):0};state.attacks.push(event);state.events.push(event);if(state.events.length>3000)state.events.splice(0,state.events.length-3000);state.count++;state.errors.push(err);state.sum+=err;state.sumAbs+=Math.abs(err);state.sumSq+=err*err;adaptLatency(event);$('empty').hidden=true;$('last-hit').textContent=`${kind==='key'?'Пробел':'Атака'}: ${event.error>0?'+':''}${Math.round(event.error)} мс · ${inTolerance(event.error)?'в допуске':event.error<0?'раньше':'позже'}`;updateStats();drawChart();}
-function handleDSP(m){recordSampleDiagnostics(m);if(m.type==='detection-state'){acceptDetection(m);return;}if(m.type==='filtered-level'){acceptFilteredLevel(m);return;}if(m.type==='calibration-progress'){if(state.running&&state.calibrating&&m.id===state.token&&Number.isFinite(m.end)){state.calibrationEnd=m.end;state.calibrationWaiting=false;state.readyTime=m.end;}return;}if(m.type==='background-state'){acceptBackground(m);return;}if(m.type==='analysis-state'){acceptAnalysis(m);return;}if(m.type==='acoustic-sync'){syncAcoustic(m);return;}if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring&&m.id===state.token&&m.isolated===true&&m.source==='instrument'&&Number.isFinite(m.time)&&m.time>=state.scoreAfter)addHit(m.time);if(m.type==='calibrated'&&(m.id===undefined||m.id===state.token)){state.calibrating=false;state.calibrationWaiting=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent=m.ready===false?'Не удалось собрать чистый профиль. Фон обновляется только в уверенных паузах.':'Профиль собран. В паузах игры он будет осторожно уточняться.';setStatus(m.ready===false?'Профиль фона пока не построен. Повторите калибровку без игры инструмента.':'Калибровка завершена. Можно играть.');}}
+function handleDSP(m){if(m.type==='background-capture-result'){acceptSampleBackgroundResult(m);return;}recordSampleDiagnostics(m);if(m.type==='detection-state'){acceptDetection(m);return;}if(m.type==='filtered-level'){acceptFilteredLevel(m);return;}if(m.type==='calibration-progress'){if(state.running&&state.calibrating&&m.id===state.token&&Number.isFinite(m.end)){state.calibrationEnd=m.end;state.calibrationWaiting=false;state.readyTime=m.end;}return;}if(m.type==='background-state'){acceptBackground(m);return;}if(m.type==='analysis-state'){acceptAnalysis(m);return;}if(m.type==='acoustic-sync'){syncAcoustic(m);return;}if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring&&m.id===state.token&&m.isolated===true&&m.source==='instrument'&&Number.isFinite(m.time)&&m.time>=state.scoreAfter)addHit(m.time);if(m.type==='calibrated'&&(m.id===undefined||m.id===state.token)){state.calibrating=false;state.calibrationWaiting=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent=m.ready===false?'Не удалось собрать чистый профиль. Фон обновляется только в уверенных паузах.':'Профиль собран. В паузах игры он будет осторожно уточняться.';setStatus(m.ready===false?'Профиль фона пока не построен. Повторите калибровку без игры инструмента.':'Калибровка завершена. Можно играть.');}}
 function makeSound(type,accent=false){
  const rate=context.sampleRate,duration=[.34,.23,.036,.85,.04][type];
  const b=context.createBuffer(1,Math.ceil(rate*duration),rate),d=b.getChannelData(0);

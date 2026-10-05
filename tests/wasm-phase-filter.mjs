@@ -4,6 +4,9 @@ const modulePath = Deno.args[0] || 'dsp/phase-filter.wasm';
 const fixturePath = Deno.args[1] || 'dsp/phase-power-synthetic-fixtures.json';
 const bytes = await Deno.readFile(modulePath);
 const fixture = JSON.parse(await Deno.readTextFile(fixturePath));
+await import('../dsp/background-stream.js');
+const modelSource = await Deno.readTextFile(new URL('../dsp/adaptive-background.js', import.meta.url));
+const AdaptiveModel = new Function(`${modelSource}\nreturn AdaptiveBackgroundSpectrum;`)();
 const module = new WebAssembly.Module(bytes);
 const dsp = new WebAssembly.Instance(module, {}).exports;
 const checks = [];
@@ -60,7 +63,7 @@ for (const sample of fixture.cases) {
   for (const mask of sample.maskCases) {
     dsp.analyze();
     expect(dsp.apply_mask(mask.margin, mask.gain, mask.floor) === bins, sample.name + ': valid mask');
-    const name = sample.name + ': mask ' + mask.margin + '/' + mask.gain;
+    const name = sample.name + ': mask ' + mask.margin + '/' + mask.gain + '/' + mask.floor;
     vector(gains, mask.expectedMask, fixture.absoluteMaskTolerance, name + ': gains');
     dsp.inverse();
     vector(output, mask.expectedInverse, fixture.absoluteInverseTolerance, name + ': inverse');
@@ -69,6 +72,33 @@ for (const sample of fixture.cases) {
     vector(output, mask.expectedSynthesis, fixture.absoluteInverseTolerance, name + ': synthesis');
   }
 }
+
+// The public hosts must apply the approved parameters to the same independently
+// calculated Python bins, preserving excess tonal energy instead of blanking it.
+const approvedCore = new globalThis.RhythmWasmCore(module);
+const approvedModel = new AdaptiveModel(48000);
+approvedModel.seed({
+  mean: Array.from({ length: approvedModel.rows }, () => interpolation.expectedBackground),
+  spread: Array.from({ length: approvedModel.rows }, () => interpolation.expectedSpread),
+});
+const frozenVersion = approvedModel.version;
+for (let index = 0; index < fixture.cases.length; index++) {
+  const sample = fixture.cases[index];
+  const approved = sample.maskCases.find(mask => mask.margin === 3 && mask.gain === 4 && mask.floor === .003);
+  expect(!!approved, sample.name + ': Python fixture covers approved parameters');
+  expect(approvedCore.analyze(sample.input) && approvedCore.applyProfile(
+    interpolation.expectedBackground, interpolation.expectedSpread, 1), sample.name + ': host applies approved profile');
+  vector(approvedCore.gains, approved.expectedMask, fixture.absoluteMaskTolerance, sample.name + ': WASM host approved mask');
+  expect(approvedCore.inverseAndWindow(), sample.name + ': host synthesizes approved mask');
+  vector(approvedCore.output, approved.expectedSynthesis, fixture.absoluteInverseTolerance, sample.name + ': WASM host approved synthesis');
+  const result = approvedModel.processPower(Float64Array.from(sample.expectedPower), 1 + index, { referenceTrusted: false });
+  vector(result.mask, approved.expectedMask, fixture.absoluteMaskTolerance, sample.name + ': adaptive host approved mask');
+  if (sample.name === 'multitone-plus-seeded-noise') {
+    expect(approved.expectedMask.some(value => value > .99) && approved.expectedMask.some(value => value === .003),
+      'Approved mask preserves strong tonal bins while attenuating backing-dominated bins');
+  }
+}
+expect(approvedModel.version === frozenVersion, 'Approved mask test never trains on mixed synthetic signal');
 
 // Invalid metadata must not apply a partly updated attenuation mask.
 input.set(fixture.cases.at(-1).input);

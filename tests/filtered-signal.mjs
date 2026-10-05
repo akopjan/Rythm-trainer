@@ -20,7 +20,7 @@ function detector({cancelReady=false,ceiling=.01,filterActive=false,noEchoProof=
  d.reference={options:{backing:true},referencePresent:true,locked:true,delayMs:100,lastRenderActive:0,cancelReady,modelCeiling:ceiling,noEchoProof,
   process:()=>linear,analysisInfo:()=>({ready:isolationReady,canAudit:isolationReady})};
  d.attribution={process(){},queue(){},pending:[],rejected:0,lastDecision:null};
- d.background={lastTime:1,ready:true,status:'unknown',reason:'test',noiseCount:2,calibrating:false,configure(){},endCalibration(){return {ready:true};}};
+ d.background={lastTime:1,ready:true,status:'unknown',reason:'test',noiseCount:2,calibrating:false,configure(){},beginCalibration(){},endCalibration(){return {ready:true};}};
  d.spectral={process:()=>({samples:spectral,delaySamples:2048,filterActive,result:null})};
  d.mode='sustained';d.active=true;
  d.periodic={process(samples,time,gate){periodicObserved.push({detector:d,samples,time,gate});},reset(){}};

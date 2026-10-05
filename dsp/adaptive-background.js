@@ -41,11 +41,46 @@ class ProvisionalPhaseBootstrap {
  }
  info(){return {ready:this.ready,coverage:this.coverage,committedFrames:this.commits,provisionalFrames:this.frames.reduce((sum,row)=>sum+row.length,0),reason:this.reason,tonalDuty:this.tonalDuty};}
 }
+// User-declared rhythm-only capture uses the same per-phase mean and population
+// standard deviation as the listening-approved Python prototype. It remains
+// provisional until the complete capture ends and a real source lock was seen.
+class DeclaredBackgroundCapture {
+ constructor(rows,rate,bins,options={}){
+  this.rows=rows;this.rate=rate;this.bins=bins;this.id=options.captureId;
+  this.start=options.start;this.end=options.end;this.minAge=options.minAge??.45;
+  this.frames=Array.from({length:rows},()=>[]);this.sourceProven=false;this.anchorDelayMs=null;this.lastTime=-Infinity;
+ }
+ stage(power,time,phase,cycle,context,delayMs){
+  if(time<this.start+this.minAge||time>=this.end-.05||context.renderPresent!==true)return;
+  if(!power.every(x=>Number.isFinite(x)&&x>=0))return;
+  if(context.referenceTrusted===true&&context.phaseTrusted===true&&Number.isFinite(delayMs)){
+   this.sourceProven=true;this.anchorDelayMs=delayMs;
+  }
+  if(this.phaseOffset===undefined)this.phaseOffset=phase-Math.round(phase);
+  const row=Math.round(phase)%this.rows,list=this.frames[row],error=Math.abs(phase-Math.round(phase)),existing=list.findIndex(f=>f.cycle===cycle);
+  const frame={cycle,time,power:Float64Array.from(power),error};
+  if(existing<0)list.push(frame);else if(error<list[existing].error)list[existing]=frame;
+  if(list.length>5)list.shift();this.lastTime=Math.max(this.lastTime,time);
+ }
+ finalize(end=this.end){
+  const stop=Math.min(this.end,end),mean=Array.from({length:this.rows},()=>new Float64Array(this.bins)),spread=mean.map(()=>new Float64Array(this.bins)),counts=new Uint32Array(this.rows);
+  if(!this.sourceProven)return {ready:false,reason:'declared-source-unconfirmed'};
+  if(!Number.isFinite(stop)||stop<=this.start||this.lastTime<stop-.075)return {ready:false,reason:'declared-capture-incomplete'};
+  for(let row=0;row<this.rows;row++){
+   const frames=this.frames[row].filter(f=>f.time<stop-.05);counts[row]=frames.length;
+   if(frames.length<2)return {ready:false,reason:'declared-needs-two-cycles'};
+   for(const frame of frames)for(let bin=0;bin<this.bins;bin++)mean[row][bin]+=frame.power[bin]/frames.length;
+   for(const frame of frames)for(let bin=0;bin<this.bins;bin++)spread[row][bin]+=(frame.power[bin]-mean[row][bin])**2/frames.length;
+   for(let bin=0;bin<this.bins;bin++)spread[row][bin]=Math.sqrt(Math.max(0,spread[row][bin]));
+  }
+  return {ready:true,mean,spread,counts,gain:1,anchorDelayMs:this.anchorDelayMs,phaseOffset:this.phaseOffset,includesAmbient:true};
+ }
+}
 class AdaptiveBackgroundSpectrum {
  constructor(rate,emit=()=>{}){
   this.rate=rate;this.emit=emit;this.n=2048;this.hop=256;this.bins=this.n/2+1;this.windowSum=(this.n-1)/2;
   this.noise=new Float64Array(this.bins);this.noiseM2=new Float64Array(this.bins);this.noiseCount=0;this.version=0;this.learnedFrames=0;
-  this.epoch=0;this.duration=2.4;this.delayMs=0;this.backing=true;this.margin=3;this.oversubtraction=4;this.floor=.03;this.lastEmit=-Infinity;
+  this.epoch=0;this.duration=2.4;this.delayMs=0;this.backing=true;this.margin=3;this.oversubtraction=4;this.floor=.003;this.lastEmit=-Infinity;
   this.configure({epoch:0,duration:2.4,delayMs:0});
  }
  configure(options={}){
@@ -61,28 +96,42 @@ class AdaptiveBackgroundSpectrum {
  }
  resetLinked(){
   this.mean=Array.from({length:this.rows},()=>new Float64Array(this.bins));this.m2=this.mean.map(()=>new Float64Array(this.bins));this.upper=this.mean.map(()=>new Float64Array(this.bins));this.counts=new Uint32Array(this.rows);
-  this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.calibrating=false;this.ready=false;this.bootstrap=new ProvisionalPhaseBootstrap(this.rows,this.rate,this.n);this.profileAnchorDelayMs=0;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude=new Float64Array(this.bins);this.persistence=new Uint16Array(this.bins);this.status='unknown';this.reason='profile-needed';this.gain=1;this.coverage=0;this.version++;
+  this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.calibrating=false;this.ready=false;this.declaredCapture=null;this.bootstrap=new ProvisionalPhaseBootstrap(this.rows,this.rate,this.n);this.profileAnchorDelayMs=0;this.profilePhaseOffset=0;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude=new Float64Array(this.bins);this.persistence=new Uint16Array(this.bins);this.status='unknown';this.reason='profile-needed';this.gain=1;this.coverage=0;this.version++;
  }
  invalidate(){this.resetLinked();return this.info();}
- resetStream(){this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude.fill(0);this.persistence.fill(0);this.status='unknown';this.reason='stream-reset';this.lastEmit=-Infinity;return this.info();}
+ resetStream(){this.declaredCapture=null;this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.lastVeto=-Infinity;this.lastTime=-Infinity;this.lastPower=0;this.lastMagnitude.fill(0);this.persistence.fill(0);this.status='unknown';this.reason='stream-reset';this.lastEmit=-Infinity;return this.info();}
  beginCalibration(options={}){this.configure(options);this.resetLinked();this.calibrating=true;this.reason='explicit-calibration';return this.info();}
  endCalibration(){this.calibrating=false;this.updateReadiness();return this.info();}
+ beginDeclaredCalibration(options={}){
+  if(!['string','number'].includes(typeof options.captureId)||!Number.isFinite(options.start)||!Number.isFinite(options.end)||options.end<=options.start)return false;
+  this.declaredCapture=new DeclaredBackgroundCapture(this.rows,this.rate,this.bins,options);
+  this.pending=[];this.cleanWindow=[];this.reason='declared-rhythm-only';return true;
+ }
+ cancelDeclaredCalibration(id){if(this.declaredCapture?.id!==id)return false;this.declaredCapture=null;this.reason='declared-capture-cancelled';return true;}
+ finishDeclaredCalibration(id,options={}){
+  const capture=this.declaredCapture;if(!capture||capture.id!==id)return {...this.info(),declaredReady:false,declaredReason:'declared-capture-stale'};
+  this.declaredCapture=null;const model=capture.finalize(Number.isFinite(options.end)?options.end:capture.end);
+  if(!model.ready){this.reason=model.reason;return {...this.info(),declaredReady:false,declaredReason:model.reason};}
+  this.seed(model);this.learnedFrames+=model.counts.reduce((a,b)=>a+b,0);this.bootstrap=null;this.calibrating=false;this.status='learning';this.reason='declared-rhythm-profile';
+  return {...this.info(),declaredReady:true,declaredReason:this.reason};
+ }
  seed(model={}){
   if(Number.isFinite(model.duration))this.configure({duration:model.duration});
   if(!Array.isArray(model.mean)||model.mean.length!==this.rows)throw new Error('Background profile row count differs');
   for(let row=0;row<this.rows;row++){
    if(model.mean[row].length!==this.bins)throw new Error('Background profile bin count differs');
    const count=model.counts?Math.max(0,Math.floor(Number(model.counts[row])||0)):2;this.counts[row]=count;
-   for(let bin=0;bin<this.bins;bin++){const value=Number(model.mean[row][bin]);if(!Number.isFinite(value)||value<0)throw new Error('Invalid background power');this.mean[row][bin]=value;const sd=Number(model.spread?.[row]?.[bin])||0;this.m2[row][bin]=Math.max(0,sd)**2*count;this.upper[row][bin]=Math.max(value,Number(model.upper?.[row]?.[bin])||value);}
+   for(let bin=0;bin<this.bins;bin++){const value=Number(model.mean[row][bin]);if(!Number.isFinite(value)||value<0)throw new Error('Invalid background power');this.mean[row][bin]=model.includesAmbient?Math.max(0,value-this.noise[bin]):value;const sd=Number(model.spread?.[row]?.[bin])||0;this.m2[row][bin]=Math.max(0,sd)**2*count;this.upper[row][bin]=Math.max(this.mean[row][bin],Number(model.upper?.[row]?.[bin])||this.mean[row][bin]);}
   }
   if(model.noise){if(model.noise.length!==this.bins)throw new Error('Ambient bin count differs');for(let bin=0;bin<this.bins;bin++)this.noise[bin]=Math.max(0,Number(model.noise[bin])||0);this.noiseCount=2;}
   if(Number.isFinite(model.gain)&&model.gain>0)this.gain=model.gain;
   this.profileAnchorDelayMs=Number.isFinite(model.anchorDelayMs)?model.anchorDelayMs:0;
+  this.profilePhaseOffset=Number.isFinite(model.phaseOffset)?model.phaseOffset:0;
   this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;this.version++;this.updateReadiness();return this.info();
  }
  updateReadiness(){let covered=0;for(const count of this.counts)if(count>=2)covered++;this.coverage=covered/this.rows;this.ready=this.coverage>=.85;}
  capturePhase(time){const value=(time-this.epoch)/this.duration,phase=((value%1)+1)%1*this.rows,nearest=Math.round(phase);return Math.abs(phase-nearest)<1e-7?nearest%this.rows:phase;}
- phase(time){return this.capturePhase(time-(this.delayMs-this.profileAnchorDelayMs)/1000);}
+ phase(time){return (this.capturePhase(time-(this.delayMs-this.profileAnchorDelayMs)/1000)-this.profilePhaseOffset+this.rows)%this.rows;}
  prediction(time){
   const phase=this.phase(time),row=Math.floor(phase),fraction=phase-row,pool=Math.min(2,Math.floor(.011/(this.duration/this.rows))),background=new Float64Array(this.bins),spread=new Float64Array(this.bins);
   for(let bin=0;bin<this.bins;bin++){
@@ -133,7 +182,9 @@ class AdaptiveBackgroundSpectrum {
   if(power?.length!==this.bins||!Number.isFinite(time))throw new Error('Expected1025 power bins and finite center time');
   if(time<=this.lastTime){this.pending=[];this.cleanWindow=[];this.unknownSince=null;this.cleanSince=null;return {...this.info(),reason:'non-monotonic-time',power,magnitudes:Float64Array.from(power,x=>Math.sqrt(Math.max(0,x)))};}
   this.lastTime=time;const backing=typeof context.backing==='boolean'?context.backing:this.backing,trusted=context.referenceTrusted===true&&context.phaseTrusted!==false,calibration=this.calibrating||context.explicitCalibration===true;
-  if(!this.ready&&calibration&&backing&&this.bootstrap){
+  const declared=this.declaredCapture;
+  if(declared)declared.stage(power,time,this.capturePhase(time),Math.floor((time-this.epoch)/this.duration),context,this.delayMs);
+  if(!declared&&!this.ready&&calibration&&backing&&this.bootstrap){
    const phase=this.capturePhase(time),cycle=Math.floor((time-this.epoch)/this.duration),renderPresent=context.renderPresent===true||trusted;
    this.bootstrap.stage(power,time,phase,cycle,{explicit:true,renderPresent});
    const boot=this.bootstrap.confirm(time,{sourceTrusted:trusted});
@@ -156,10 +207,10 @@ class AdaptiveBackgroundSpectrum {
    const fraction=this.cleanWindow.length?this.cleanWindow.reduce((sum,frame)=>sum+(frame.confirmed?1:0),0)/this.cleanWindow.length:0;
    const rested=confirmed&&(calibration||this.cleanWindow.length&&time-this.cleanWindow[0].time>=1&&time-this.lastVeto>=1&&fraction>=.80);
    this.status=rested?'learning':'unknown';this.reason=rested?(quietNoise?'stationary-noise':quietTail?'trusted-quiet-tail':'matched-backing'):confirmed?'waiting-for-clean-rest':'background-unconfirmed';
-   if(rested)this.pending.push({time,row:predicted.row,power:Float64Array.from(power),ambient:quietNoise,calibration});
+   if(rested&&!declared)this.pending.push({time,row:predicted.row,power:Float64Array.from(power),ambient:quietNoise,calibration});
    // Unknown frames neither enter the bank nor release earlier frames. A
    // confirmed tone/transient veto discards the preceding150ms candidate bank.
-   if(rested)while(this.pending.length&&time-this.pending[0].time>=.15)this.commit(this.pending.shift());
+   if(rested&&!declared)while(this.pending.length&&time-this.pending[0].time>=.15)this.commit(this.pending.shift());
   }
   const residual=new Float64Array(this.bins),mask=new Float64Array(this.bins),filtered=new Float64Array(this.bins);
   for(let bin=0;bin<this.bins;bin++){

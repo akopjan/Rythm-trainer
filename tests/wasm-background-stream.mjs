@@ -67,7 +67,7 @@ let ambientError=0;
 for(let at=0;at<signal.length;at+=128){
  const block=ambientStream.process(signal.subarray(at,at+128),at/48000,{backing:false});
  for(let i=0;i<block.samples.length;i++)if(at+i>=2048)
-  ambientError=Math.max(ambientError,Math.abs(block.samples[i]-.03*signal[at+i-2048]));
+  ambientError=Math.max(ambientError,Math.abs(block.samples[i]-.003*signal[at+i-2048]));
 }
 expect(ambientError<1e-7,'Vetted ambient profile works without a phase-table ready flag');
 console.log(JSON.stringify({ passed: checks.length, total: checks.length, maxChunkError, maxIdentityError }));

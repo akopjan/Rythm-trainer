@@ -7,7 +7,7 @@
   const FFT_SIZE = 2048;
   const HOP_SIZE = 256;
   const DELAY_SAMPLES = FFT_SIZE;
-  const DEFAULT_FLOOR = 0.03;
+  const DEFAULT_FLOOR = 0.003;
   const DEFAULT_MARGIN = 3;
   const DEFAULT_OVERSUBTRACTION = 4;
 
@@ -114,6 +114,9 @@
       this.baseTime = Number.isFinite(baseTime) ? baseTime : null;
       this.lastResult = null;
       this.lastFilterActive = false;
+      // A retained phase profile belongs to this continuous capture clock.
+      // A fresh trusted frame is required after construction or a clock reset.
+      this.retainedClockConfirmed = false;
       if (typeof this.model.resetStream === 'function') this.model.resetStream();
     }
 
@@ -129,10 +132,10 @@
 
     _delay(context) {
       if (Number.isFinite(context.hardwareDelaySamples) && context.hardwareDelaySamples >= 0) return context.hardwareDelaySamples;
+      if (Number.isFinite(context.hardwareDelayMs) && context.hardwareDelayMs >= 0) return context.hardwareDelayMs * this.rate / 1000;
       const echo = context.referenceEcho || context.echo || null;
       if (echo && echo.locked && Number.isFinite(echo.delayMs)) return echo.delayMs * this.rate / 1000;
       if (echo && echo.cancelReady && Number.isFinite(echo.cancelDelayMs)) return echo.cancelDelayMs * this.rate / 1000;
-      if (Number.isFinite(context.hardwareDelayMs) && context.hardwareDelayMs >= 0) return context.hardwareDelayMs * this.rate / 1000;
       return 0;
     }
 
@@ -184,9 +187,13 @@
       const result = this.model.process(this.magnitudes, frameTime, info) || null;
       this.lastResult = result;
       const trusted = info.phaseTrusted && info.referenceTrusted;
+      if (trusted) this.retainedClockConfirmed = true;
+      // This application-only permission never reaches model.process(). The
+      // model continues to veto learning when current source trust is absent.
+      const retained = context.applyConfirmedProfile === true && this.retainedClockConfirmed;
       const ambientReady = info.backing === false && Number.isFinite(result && result.ambientFrames) && result.ambientFrames >= 2;
       this.lastFilterActive = false;
-      if (result && (result.ready === true && trusted || ambientReady) && Number.isFinite(result.gain) && result.gain >= 0) {
+      if (result && (result.ready === true && (trusted || retained) || ambientReady) && Number.isFinite(result.gain) && result.gain >= 0) {
         this.lastFilterActive = this.mic.applyProfile(result.background, result.spread, result.gain);
         if (!this.lastFilterActive) {
           this.emit({ type: 'background-filter-error', reason: 'invalid-profile', time: frameTime });
@@ -209,6 +216,7 @@
         this.reset(time);
         didReset = true;
       }
+      if (context.referenceTrusted === true && context.phaseTrusted === true) this.retainedClockConfirmed = true;
       for (let i = 0; i < length; i++) this.inputRing[(this.received + i) & this.ringMask] = Number.isFinite(samples[i]) ? samples[i] : 0;
       this.received += length;
 
