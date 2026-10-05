@@ -2,8 +2,19 @@
 // Capture/configuration messages from a producer must use the same FIFO port.
 const analysisWorkerBoot = `
 (() => {
- let detector=null,inputPort=null,rate=0,token=null,closed=false;
+ let detector=null,inputPort=null,rate=0,token=null,closed=false,pumpTimer=null;
+ const cancelPump=()=>{if(pumpTimer!==null){clearTimeout(pumpTimer);pumpTimer=null;}};
+ const close=()=>{closed=true;cancelPump();if(inputPort)inputPort.close();};
  const fail=error=>self.postMessage({type:'analysis-error',token,message:String(error&&error.message||error).slice(0,240)});
+ const pump=()=>{
+  pumpTimer=null;if(closed||!detector)return;
+  try{
+   const result=detector.attribution.drain({budgetMs:2,maxSteps:64});
+   // Only ready work gets a continuation. New PCM must unblock observation
+   // windows; an idle timer must never manufacture future signal evidence.
+   if(result.more)pumpTimer=setTimeout(pump,0);
+  }catch(error){close();fail(error);}
+ };
  const receive=event=>{
   if(closed)return;
   try{
@@ -14,14 +25,15 @@ const analysisWorkerBoot = `
     rate=message.sampleRate;token=message.token;
     if(!Number.isFinite(rate)||rate<8000)throw new Error('Invalid analysis sample rate');
     detector=new RhythmDetector(rate,value=>self.postMessage(value),message.wasmModule||null);
+    detector.attribution.setDeferredAnalysis(true);
     inputPort=message.port;
     if(!inputPort||typeof inputPort.postMessage!=='function')throw new Error('Analysis input port is missing');
-    inputPort.onmessage=receive;inputPort.onmessageerror=()=>fail(new Error('Analysis input could not be decoded'));inputPort.start();
+    inputPort.onmessage=receive;inputPort.onmessageerror=()=>{close();fail(new Error('Analysis input could not be decoded'));};inputPort.start();
     self.postMessage({type:'analysis-ready',token});return;
    }
    if(!detector)throw new Error('Analysis is not initialized');
-   if(message.type==='analysis-close'){closed=true;inputPort.close();self.close();return;}
-   if(message.type==='configure'){detector.configure(message.message);return;}
+   if(message.type==='analysis-close'){close();self.close();return;}
+   if(message.type==='configure'){cancelPump();detector.configure(message.message);return;}
    if(message.type!=='capture')throw new Error('Unknown analysis message');
    const mic=message.mic,reference=message.reference;
    if(!(mic instanceof Float32Array)||!Number.isFinite(message.frame)||message.frame<0)throw new Error('Invalid captured audio block');
@@ -29,8 +41,10 @@ const analysisWorkerBoot = `
    if(reference!==null&&reference!==undefined&&(!(reference instanceof Float32Array)||reference.length!==mic.length))throw new Error('Unpaired rendered audio block');
    let rendered=reference;
    if(!rendered&&detector.referenceEnabled&&detector.reference.options.routed)rendered=new Float32Array(mic.length);
+   cancelPump();
    for(let i=0;i<mic.length;i+=128)detector.process(mic.subarray(i,i+128),(message.frame+i)/rate,rendered&&rendered.subarray(i,i+128));
-  }catch(error){closed=true;fail(error);if(inputPort)inputPort.close();}
+   pump();
+  }catch(error){close();fail(error);}
  };
  self.onmessage=receive;
 })();

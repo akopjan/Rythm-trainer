@@ -1,5 +1,6 @@
 {
   "tasks": {
-    "build": "deno run --allow-read --allow-write=. --allow-env --allow-sys npm:assemblyscript@0.28.20/asc phase-filter.ts --outFile phase-filter.wasm --optimize --runtime stub --use abort= --initialMemory 96 --maximumMemory 96 --noAssert"
+    "build": "deno run --allow-read --allow-write=. --allow-env --allow-sys npm:assemblyscript@0.28.20/asc phase-filter.ts --outFile phase-filter.wasm --optimize --runtime stub --use abort= --initialMemory 96 --maximumMemory 96 --noAssert",
+    "build-attribution": "deno run --allow-read --allow-write=. --allow-env --allow-sys npm:assemblyscript@0.28.20/asc attribution-core.ts --outFile attribution-core.wasm --optimize --runtime stub --use abort= --initialMemory 64 --maximumMemory 512 --noAssert"
   }
 }

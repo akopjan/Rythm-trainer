@@ -144,7 +144,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   const cal=this.backgroundCalibration;
   if(t-this.lastDetectionEmit>=.20){
    const pausedReason=cal?'calibration':!isolation.ready&&!isolation.canAudit?'reference':!r.cancelReady&&!this.background.ready&&this.background.status==='learning'?'learning':null;
-   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision,attributionDrops:{...this.attribution.dropCounts},lastAttributionDrop:this.attribution.lastDrop??null});
+   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision,attributionDrops:{...this.attribution.dropCounts},lastAttributionDrop:this.attribution.lastDrop??null,queueTiming:this.attribution.schedulingInfo()});
    this.lastDetectionEmit=t;
   }
   if(cal){

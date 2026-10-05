@@ -11,7 +11,7 @@ class FakeWorker{
  terminate(){this.terminated=true;}
 }
 globalThis.Worker=FakeWorker;globalThis.MessageChannel=Channel;globalThis.URL={createObjectURL:blob=>{const key='mock-blob-'+(++serial);blobs.set(key,blob);return key;},revokeObjectURL:url=>revoked.push(url)};
-const simpleDSP=`class RhythmDetector {constructor(rate,emit,module){this.rate=rate;this.emit=emit;this.module=module;this.referenceEnabled=true;this.reference={options:{routed:true}};}configure(message){this.emit({type:'configured',value:message.value});}process(mic,time,reference){this.emit({type:'block',time,length:mic.length,micFirst:mic[0],referenceFirst:reference&&reference[0]});}}`;
+const simpleDSP=`class RhythmDetector {constructor(rate,emit,module){this.rate=rate;this.emit=emit;this.module=module;this.referenceEnabled=true;this.reference={options:{routed:true}};this.attribution={setDeferredAnalysis(enabled){this.deferredAnalysis=enabled;},drain(){return {steps:0,pending:0,blocked:false,more:false,elapsedMs:0};}};}configure(message){this.emit({type:'configured',value:message.value});}process(mic,time,reference){this.emit({type:'block',time,length:mic.length,micFirst:mic[0],referenceFirst:reference&&reference[0]});}}`;
 function ctx(){const listeners=new Set();return {sampleRate:48000,state:'running',addEventListener:(_name,fn)=>listeners.add(fn),removeEventListener:(_name,fn)=>listeners.delete(fn),cancel(){this.state='closed';for(const fn of [...listeners])fn();}};}
 const tick=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
 function assert(value,message){if(!value)throw Error(message);}

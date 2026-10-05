@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="attribution-history-v12">
+<meta name="rhythm-trainer-version" content="worker-queue-v13">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -933,11 +933,40 @@ class ReferenceEcho {
  }
 }
 
+// GENERATED_ATTRIBUTION_CORE_BEGIN
+globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,43,7,96,0,1,127,96,3,127,127,127,1,127,96,2,127,127,1,127,96,0,0,96,1,127,1,127,96,4,124,124,127,124,1,127,96,5,124,124,127,127,124,1,127,3,14,13,2,1,3,1,0,0,0,0,0,4,5,6,0,5,5,1,1,64,128,4,6,51,10,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,7,126,11,11,97,98,105,95,118,101,114,115,105,111,110,0,12,9,105,110,112,117,116,95,112,116,114,0,8,7,108,111,119,95,112,116,114,0,7,10,114,101,110,100,101,114,95,112,116,114,0,5,14,108,111,119,95,114,101,110,100,101,114,95,112,116,114,0,6,10,114,101,115,117,108,116,95,112,116,114,0,4,4,105,110,105,116,0,9,11,115,101,116,95,108,101,110,103,116,104,115,0,3,6,99,111,97,114,115,101,0,11,4,102,117,108,108,0,10,6,109,101,109,111,114,121,2,0,8,1,2,10,192,10,13,173,1,1,5,127,32,0,65,236,255,255,255,3,75,4,64,0,11,32,0,65,16,106,34,3,65,252,255,255,255,3,75,4,64,0,11,35,4,65,4,106,34,2,32,3,65,19,106,65,112,113,65,4,107,34,3,106,34,4,63,0,34,5,65,16,116,65,15,106,65,112,113,34,6,75,4,64,32,5,32,4,32,6,107,65,255,255,3,106,65,128,128,124,113,65,16,118,34,6,32,5,32,6,74,27,64,0,65,0,72,4,64,32,6,64,0,65,0,72,4,64,0,11,11,11,35,4,32,4,36,4,32,3,54,2,0,32,2,65,4,107,34,3,65,0,54,2,4,32,3,65,0,54,2,8,32,3,32,1,54,2,12,32,3,32,0,54,2,16,32,2,65,16,106,11,96,0,32,0,69,4,64,65,12,65,3,16,0,33,0,11,32,0,65,0,54,2,0,32,0,65,0,54,2,4,32,0,65,0,54,2,8,32,1,65,252,255,255,255,3,32,2,118,75,4,64,0,11,32,1,32,2,116,34,1,65,1,16,0,34,2,65,0,32,1,252,11,0,32,0,32,2,54,2,0,32,0,32,2,54,2,4,32,0,32,1,54,2,8,32,0,11,77,0,65,140,8,36,4,65,12,65,4,16,0,65,0,65,2,16,1,36,5,65,12,65,4,16,0,65,0,65,2,16,1,36,6,65,12,65,4,16,0,65,0,65,2,16,1,36,7,65,12,65,4,16,0,65,0,65,2,16,1,36,8,65,12,65,5,16,0,65,0,65,3,16,1,36,9,11,64,0,35,0,69,32,0,65,0,72,114,32,0,35,0,74,114,32,1,65,0,72,114,32,1,35,0,74,114,32,2,65,0,72,114,32,2,35,0,65,4,106,74,114,4,64,65,0,15,11,32,0,36,1,32,1,36,2,32,2,36,3,65,1,11,7,0,35,9,40,2,4,11,7,0,35,7,40,2,4,11,7,0,35,8,40,2,4,11,7,0,35,6,40,2,4,11,7,0,35,5,40,2,4,11,111,0,65,1,32,0,65,128,128,192,0,74,65,1,32,0,65,128,1,72,35,0,27,27,4,64,65,0,15,11,32,0,36,0,65,12,65,4,16,0,32,0,65,2,16,1,36,5,65,12,65,4,16,0,32,0,65,2,16,1,36,6,65,12,65,4,16,0,32,0,65,4,106,34,0,65,2,16,1,36,7,65,12,65,4,16,0,32,0,65,2,16,1,36,8,65,12,65,5,16,0,65,8,65,3,16,1,36,9,65,1,11,154,2,2,3,127,3,124,32,3,32,3,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,69,4,64,65,0,15,11,3,64,32,2,32,4,74,4,64,32,7,32,0,32,4,183,160,32,3,161,32,1,161,34,7,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,7,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,7,32,7,156,252,2,34,5,183,161,33,7,35,7,40,2,4,34,6,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,7,161,162,32,6,32,5,65,1,106,65,2,116,106,42,2,0,187,32,7,162,160,11,34,9,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,7,32,8,32,9,32,9,162,160,33,8,32,4,65,1,106,33,4,12,1,11,11,35,9,40,2,4,32,7,57,3,0,35,9,40,2,4,32,8,57,3,8,65,1,11,229,3,2,6,124,4,127,32,3,35,0,74,4,127,65,0,5,32,3,65,0,76,4,127,65,0,5,32,4,32,4,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,11,11,4,127,35,2,32,2,65,1,107,32,3,109,65,1,106,72,5,65,1,11,4,64,65,0,15,11,3,64,32,2,32,11,74,4,64,32,6,32,0,32,11,183,160,32,4,161,32,1,161,34,5,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,5,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,5,32,5,156,252,2,34,13,183,161,33,6,35,8,40,2,4,34,14,32,13,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,6,161,162,32,14,32,13,65,1,106,65,2,116,106,42,2,0,187,32,6,162,160,11,34,10,35,6,40,2,4,32,12,65,2,116,106,42,2,0,187,162,160,33,6,32,7,32,10,32,10,162,160,33,7,32,8,32,5,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,5,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,5,32,5,156,252,2,34,13,183,161,33,5,35,7,40,2,4,34,14,32,13,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,5,161,162,32,14,32,13,65,1,106,65,2,116,106,42,2,0,187,32,5,162,160,11,34,5,35,5,40,2,4,32,11,65,2,116,106,42,2,0,187,162,160,33,8,32,9,32,5,32,5,162,160,33,9,32,3,32,11,106,33,11,32,12,65,1,106,33,12,12,1,11,11,35,9,40,2,4,32,6,57,3,0,35,9,40,2,4,32,7,57,3,8,35,9,40,2,4,32,8,57,3,16,35,9,40,2,4,32,9,57,3,24,65,1,11,4,0,65,1,11]);
+// Numeric-only source projection. The host retains every admission guard,
+// source timestamp, lag search and joint room-path fit.
+class RhythmAttributionCore {
+ constructor(capacity,module=null){
+  const bytes=module||globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES;
+  if(!bytes)throw Error('Source attribution WASM is missing');
+  const compiled=bytes instanceof WebAssembly.Module?bytes:new WebAssembly.Module(bytes instanceof Uint8Array?bytes:Uint8Array.from(bytes));
+  if(WebAssembly.Module.imports(compiled).length)throw Error('Source attribution WASM must have no imports');
+  this.exports=new WebAssembly.Instance(compiled,{}).exports;
+  const e=this.exports;if(e.abi_version()!==1||e.init(capacity)!==1)throw Error('Source attribution WASM initialization failed');
+  this.capacity=capacity;const memory=e.memory.buffer;
+  this.y=new Float32Array(memory,e.input_ptr(),capacity);this.low=new Float32Array(memory,e.low_ptr(),capacity);
+  this.render=new Float32Array(memory,e.render_ptr(),capacity+4);this.lowRender=new Float32Array(memory,e.low_render_ptr(),capacity+4);
+  this.result=new Float64Array(memory,e.result_ptr(),8);
+ }
+ load(job){
+  if(job.y.length>this.capacity||job.low.length>this.capacity||job.render.length>this.capacity+4||job.lowRender.length!==job.render.length)throw Error('Source attribution snapshot exceeds WASM capacity');
+  this.y.set(job.y);this.low.set(job.low);this.render.set(job.render);this.lowRender.set(job.lowRender);
+  if(this.exports.set_lengths(job.y.length,job.low.length,job.render.length)!==1)throw Error('Source attribution WASM lengths are invalid');
+ }
+ updateResidual(job){this.y.set(job.y);this.low.set(job.low);}
+ coarse(job,lag,stride){if(this.exports.coarse(job.start,job.historyStart,job.length,stride,lag)!==1)throw Error('Invalid coarse source projection');return this.result;}
+ full(job,lag){if(this.exports.full(job.start,job.historyStart,job.length,lag)!==1)throw Error('Invalid full-rate source projection');return this.result;}
+}
+
+// GENERATED_ATTRIBUTION_CORE_END
 // GENERATED_ATTRIBUTION_BEGIN
 // Attribute candidate attacks to the known rendered backing after cancellation.
 // Projection changes no microphone samples. Verified periodic starts may refine
 // an accepted timestamp using earlier independent harmonic energy.
-// Coarse and full-rate searches are spread over subsequent audio blocks.
+// Audio-thread fallback spreads searches over subsequent audio blocks. A
+// dedicated Worker may drain ready search slices without awaiting more PCM.
 // The raw rendered dictionary avoids treating cancellation-filter artifacts
 // as a second sound source, or fitting a learned microphone filter to a player.
 class EchoAttribution {
@@ -949,15 +978,26 @@ class EchoAttribution {
   this.size=2**Math.ceil(Math.log2(rate*2.5+512));this.mask=this.size-1;
   this.render=new Float32Array(this.size);this.capture=new Float32Array(this.size);
   this.lowRender=new Float32Array(this.size);this.lowCapture=new Float32Array(this.size);
-  this.alpha=1-Math.exp(-2*Math.PI*900/rate);this.reset();
+  this.alpha=1-Math.exp(-2*Math.PI*900/rate);this.deferredAnalysis=false;this.kernel=null;this.reset();
  }
  reset(options={}){
   const preserve=options.preserveDiagnostics===true;
   const diagnostic={accepted:preserve?this.accepted||0:0,rejected:preserve?this.rejected||0:0,lastDecision:preserve?this.lastDecision??null:null,lastDrop:preserve?this.lastDrop??null:null,dropCounts:preserve?this.dropCounts||{}:{}};
   for(const array of [this.render,this.capture,this.lowRender,this.lowCapture])array.fill(0);
-  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};Object.assign(this,diagnostic);this.currentTime=0;this.renderBlockLength=0;this.captureBlockLength=0;
+  const timing=preserve&&this.timing?this.timing:{completed:0,peak:0,waitSumMs:0,maxWaitMs:0,lastWaitMs:0,drainCalls:0,drainSteps:0,drainCpuMs:0,maxDrainCpuMs:0,maxStepCpuMs:0};
+  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};Object.assign(this,diagnostic);this.timing=timing;this.currentTime=0;this.renderBlockLength=0;this.captureBlockLength=0;
  }
- reject(job,reason){const current=Number.isFinite(this.currentTime)?Math.max(0,this.currentTime):0,candidate=job.message?.time;this.rejected++;this.lastDecision={time:Number.isFinite(candidate)?Math.min(current,Math.max(0,candidate)):current,reason};job.done=true;}
+ setDeferredAnalysis(enabled){
+  this.deferredAnalysis=enabled===true;
+  if(this.deferredAnalysis&&!this.kernel&&typeof RhythmAttributionCore!=='undefined')this.kernel=new RhythmAttributionCore(this.size);
+ }
+ finishTiming(job){
+  if(job.timingDone||!Number.isFinite(job.queuedSourceTime))return;
+  job.timingDone=true;const wait=Math.max(0,(this.baseTime+this.total/this.rate-job.queuedSourceTime)*1000);
+  this.timing.completed++;this.timing.waitSumMs+=wait;this.timing.lastWaitMs=wait;this.timing.maxWaitMs=Math.max(this.timing.maxWaitMs,wait);
+ }
+ schedulingInfo(){const {waitSumMs,...info}=this.timing;return {...info,mode:this.deferredAnalysis?'worker':'audio-block',kernel:this.kernel?'wasm':'javascript',pending:this.pending.length,meanWaitMs:info.completed?waitSumMs/info.completed:0};}
+ reject(job,reason){const current=Number.isFinite(this.currentTime)?Math.max(0,this.currentTime):0,candidate=job.message?.time;this.rejected++;this.lastDecision={time:Number.isFinite(candidate)?Math.min(current,Math.max(0,candidate)):current,reason};job.done=true;this.finishTiming(job);}
  drop(job,reason,details={}){
   if(job.done)return;
   const number=value=>Number.isFinite(value)?value:null,flag=value=>typeof value==='boolean'?value:null;
@@ -989,16 +1029,49 @@ class EchoAttribution {
   // A missing, stale or unproven reference does not prove an own attack.
   if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){for(const job of this.pending)this.drop(job,'reference-unavailable',{stage:'process'});this.pending=[];return;}
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
+  if(!this.deferredAnalysis)this.advanceReady();
+ }
+ canAdvance(){
+  const job=this.pending[0];if(!job)return false;
+  const meta=this.meta;
+  if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent||!meta.ready&&!meta.noEchoProof&&!meta.canAudit)return true;
+  if(!job.stage&&this.total<this.captureEnd(job))return false;
+  // The FFT evidence trails raw capture. Draining faster must not shorten
+  // the independent harmonic observation window used to confirm an attack.
+  if(this.deferredAnalysis&&typeof meta.instrumentEvidence==='function'&&(job.message.toneCheck===true||job.message.spectralCheck===true)&&!job.evidenceSnapshot)return false;
+  return true;
+ }
+ advanceReady(){
+  if(!this.canAdvance())return false;
+  const meta=this.meta;
+  if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){for(const job of this.pending)this.drop(job,'reference-unavailable',{stage:'drain'});this.pending=[];return true;}
+  if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return true;}
   const job=this.pending[0];
   if(!job.stage){
    // A small raw clock step is tolerated without resetting the PCM ring.
    // Its timestamp can therefore lead the samples actually received. Wait
    // for the exact same sample bound that prepare() will read, not raw time.
-   if(this.total<this.captureEnd(job))return;
-   if(!this.prepare(job)){this.pending.shift();return;}
+   if(this.total<this.captureEnd(job))return false;
+   if(!this.prepare(job)){this.pending.shift();return true;}
   }
   this.advance(job);
   if(job.done)this.pending.shift();
+  return true;
+ }
+ drain(options={}){
+  const clock=()=>typeof performance!=='undefined'&&typeof performance.now==='function'?performance.now():Date.now();
+  const budget=Number.isFinite(options.budgetMs)?Math.max(0,Math.min(8,options.budgetMs)):2;
+  const maxSteps=Number.isFinite(options.maxSteps)?Math.max(1,Math.min(512,Math.floor(options.maxSteps))):64;
+  const started=clock();let steps=0;
+  // The budget is cooperative: one unchanged numerical slice is atomic.
+  // Stop between slices and yield to capture/configuration messages.
+  while(this.deferredAnalysis&&steps<maxSteps&&clock()-started<budget&&this.canAdvance()){
+   const before=clock();if(!this.advanceReady())break;steps++;
+   this.timing.maxStepCpuMs=Math.max(this.timing.maxStepCpuMs,Math.max(0,clock()-before));
+  }
+  const elapsedMs=Math.max(0,clock()-started),more=this.deferredAnalysis&&this.canAdvance();
+  this.timing.drainCalls++;this.timing.drainSteps+=steps;this.timing.drainCpuMs+=elapsedMs;this.timing.maxDrainCpuMs=Math.max(this.timing.maxDrainCpuMs,elapsedMs);
+  return {steps,pending:this.pending.length,blocked:this.pending.length>0&&!more,more,elapsedMs};
  }
  queue(message,gate=.004){
   if(message?.type!=='onset'||!Number.isFinite(message.time)){this.drop({message},'invalid-candidate',{stage:'queue'});return;}
@@ -1007,7 +1080,8 @@ class EchoAttribution {
   if(this.pending.length>=8){this.drop({message},'queue-full',{stage:'queue'});return;}
   // Spectral detectors may backdate their timestamp. Audit the waveform being
   // observed now while preserving the original timestamp used by the score.
-  this.pending.push({message:{...message},signalTime:Number.isFinite(message.captureTime)?Math.min(this.baseTime+this.total/this.rate,message.captureTime):this.baseTime+this.total/this.rate,gate:Number.isFinite(gate)&&gate>0?gate:.004});
+  this.pending.push({message:{...message},signalTime:Number.isFinite(message.captureTime)?Math.min(this.baseTime+this.total/this.rate,message.captureTime):this.baseTime+this.total/this.rate,queuedSourceTime:this.baseTime+this.total/this.rate,gate:Number.isFinite(gate)&&gate>0?gate:.004});
+  this.timing.peak=Math.max(this.timing.peak,this.pending.length);
  }
  accept(job){
   // Residual percussion after a learned spectral mask needs independent
@@ -1038,7 +1112,7 @@ class EchoAttribution {
    before=Math.sqrt(before/Math.max(1,limit-beforeStart));after=Math.sqrt(after/Math.max(1,afterEnd-afterStart));
    if(echo>job.gate*.5&&!(after>before*1.45&&after-before>job.gate*.2)&&!this.spectralNovelty(job,afterStart,after,before)&&!(job.message.source==='periodic'&&knownPeriodicSource&&this.stableInstrumentTone(job)&&this.periodicSourceRise(job))){this.reject(job,'held-tone');return;}
   }
-  this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;
+  this.accepted++;this.lastDecision={time:job.message.time,reason:'instrument'};this.emit({...job.message});job.done=true;this.finishTiming(job);
  }
 
  // Verify a tracked note against an earlier projected source window. A slow
@@ -1160,6 +1234,7 @@ class EchoAttribution {
   if(job.historyStart<Math.max(0,this.total-this.size)){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   const historyLength=job.start+job.length-job.historyStart+4;
   for(const name of ['render','lowRender']){const array=new Float32Array(historyLength);for(let i=0;i<historyLength;i++)array[i]=this.at(this[name],job.historyStart+i);job[name]=array;}
+  if(this.kernel)this.kernel.load(job);
   job.iteration=0;job.energy=job.original;this.beginCoarse(job);return true;
  }
  beginCoarse(job){
@@ -1171,14 +1246,16 @@ class EchoAttribution {
  }
  coarse(job,lag,kind){
   let dot=0,power=0,rawDot=0,rawPower=0;
-  for(let i=0,k=0;i<job.length;i+=this.stride,k++){const x=this.basis(job,i,lag,kind,true),y=job.low[k],raw=this.basis(job,i,lag,kind);dot+=x*y;power+=x*x;rawDot+=raw*job.y[i];rawPower+=raw*raw;}
+  if(this.kernel){const values=this.kernel.coarse(job,lag,this.stride);dot=values[0];power=values[1];rawDot=values[2];rawPower=values[3];}
+  else for(let i=0,k=0;i<job.length;i+=this.stride,k++){const x=this.basis(job,i,lag,kind,true),y=job.low[k],raw=this.basis(job,i,lag,kind);dot+=x*y;power+=x*x;rawDot+=raw*job.y[i];rawPower+=raw*raw;}
   const score=Math.max(power*job.lowEnergy>1e-20&&Math.abs(dot/power)<=6?dot*dot/(power*job.lowEnergy):0,rawPower*job.sampledEnergy>1e-20&&Math.abs(rawDot/rawPower)<=6?rawDot*rawDot/(rawPower*job.sampledEnergy):0);
   if(score>job.bestScore){job.bestScore=score;job.bestLag=lag;job.bestKind=kind;}
   const rawScore=rawPower*job.sampledEnergy>1e-20&&Math.abs(rawDot/rawPower)<=6?rawDot*rawDot/(rawPower*job.sampledEnergy):0;if(rawScore>job.bestRawScore){job.bestRawScore=rawScore;job.bestRawLag=lag;}
  }
  full(job,lag,kind){
   let dot=0,power=0;
-  for(let i=0;i<job.length;i++){const x=this.basis(job,i,lag,kind);dot+=x*job.y[i];power+=x*x;}
+  if(this.kernel){const values=this.kernel.full(job,lag);dot=values[0];power=values[1];}
+  else for(let i=0;i<job.length;i++){const x=this.basis(job,i,lag,kind);dot+=x*job.y[i];power+=x*x;}
   const score=power>1e-15?dot*dot/power:0;
   if(score>job.fullScore&&Math.abs(dot/power)<=6){job.fullScore=score;job.fullLag=lag;job.fullGain=dot/power;job.fullKind=kind;}
  }
@@ -1249,6 +1326,7 @@ class EchoAttribution {
    filtered+=this.alpha*(job.y[i]-filtered);if(i%this.stride===0)job.low[i/this.stride]=filtered;
   }
   job.energy=energy;
+  if(this.kernel)this.kernel.updateResidual(job);
  }
 }
 
@@ -1531,7 +1609,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   const cal=this.backgroundCalibration;
   if(t-this.lastDetectionEmit>=.20){
    const pausedReason=cal?'calibration':!isolation.ready&&!isolation.canAudit?'reference':!r.cancelReady&&!this.background.ready&&this.background.status==='learning'?'learning':null;
-   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision,attributionDrops:{...this.attribution.dropCounts},lastAttributionDrop:this.attribution.lastDrop??null});
+   this.emit({type:'detection-state',id:this.referenceId,time:t,mode:this.mode,level:Math.sqrt(analysisSamples.reduce((sum,x)=>sum+x*x,0)/analysisSamples.length),gate:this.currentGate||this.threshold,pausedReason,candidates:this.candidateCount,accepted:this.scoredCount,rejected:this.rejectedCount,pending:this.attribution.pending.length,lastDecision:this.attribution.lastDecision,attributionDrops:{...this.attribution.dropCounts},lastAttributionDrop:this.attribution.lastDrop??null,queueTiming:this.attribution.schedulingInfo()});
    this.lastDetectionEmit=t;
   }
   if(cal){
@@ -2169,8 +2247,19 @@ function animate(){if(!state.running)return;const t=audibleTime();const n=Math.f
 // Capture/configuration messages from a producer must use the same FIFO port.
 const analysisWorkerBoot = `
 (() => {
- let detector=null,inputPort=null,rate=0,token=null,closed=false;
+ let detector=null,inputPort=null,rate=0,token=null,closed=false,pumpTimer=null;
+ const cancelPump=()=>{if(pumpTimer!==null){clearTimeout(pumpTimer);pumpTimer=null;}};
+ const close=()=>{closed=true;cancelPump();if(inputPort)inputPort.close();};
  const fail=error=>self.postMessage({type:'analysis-error',token,message:String(error&&error.message||error).slice(0,240)});
+ const pump=()=>{
+  pumpTimer=null;if(closed||!detector)return;
+  try{
+   const result=detector.attribution.drain({budgetMs:2,maxSteps:64});
+   // Only ready work gets a continuation. New PCM must unblock observation
+   // windows; an idle timer must never manufacture future signal evidence.
+   if(result.more)pumpTimer=setTimeout(pump,0);
+  }catch(error){close();fail(error);}
+ };
  const receive=event=>{
   if(closed)return;
   try{
@@ -2181,14 +2270,15 @@ const analysisWorkerBoot = `
     rate=message.sampleRate;token=message.token;
     if(!Number.isFinite(rate)||rate<8000)throw new Error('Invalid analysis sample rate');
     detector=new RhythmDetector(rate,value=>self.postMessage(value),message.wasmModule||null);
+    detector.attribution.setDeferredAnalysis(true);
     inputPort=message.port;
     if(!inputPort||typeof inputPort.postMessage!=='function')throw new Error('Analysis input port is missing');
-    inputPort.onmessage=receive;inputPort.onmessageerror=()=>fail(new Error('Analysis input could not be decoded'));inputPort.start();
+    inputPort.onmessage=receive;inputPort.onmessageerror=()=>{close();fail(new Error('Analysis input could not be decoded'));};inputPort.start();
     self.postMessage({type:'analysis-ready',token});return;
    }
    if(!detector)throw new Error('Analysis is not initialized');
-   if(message.type==='analysis-close'){closed=true;inputPort.close();self.close();return;}
-   if(message.type==='configure'){detector.configure(message.message);return;}
+   if(message.type==='analysis-close'){close();self.close();return;}
+   if(message.type==='configure'){cancelPump();detector.configure(message.message);return;}
    if(message.type!=='capture')throw new Error('Unknown analysis message');
    const mic=message.mic,reference=message.reference;
    if(!(mic instanceof Float32Array)||!Number.isFinite(message.frame)||message.frame<0)throw new Error('Invalid captured audio block');
@@ -2196,8 +2286,10 @@ const analysisWorkerBoot = `
    if(reference!==null&&reference!==undefined&&(!(reference instanceof Float32Array)||reference.length!==mic.length))throw new Error('Unpaired rendered audio block');
    let rendered=reference;
    if(!rendered&&detector.referenceEnabled&&detector.reference.options.routed)rendered=new Float32Array(mic.length);
+   cancelPump();
    for(let i=0;i<mic.length;i+=128)detector.process(mic.subarray(i,i+128),(message.frame+i)/rate,rendered&&rendered.subarray(i,i+128));
-  }catch(error){closed=true;fail(error);if(inputPort)inputPort.close();}
+   pump();
+  }catch(error){close();fail(error);}
  };
  self.onmessage=receive;
 })();
