@@ -52,7 +52,10 @@ class EchoAttribution {
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
   const job=this.pending[0];
   if(!job.stage){
-   if(t+n/this.rate<job.signalTime+(job.message.toneCheck ? .132 : .052))return;
+   // A small raw clock step is tolerated without resetting the PCM ring.
+   // Its timestamp can therefore lead the samples actually received. Wait
+   // for the exact same sample bound that prepare() will read, not raw time.
+   if(this.total<this.captureEnd(job))return;
    if(!this.prepare(job)){this.pending.shift();return;}
   }
   this.advance(job);
@@ -196,10 +199,11 @@ class EchoAttribution {
   if(relative<0||relative>=array.length-1)return 0;
   const at=Math.floor(relative),fraction=relative-at;return array[at]*(1-fraction)+array[at+1]*fraction;
  }
+ captureEnd(job){return Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate);}
  prepare(job){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
-  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=this.captureEnd(job)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total){this.drop(job,'capture-window-incomplete',{stage:'prepare'});return false;}
   if(job.start<this.total-this.size){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;

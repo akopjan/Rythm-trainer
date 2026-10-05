@@ -1,12 +1,12 @@
 // Candidate waveform attribution only; synthetic audio, no physical microphone.
 const target=Deno.args[0]??'index.html';
-const html=await Deno.readTextFile(target),source=html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)?.[1];
+const html=await Deno.readTextFile(target),source=String(target).endsWith('.js')?html:html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)?.[1];
 if(!source)throw new Error('Missing inline audio DSP script');
 const EchoAttribution=new Function(source+';return EchoAttribution;')();
 const results=[],record=(name,ok,evidence={})=>results.push({name,status:ok?'PASS':'FAIL',evidence});
 const read=(array,position)=>{const i=Math.floor(position),f=position-i;return i>=0&&i+1<array.length?array[i]*(1-f)+array[i+1]*f:0;};
 const check=(name,run)=>{try{const evidence=run();record(name,evidence.ok,evidence);}catch(error){record(name,false,{error:error.message});}};
-function simulate({rate=8000,delay=.065,reflections=[[.02,.25]],nearAmplitude=0,frequency=220,kind='mixed',inverted=false,changed=null,noEchoProof=false,ready=true,anchor=true,headphones=false,heldAmplitude=0,legato=false,directGain=.55,callbackLag=0,canAudit=false,backgroundNoise=0,pitches=[330,440,293.66]}={}){
+function simulate({rate=8000,delay=.065,reflections=[[.02,.25]],nearAmplitude=0,frequency=220,kind='mixed',inverted=false,changed=null,noEchoProof=false,ready=true,anchor=true,headphones=false,heldAmplitude=0,legato=false,directGain=.55,callbackLag=0,canAudit=false,backgroundNoise=0,pitches=[330,440,293.66],clockLeadSamples=0,clockJitter=false}={}){
  const duration=3.6,length=Math.ceil(duration*rate),render=new Float32Array(length),capture=new Float32Array(length),clean=new Float32Array(length),predicted=new Float32Array(length),times=[.45,1.15,1.85],events=[],emitted=[],timings=[];
  let seed=173;
  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296*2-1;};
@@ -25,7 +25,10 @@ function simulate({rate=8000,delay=.065,reflections=[[.02,.25]],nearAmplitude=0,
  const classifier=new EchoAttribution(rate,m=>emitted.push({...m}));
  for(let i=0;i<length;i+=128){
   const end=Math.min(i+128,length),t=i/rate,start=performance.now();
-  classifier.process(render.subarray(i,end),capture.subarray(i,end),clean.subarray(i,end),t,{enabled:true,ready,canAudit,noEchoProof,renderRecent:true,cancelReady:anchor,delayMs:anchor?delay*1000:null,predictedBlock:predicted.subarray(i,end)});
+  // The paired PCM is continuous even when raw AudioWorklet timestamps take
+  // a small forward step or repeat/catch up. Neither changes received samples.
+  const jitter=clockJitter?(i/128%60===8?-128:i/128%60===24?128:0):0,clockOffset=i>0?(clockLeadSamples+jitter)/rate:0;
+  classifier.process(render.subarray(i,end),capture.subarray(i,end),clean.subarray(i,end),t+clockOffset,{enabled:true,ready,canAudit,noEchoProof,renderRecent:true,cancelReady:anchor,delayMs:anchor?delay*1000:null,predictedBlock:predicted.subarray(i,end)});
   for(const when of echoTimes)if(when+.006+callbackLag>=t&&when+.006+callbackLag<end/rate){const m={type:'onset',time:when+.006,level:.05};events.push(m);classifier.queue(m,.004);}
   timings.push(performance.now()-start);
  }
@@ -50,6 +53,21 @@ for(const [name,options] of [
  ['A headphone player is retained despite a continuously rendered backing',{headphones:true,noEchoProof:true,ready:true,anchor:false,nearAmplitude:.025}],
  ])check(name,()=>{const run=simulate(options);return {ok:run.emitted.length===3&&run.emitted.every((message,i)=>message.time===run.events[i].time),published:run.emitted.length,expectedTimes:run.events.map(m=>m.time),actualTimes:run.emitted.map(m=>m.time)};});
 for(const rate of [44100,48000,96000])check(`Fractional echo phase remains attributable at ${rate} Hz`,()=>{const run=simulate({rate,delay:.07333,reflections:[[.02217,.3]]}),sorted=[...run.timings].sort((a,b)=>a-b);return {ok:run.emitted.length===0&&run.classifier.rejected===3,published:run.emitted.length,rejected:run.classifier.rejected,p99BlockMs:sorted[Math.floor(sorted.length*.99)],maxBlockMs:Math.max(...sorted)};});
+for(const clockJitter of [false,true])for(const nearAmplitude of [0,.012])check(`A 256-sample clock lead${clockJitter?' with paired 128-sample jitter':''} ${nearAmplitude?'retains quiet bayan timestamps':'still rejects the backing'}`,()=>{
+ const run=simulate({rate:48000,clockLeadSamples:256,clockJitter,nearAmplitude}),expected=nearAmplitude?3:0,drops=run.classifier.dropCounts;
+ return {ok:run.emitted.length===expected&&run.classifier.rejected===3-expected&&Object.keys(drops).length===0&&run.emitted.every((m,i)=>m.time===run.events[i].time),published:run.emitted.length,rejected:run.classifier.rejected,dropCounts:drops,actualTimes:run.emitted.map(m=>m.time)};
+});
+check('The recorded 132 ms observation window waits for its missing 193 samples',()=>{
+ const rate=48000,base=.08533333333333333,block=new Float32Array(128),messages=[],classifier=new EchoAttribution(rate,m=>messages.push(m)),meta={enabled:true,ready:false,canAudit:true,referencePresent:true,renderRecent:true};
+ let queued=false,early=null,almost=null;
+ for(let offset=0;offset<38400;offset+=128){
+  classifier.process(block,block,block,base+(offset+(offset?256:0))/rate,meta);
+  if(!queued&&classifier.total>=32128){classifier.queue({type:'onset',time:.7493333333333334,captureTime:.7520000000000001,toneCheck:true});queued=true;}
+  if(classifier.total===38144)early={pending:classifier.pending.length,rejected:classifier.rejected,stage:classifier.pending[0]?.stage??null};
+  if(classifier.total===38272)almost={pending:classifier.pending.length,rejected:classifier.rejected};
+ }
+ return {ok:early?.pending===1&&early.rejected===0&&early.stage===null&&almost?.pending===1&&almost.rejected===0&&classifier.pending.length===0&&classifier.rejected===1&&classifier.lastDecision.reason==='below-threshold'&&Object.keys(classifier.dropCounts).length===0&&messages.length===0,early,almost,rejected:classifier.rejected,lastDecision:classifier.lastDecision,dropCounts:classifier.dropCounts};
+});
 check('An unlocked model still audits proven digital backing with signed room paths',()=>{const run=simulate({ready:false,canAudit:true,anchor:false,reflections:[[.02,.25],[.061,-.12],[.102,.08]]});return {ok:run.emitted.length===0&&run.classifier.rejected===3,published:run.emitted.length,rejected:run.classifier.rejected,pending:run.classifier.pending.length};});
 check('A noisy microphone preserves quiet bayan while the acoustic model is unlocked',()=>{const run=simulate({ready:false,canAudit:true,anchor:false,nearAmplitude:.012,backgroundNoise:.006});return {ok:run.emitted.length===3,published:run.emitted.length,rejected:run.classifier.rejected};});
 check('Background noise plus unlocked backing does not prove an instrument attack',()=>{const run=simulate({ready:false,canAudit:true,anchor:false,backgroundNoise:.006});return {ok:run.emitted.length===0,published:run.emitted.length,rejected:run.classifier.rejected};});
