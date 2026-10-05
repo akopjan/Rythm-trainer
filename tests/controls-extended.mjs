@@ -29,6 +29,7 @@ class Element {
   addEventListener(k,fn) {(this.listeners[k] ??= []).push(fn);}
   async fire(type,event = {}) {for (const fn of this.listeners[type] ?? []) await fn({target:this,...event});}
   querySelector(tag) {return this.children.find(c => c.tagName === tag.toUpperCase());}
+  querySelectorAll(tag) {return this.children.flatMap(c => c instanceof Element ? [...(c.tagName === tag.toUpperCase() ? [c] : []), ...c.querySelectorAll(tag)] : []);}
   getBoundingClientRect() {return {width:850,height:290};}
   focus() {doc.activeElement = this;}
 }
