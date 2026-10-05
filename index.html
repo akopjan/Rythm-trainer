@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="sample-delete-v8">
+<meta name="rhythm-trainer-version" content="dry-click-v9">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -36,9 +36,9 @@
 </section>
 <div class="status"><span id="status" role="status" aria-live="polite">Нажмите Start и разрешите микрофон. Для точности используйте наушники.</span><div class="audio-meters"><div class="audio-meter-row"><span class="mic-label" title="Весь звук, который слышит микрофон">Вход</span><div class="mic-meter" role="meter" aria-label="Уровень микрофона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter"></div></div></div><div class="audio-meter-row"><span class="mic-label">После фильтра</span><div class="mic-meter filtered-meter" role="meter" aria-label="Уровень звука после фильтра" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-active="false"><div id="filtered-meter"></div></div></div><span class="meter-state" id="filtered-meter-status">Фильтр выключен</span></div></div>
 <section aria-labelledby="seq-title">
-<div class="section-head"><h2 id="seq-title">Ритм</h2><div class="seq-actions"><small id="step-count">8 шагов</small><button class="quiet" id="basic-pattern" title="Бочка, малый и хэт; метроном выключен">Базовый ритм</button><button class="quiet" id="clear-pattern">Очистить</button></div></div>
+<div class="section-head"><h2 id="seq-title">Ритм</h2><div class="seq-actions"><small id="step-count">8 шагов</small><button class="quiet" id="basic-pattern" title="Бочка, малый и щелчок; метроном выключен">Базовый ритм</button><button class="quiet" id="clear-pattern">Очистить</button></div></div>
 <div class="sequencer"><div id="sequencer" class="seq-grid"></div></div>
-<div class="seq-foot"><span>Базовый рисунок: бочка, малый и хэт. Метроном изначально выключен; каждый звук под вашим контролем.</span><span id="position">Такт 1 / 1</span></div>
+<div class="seq-foot"><span>Базовый рисунок: бочка, малый и короткий щелчок. Метроном изначально выключен; каждый звук под вашим контролем.</span><span id="position">Такт 1 / 1</span></div>
 </section>
 <section class="sample-panel" aria-labelledby="sample-title">
 <div class="section-head"><h2 id="sample-title">Записи для проверки</h2></div>
@@ -1511,7 +1511,7 @@ if(typeof AudioWorkletProcessor!=='undefined'){
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const tracks=[{name:'Бочка',color:'#bf5435'},{name:'Малый',color:'#a8792f'},{name:'Хэт',color:'#438371'},{name:'Тарелка',color:'#657db3'}];
+const tracks=[{name:'Бочка',color:'#bf5435'},{name:'Малый',color:'#a8792f'},{name:'Щелчок',color:'#438371'},{name:'Тарелка',color:'#657db3'}];
 const pattern=sanitizeSettings({}).pattern;
 // The basic groove is independent of the optional metronome.
 const state={running:false,pending:false,token:0,bpm:100,bars:1,beats:4,division:8,events:[],attacks:[],showAllBars:false,adaptive:null,background:{status:'unknown',reason:'startup',time:-Infinity,version:0,ready:false},isolation:{status:'preparing',time:-Infinity,reason:'startup'},reference:{status:'waiting',delayMs:null,lastTime:-Infinity,confidence:0,locked:false,waitUntil:0},trackEnabled:[true,true,true,true],trackVolumes:[100,100,100,100],scoreAfter:0,count:0,sum:0,sumAbs:0,sumSq:0,errors:[],epoch:0,next:0,drawStep:-1,stoppedCycle:0,lastBar:-1,calibrating:false,calibrationEnd:0,readyTime:0,measuring:false,measurementEnd:0,measureDeadline:0};
@@ -1999,7 +1999,29 @@ function updateStats(){
 }
 function addHit(time,kind='mic'){if(!state.running||state.pending||state.calibrating||state.measuring)return;if(kind==='mic'&&time<state.reference.acceptAfter)return;const corrected=time-(kind==='mic'?Number($('latency').value)/1000:0);if(corrected<state.readyTime)return;const pos=(corrected-state.epoch)/stepDuration();const nearest=Math.round(pos);if(nearest<0)return;const err=(pos-nearest)*stepDuration()*1000;const step=((nearest%stepCount())+stepCount())%stepCount();const cycle=Math.floor(nearest/stepCount());const event={step,error:err,cycle,kind,rawMs:(time-state.epoch)*1000,correctionMs:kind==='mic'?(Number($('latency').value)||0):0};state.attacks.push(event);state.events.push(event);if(state.events.length>3000)state.events.splice(0,state.events.length-3000);state.count++;state.errors.push(err);state.sum+=err;state.sumAbs+=Math.abs(err);state.sumSq+=err*err;adaptLatency(event);$('empty').hidden=true;$('last-hit').textContent=`${kind==='key'?'Пробел':'Атака'}: ${event.error>0?'+':''}${Math.round(event.error)} мс · ${inTolerance(event.error)?'в допуске':event.error<0?'раньше':'позже'}`;updateStats();drawChart();}
 function handleDSP(m){recordSampleDiagnostics(m);if(m.type==='detection-state'){acceptDetection(m);return;}if(m.type==='filtered-level'){acceptFilteredLevel(m);return;}if(m.type==='calibration-progress'){if(state.running&&state.calibrating&&m.id===state.token&&Number.isFinite(m.end)){state.calibrationEnd=m.end;state.calibrationWaiting=false;state.readyTime=m.end;}return;}if(m.type==='background-state'){acceptBackground(m);return;}if(m.type==='analysis-state'){acceptAnalysis(m);return;}if(m.type==='acoustic-sync'){syncAcoustic(m);return;}if(m.type==='latency-result'){finishLatencyMeasurement(m);return;}if(!state.running&&!state.measuring)return;if(m.type==='level'){const value=Math.min(100,Math.max(0,(20*Math.log10(Math.max(m.value,1e-6))+60)/60*100));$('meter').style.width=value+'%';$('meter').parentElement.setAttribute('aria-valuenow',Math.round(value));}if(m.type==='onset'&&!state.measuring&&m.id===state.token&&m.isolated===true&&m.source==='instrument'&&Number.isFinite(m.time)&&m.time>=state.scoreAfter)addHit(m.time);if(m.type==='calibrated'&&(m.id===undefined||m.id===state.token)){state.calibrating=false;state.calibrationWaiting=false;state.readyTime=state.calibrationEnd;clearResults();setControls();$('echo-info').textContent=m.ready===false?'Не удалось собрать чистый профиль. Фон обновляется только в уверенных паузах.':'Профиль собран. В паузах игры он будет осторожно уточняться.';setStatus(m.ready===false?'Профиль фона пока не построен. Повторите калибровку без игры инструмента.':'Калибровка завершена. Можно играть.');}}
-function makeSound(type,accent=false){const rate=context.sampleRate,duration=[.34,.23,.065,.85,.04][type];const b=context.createBuffer(1,Math.ceil(rate*duration),rate),d=b.getChannelData(0);let seed=type*1787+91,phase=0,last=0;for(let i=0;i<d.length;i++){const t=i/rate;seed=(1664525*seed+1013904223)>>>0;const noise=seed/2147483648-1;let v=0;if(type===0){const f=48+130*Math.exp(-t*36);phase+=2*Math.PI*f/rate;v=Math.sin(phase)*Math.exp(-t*16)*.84+noise*Math.exp(-t*230)*.12;}if(type===1){const hp=noise-last;last=noise;v=hp*.27*Math.exp(-t*22)+Math.sin(2*Math.PI*180*t)*.27*Math.exp(-t*30);}if(type===2||type===3){const hp=noise-last;last=noise;v=hp*(type===2?.19:.16)*Math.exp(-t*(type===2?70:7));if(type===3)v+=(Math.sin(t*2*Math.PI*4211)+Math.sin(t*2*Math.PI*5879))*.025*Math.exp(-t*8);}if(type===4)v=Math.sin(2*Math.PI*(accent?1550:1100)*t)*Math.exp(-t*95)*.32;const attack=Math.min(1,i/(rate*.0008));d[i]=v*attack;}return b;}
+function makeSound(type,accent=false){
+ const rate=context.sampleRate,duration=[.34,.23,.036,.85,.04][type];
+ const b=context.createBuffer(1,Math.ceil(rate*duration),rate),d=b.getChannelData(0);
+ let seed=type*1787+91,phase=0,last=0;
+ const clickNoiseAlpha=1-Math.exp(-2*Math.PI*6000/rate);
+ for(let i=0;i<d.length;i++){
+  const t=i/rate;seed=(1664525*seed+1013904223)>>>0;const noise=seed/2147483648-1;let v=0;
+  if(type===0){const f=48+130*Math.exp(-t*36);phase+=2*Math.PI*f/rate;v=Math.sin(phase)*Math.exp(-t*16)*.84+noise*Math.exp(-t*230)*.12;}
+  if(type===1){const hp=noise-last;last=noise;v=hp*.27*Math.exp(-t*22)+Math.sin(2*Math.PI*180*t)*.27*Math.exp(-t*30);}
+  if(type===2){
+   // A dry wooden tap: short resonances, with seeded detail only at the attack.
+   // Retain a broadband fingerprint for acoustic sync without a hissing tail.
+   last+=clickNoiseAlpha*(noise-last);
+   v=(Math.sin(2*Math.PI*1170*t)*.19+Math.sin(2*Math.PI*1810*t)*.10)*Math.exp(-t*240)
+     +last*.20*Math.exp(-t*550);
+   v*=Math.min(1,(d.length-1-i)/(rate*.002));
+  }
+  if(type===3){const hp=noise-last;last=noise;v=hp*.16*Math.exp(-t*7)+(Math.sin(t*2*Math.PI*4211)+Math.sin(t*2*Math.PI*5879))*.025*Math.exp(-t*8);}
+  if(type===4)v=Math.sin(2*Math.PI*(accent?1550:1100)*t)*Math.exp(-t*95)*.32;
+  const attack=Math.min(1,i/(rate*.0008));d[i]=v*attack;
+ }
+ return b;
+}
 function playBuffer(buffer,when,output=master){if(!context||!master)return;const src=context.createBufferSource();src.buffer=buffer;src.connect(output);activeSources.add(src);src.onended=()=>{activeSources.delete(src);src.disconnect();};src.start(when);}
 function schedule(){if(!state.running||!context)return;const now=context.currentTime,step=stepDuration();if(state.epoch+state.next*step<now-.06){stop();setStatus('Воспроизведение прервалось. Нажмите Start для новой сессии.',true);return;}while(state.epoch+state.next*step<now+.12){const when=state.epoch+state.next*step,i=state.next%stepCount(),p=patternIndex(i);tracks.forEach((_,r)=>{if(state.trackEnabled[r]&&pattern[r][p])playBuffer(buffers[r],when,trackGains[r]||master);});if($('click').checked&&i%(state.division/4)===0)playBuffer(clickBuffers[i%stepsPerBar()===0?1:0],when,clickGain||master);state.next++;}}
 function audibleTime(eventTime=performance.now()){if(!context)return 0;const stamp=context.getOutputTimestamp?.();if(stamp&&stamp.contextTime>0&&stamp.performanceTime>0)return stamp.contextTime+(eventTime-stamp.performanceTime)/1000;return context.currentTime-(context.outputLatency||context.baseLatency||0)+(eventTime-performance.now())/1000;}

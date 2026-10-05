@@ -193,7 +193,7 @@ for(const rate of [44100,48000,96000]) {
 }
 // Feed synthesized instruments from the actual app through its detector.
 el('mic').checked=false;await api.start();
-for(const [type,name] of ['kick','snare','hat','cymbal'].entries()) {
+for(const [type,name] of ['kick','snare','dry tap','cymbal'].entries()) {
   const buffer=api.makeSound(type).getChannelData(0),hits=[],d=new Detector(48000,m=>{if(m.type==='onset')hits.push(m.time);});
   d.configure({type:'arm',start:0,duration:3});
   runDSP(d,48000,3,t=>[.2,1.1,2].reduce((s,start)=>{const index=Math.floor((t-start)*48000);return s+(index>=0 && index<buffer.length ? buffer[index]*.6 : 0);},0));

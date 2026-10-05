@@ -37,6 +37,7 @@ function createApp(storage = storageDouble(), options = {}) {
     addEventListener(type, callback) {(this.listeners[type] ??= []).push(callback);}
     async fire(type, event = {}) {for (const callback of this.listeners[type] ?? []) await callback({target: this, ...event});}
     querySelector(tag) {return descendants(this).find(child => child.tagName === tag.toUpperCase());}
+    querySelectorAll(tag) {return descendants(this).filter(child => child.tagName === tag.toUpperCase());}
     getBoundingClientRect() {return {width: 850, height: 290};}
     focus() {doc.activeElement = this;}
     click() {if (this.tagName === 'A') downloads.push({href: this.href, filename: this.download, blob: blobs.get(this.href)});return this.fire('click');}
