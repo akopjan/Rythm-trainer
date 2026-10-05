@@ -24,7 +24,7 @@ class RhythmSampleCapture extends AudioWorkletProcessor {
 }
 registerProcessor('rhythm-sample-capture',RhythmSampleCapture);
 `;
-const sampleRecorderState={active:null,pending:false,generation:0,records:new Map(),dbPromise:null,objectURLs:[],initialized:false,workletModules:new WeakMap()};
+const sampleRecorderState={active:null,pending:false,exporting:false,generation:0,records:new Map(),dbPromise:null,objectURLs:[],initialized:false,workletModules:new WeakMap()};
 function sampleWav(samples,sampleRate){
  if(!Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>384000)throw new Error('Некорректная частота записи.');
  const data=new ArrayBuffer(44+samples.length*2),view=new DataView(data);
@@ -51,38 +51,62 @@ function sampleRecorderDB(){
  return sampleRecorderState.dbPromise;
 }
 async function sampleStore(record){const db=await sampleRecorderDB();await new Promise((resolve,reject)=>{const tx=db.transaction('samples','readwrite');tx.objectStore('samples').put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Не удалось сохранить запись.'));tx.onabort=tx.onerror;});}
-async function sampleLoad(){const db=await sampleRecorderDB();return await new Promise((resolve,reject)=>{const tx=db.transaction('samples','readonly'),request=tx.objectStore('samples').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+async function sampleLoad(){const db=await sampleRecorderDB();return await new Promise((resolve,reject)=>{const tx=db.transaction('samples','readonly'),request=tx.objectStore('samples').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);tx.onabort=tx.onerror=()=>reject(tx.error||new Error('Не удалось прочитать сохранённые записи.'));});}
+function sampleLoadForExport(){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Хранилище не ответило за 3 секунды.')),3000);sampleLoad().then(records=>{clearTimeout(timer);resolve(records);},error=>{clearTimeout(timer);reject(error);});});}
 function sampleSetStatus(text){const node=$('sample-status');if(node)node.textContent=text;}
 function sampleRecorderControls(){
  const busy=sampleRecorderState.pending||Boolean(sampleRecorderState.active);
  for(const id of ['sample-with','sample-without'])if($(id))$(id).disabled=busy||state.pending||state.measuring||state.calibrating;
  if($('sample-stop'))$('sample-stop').disabled=!busy;
- if($('sample-save'))$('sample-save').disabled=busy||sampleRecorderState.records.size===0;
+ if($('sample-save'))$('sample-save').disabled=busy||sampleRecorderState.exporting||sampleRecorderState.records.size===0;
  if($('sample-list')){$('sample-list').hidden=busy;if(busy)for(const player of $('sample-list').querySelectorAll('audio'))player.pause();}
 }
 function updateSampleControls(){sampleRecorderControls();}
 function sampleRecordFolder(kind){return {'with':'with-bayan','without':'without-bayan','with-error':'with-bayan-error','without-error':'without-bayan-error'}[kind];}
 function sampleErrorLabel(error){const reason=error?.reason||'unknown';return ({'missing-input':'Микрофон прервал передачу звука','clock-gap':'Пропуск в аудиочасах','clock-backward':'Аудиочасы пошли назад','too-many-gaps':'В записи слишком много пропусков','gap-invalid':'Нарушились сведения о пропуске','clock-boundary-invalid':'Нарушились сведения о временных метках','processor-error':'Ошибка обработчика записи','chunk-order':'Нарушен порядок звуковых блоков','transfer-incomplete':'Получены не все звуковые блоки'}[reason]||'Запись прервана')+` (${reason}).`;}
+function sampleRecordTime(record){const value=Date.parse(record?.metadata?.createdAt);return Number.isFinite(value)?value:-Infinity;}
+function sampleSortedRecords(records=sampleRecorderState.records.values()){return [...records].sort((a,b)=>sampleRecordTime(b)-sampleRecordTime(a));}
+function sampleValidRecord(record){return Boolean(sampleRecordFolder(record?.kind)&&record.mic instanceof Blob&&record.reference instanceof Blob&&Number.isFinite(record.metadata?.durationSeconds));}
+function sampleMergeRecords(records){for(const record of records){if(!sampleValidRecord(record))continue;const current=sampleRecorderState.records.get(record.kind);if(!current||sampleRecordTime(record)>sampleRecordTime(current))sampleRecorderState.records.set(record.kind,record);}}
+function sampleRecordDate(record){return Number.isFinite(sampleRecordTime(record))?new Date(record.metadata.createdAt).toLocaleString(undefined,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'дата неизвестна';}
 function sampleRenderList(){
  for(const url of sampleRecorderState.objectURLs)URL.revokeObjectURL(url);sampleRecorderState.objectURLs=[];
  const list=$('sample-list');if(!list)return;list.replaceChildren();
- for(const kind of ['without','with','without-error','with-error']){const record=sampleRecorderState.records.get(kind);if(!record)continue;const item=document.createElement('div'),label=document.createElement('p'),button=document.createElement('button'),withBayan=kind==='with'||kind==='with-error',failed=kind.endsWith('-error');
+ const records=sampleSortedRecords();for(const record of records){const kind=record.kind,item=document.createElement('div'),label=document.createElement('p'),button=document.createElement('button'),withBayan=kind==='with'||kind==='with-error',failed=kind.endsWith('-error');
   const uncertain=record.metadata.timingReliable===false,partial=record.metadata.incomplete??failed;
-  label.textContent=`${withBayan?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${new Date(record.metadata.createdAt).toLocaleTimeString()}${uncertain?' · временные метки нестабильны':''}${record.metadata.hasGaps?' · запись с пропусками: '+(record.metadata.missingSamples/record.metadata.sampleRate*1000).toFixed(1)+' мс':''}${partial?' · неполная запись'+(record.metadata.captureError?' · '+sampleErrorLabel(record.metadata.captureError):''):''}${record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
+  label.textContent=`${withBayan?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${sampleRecordDate(record)}${record===records[0]&&Number.isFinite(sampleRecordTime(record))?' · Последняя':''}${uncertain?' · временные метки нестабильны':''}${record.metadata.hasGaps?' · запись с пропусками: '+(record.metadata.missingSamples/record.metadata.sampleRate*1000).toFixed(1)+' мс':''}${partial?' · неполная запись'+(record.metadata.captureError?' · '+sampleErrorLabel(record.metadata.captureError):''):''}${record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
   item.append(label);if(record.metadata.samples!==0){const player=document.createElement('audio');player.controls=true;player.preload='metadata';player.setAttribute('aria-label',withBayan?'Запись микрофона с баяном':'Запись микрофона без баяна');player.addEventListener('play',()=>{if(state.running)stop();});const url=URL.createObjectURL(record.mic);sampleRecorderState.objectURLs.push(url);player.src=url;item.append(player);}button.type='button';button.textContent=failed?'Скачать запись и диагностику (ZIP)':'Скачать эту запись (ZIP)';button.addEventListener('click',()=>sampleDownload([record]));item.append(button);list.append(item);
  }
  sampleRecorderControls();
 }
-async function sampleDownload(records=[...sampleRecorderState.records.values()]){
- if(!records.length)return;try{const entries=[];for(const record of records){const folder=sampleRecordFolder(record.kind);if(!folder)continue;entries.push({name:`${folder}/mic.wav`,data:record.mic},{name:`${folder}/reference.wav`,data:record.reference},{name:`${folder}/metadata.json`,data:JSON.stringify(record.metadata,null,2)});}const blob=await sampleZip(entries),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`rhythm-trainer-samples-${new Date().toISOString().replace(/[:.]/g,'-')}.zip`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);sampleSetStatus('Архив скачан. Напишите в чате, что запись готова.');}catch(error){sampleSetStatus(`Не удалось скачать запись: ${error.message}`);}
+async function sampleDownload(selectedRecords){
+ const globalExport=selectedRecords===undefined;if(globalExport&&sampleRecorderState.exporting)return;
+ const statusGeneration=sampleRecorderState.generation,mayUpdateStatus=()=>sampleRecorderState.generation===statusGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending;
+ let records=selectedRecords?[...selectedRecords]:null;const storageRefresh={attempted:globalExport,success:null,error:null};
+ if(globalExport){sampleRecorderState.exporting=true;sampleRecorderControls();}
+ try{
+  if(globalExport){
+   try{sampleMergeRecords(await sampleLoadForExport());storageRefresh.success=true;}
+   catch(error){storageRefresh.success=false;storageRefresh.error=String(error?.message||error||'Storage read failed').replace(/[\u0000-\u001f\u007f]/g,' ').slice(0,160);}
+   // Choose one snapshot after the read; newer in-memory captures always win.
+   records=sampleSortedRecords();if(!sampleRecorderState.active&&!sampleRecorderState.pending)sampleRenderList();
+  }
+  records=records.filter(sampleValidRecord);if(!records.length)return;
+  const exportedAt=new Date().toISOString(),entries=[],manifest=[];
+  for(const record of records){const folder=sampleRecordFolder(record.kind);entries.push({name:`${folder}/mic.wav`,data:record.mic},{name:`${folder}/reference.wav`,data:record.reference},{name:`${folder}/metadata.json`,data:JSON.stringify(record.metadata,null,2)});manifest.push({kind:record.kind,folder,createdAt:record.metadata.createdAt,durationSeconds:record.metadata.durationSeconds,samples:record.metadata.samples,appVersion:record.metadata.appVersion||'unversioned'});}
+  entries.push({name:'export-info.json',data:JSON.stringify({version:1,exportedAt,currentAppVersion:document.querySelector('meta[name="rhythm-trainer-version"]')?.content||window.location.search||'unversioned',currentPageURL:window.location.href,storageRefresh,records:manifest},null,2)});
+  const blob=await sampleZip(entries),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`rhythm-trainer-samples-${exportedAt.replace(/[:.]/g,'-')}.zip`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);if(mayUpdateStatus())sampleSetStatus(`Архив скачан. Записей: ${records.length}. Отправьте ZIP в чат.${storageRefresh.success===false?' Хранилище недоступно; скачаны записи, доступные на странице.':''}`);
+ }catch(error){if(mayUpdateStatus())sampleSetStatus(`Не удалось скачать запись: ${error.message}`);}
+ finally{if(globalExport){sampleRecorderState.exporting=false;sampleRecorderControls();}}
 }
+
 function sampleDiagnosticsValue(value,depth=0){
  if(value===null||typeof value==='boolean')return value;if(typeof value==='number')return Number.isFinite(value)?value:null;if(typeof value==='string')return value.slice(0,160);if(depth>=3)return null;
  if(Array.isArray(value))return value.slice(0,16).map(x=>sampleDiagnosticsValue(x,depth+1));if(value&&typeof value==='object'){const result={};for(const key of Object.keys(value).slice(0,24))if(key!=='samples'&&key!=='reference'&&key!=='profile'&&key!=='buffer')result[key]=sampleDiagnosticsValue(value[key],depth+1);return result;}return null;
 }
 function recordSampleDiagnostics(message){
  const recording=sampleRecorderState.active;if(!recording||!['detection-state','filtered-level','background-state','analysis-state','acoustic-sync'].includes(message?.type)||message.id!==undefined&&message.id!==recording.sessionId)return;
- const snapshot=sampleDiagnosticsValue(message);recording.diagnosticLatest[message.type]=snapshot;
+ const snapshot=sampleDiagnosticsValue(message);snapshot.receivedContextTime=Number.isFinite(recording.ctx?.currentTime)?recording.ctx.currentTime:null;recording.diagnosticLatest[message.type]=snapshot;
  if(recording.diagnostics.length<2000)recording.diagnostics.push(snapshot);else recording.diagnosticsDropped++;
 }
 function sampleClockSummary(recording,message){
@@ -178,5 +202,5 @@ function initSampleRecorder(){
  if(sampleRecorderState.initialized)return;sampleRecorderState.initialized=true;
  const loadGeneration=sampleRecorderState.generation;
  $('sample-with')?.addEventListener('click',()=>startSampleRecording('with'));$('sample-without')?.addEventListener('click',()=>startSampleRecording('without'));$('sample-stop')?.addEventListener('click',()=>stopSampleRecording());$('sample-save')?.addEventListener('click',()=>sampleDownload());sampleRecorderControls();
- sampleLoad().then(records=>{for(const record of records)if(sampleRecordFolder(record.kind)&&record.mic instanceof Blob&&record.reference instanceof Blob&&Number.isFinite(record.metadata?.durationSeconds)&&!sampleRecorderState.records.has(record.kind))sampleRecorderState.records.set(record.kind,record);sampleRenderList();if(records.length&&sampleRecorderState.generation===loadGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending)sampleSetStatus('Предыдущие записи и сведения об ошибках сохранены в этом браузере. Их можно скачать.');}).catch(()=>{if(sampleRecorderState.generation===loadGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending)sampleSetStatus('Записи можно скачать после завершения. Постоянное хранилище этого браузера недоступно.');});
+ sampleLoad().then(records=>{sampleMergeRecords(records);sampleRenderList();if(records.length&&sampleRecorderState.generation===loadGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending)sampleSetStatus('Предыдущие записи и сведения об ошибках сохранены в этом браузере. Их можно скачать.');}).catch(()=>{if(sampleRecorderState.generation===loadGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending)sampleSetStatus('Записи можно скачать после завершения. Постоянное хранилище этого браузера недоступно.');});
 }
