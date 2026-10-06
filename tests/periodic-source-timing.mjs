@@ -22,7 +22,8 @@ const missingOwn=attempt({known:false,waveform:false,audit:true,own:false});chec
 for(const [name,options] of [['Missing source-time instrument proof',{own:false}],['A source without profile, waveform or audit proof',{known:false}],['Missing tracked frequency',{frequency:null}],['Unrelated tracked frequency',{frequency:330}],['A harmonic-only frequency cannot label a new fundamental',{frequency:440}],['An absent subharmonic cannot label a new fundamental',{frequency:110}]]){
  const run=attempt(options);check(name+' preserves the held-tone veto',run,run.emitted.length===0);
 }
-const unstable=attempt({signal:t=>t>=origin&&t<origin+.18?reed(t,Math.min(1,(t-origin)/.22)):0});check('A short projected tone without stable late support does not override the veto',unstable,unstable.emitted.length===0);
+const brief=attempt({signal:t=>t>=origin&&t<origin+.18?reed(t,Math.min(1,(t-origin)/.22)):0});check('A real180ms note is confirmed near its source beginning rather than rejected for a late release',brief,brief.emitted.length===1&&brief.refinedTime>=origin-.015&&brief.refinedTime<=origin+.065);
+const unstable=attempt({signal:t=>t>=origin&&t<origin+.055?reed(t,Math.min(1,(t-origin)/.22)):0});check('A55ms transient without two source-centered tone windows does not override the veto',unstable,unstable.emitted.length===0);
 const heldResults=[];for(const time of [.6,.8,1,1.2,1.4,1.6])heldResults.push(attempt({time,signal:t=>reed(t,1+.25*Math.sin(2*Math.PI*1.4*t))}));check('Held periodic sound with bellows modulation creates no extra source starts',heldResults,heldResults.every(run=>run.emitted.length===0));
 const ordinary=attempt({type:'attack'});check('Ordinary attack evidence still uses its24ms before-window and keeps the original time',ordinary,ordinary.emitted.length===0&&ordinary.refinedTime===candidate);
 // Verify that ordinary waveform jobs retain the short capture prefix. A second

@@ -120,6 +120,9 @@ class EchoAttribution {
   this.timing.peak=Math.max(this.timing.peak,this.pending.length);
  }
  accept(job){
+  const lowProof=this.lowPeriodicSourceProof(job);
+  if(lowProof.ok&&!job.lowPeriodicTimeApplied){job.message.originalPeriodicTime=job.message.originalPeriodicTime??job.message.time;job.message.time=lowProof.time;job.lowPeriodicTimeApplied=true;}
+
   // Residual percussion after a learned spectral mask needs independent
   // instrument evidence in the original capture, observed with lookahead.
   const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
@@ -285,9 +288,43 @@ class EchoAttribution {
   job.highPeriodicVerified=true;return true;
  }
 
+ lowPeriodicSourceProof(job){
+  if(job.lowPeriodicProof)return job.lowPeriodicProof;
+  return job.lowPeriodicProof=this.computeLowPeriodicSourceProof(job);
+ }
+ // Verify the named family at native rate, then place confirmation windows
+ // after its source rise. A delayed proposal must not sample the note release.
+ // Independent partial growth prevents a held tone or folded alias from
+ // supplying a new attack; optional H4 supports reed timbres with weak H2/H3.
+ computeLowPeriodicSourceProof(job){
+ const frequency=job.message?.frequency,rate=this.rate,count=Math.floor(.032*rate);
+ const own=job.evidenceSnapshot?.own===true,known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
+ if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(frequency)||frequency<80||frequency>Math.min(1400,rate*.45/2))return {ok:false,reason:'unproven-source'};
+ const early=job.eventIndex-Math.round(.140*rate),late=job.eventIndex+Math.round(.020*rate);
+ const frame=start=>this.highNativeFrame(job,start,count),energy=window=>{if(!window)return null;const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?this.highNativePower(window,frequency*h):0),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total)};};
+ const oldFrame=frame(early),afterFrame=frame(late),old=energy(oldFrame),after=energy(afterFrame);
+ if(!old||!after)return {ok:false,reason:'source-window-incomplete'};
+ const neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+ for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)if((frequency+offset)*h<=rate*.45)neighbour[h-1]=Math.max(neighbour[h-1],this.highNativePower(oldFrame,(frequency+offset)*h));
+ const floor=Math.max(1e-16,job.gate*job.gate*.012),newPartial=[1,2,3].some(h=>after.parts[h]>after.parts[0]*.012&&after.parts[h]>neighbour[h]*2.5+floor);
+ if(!(after.parts[0]>after.total*.025&&after.fraction>.35&&after.parts[0]>neighbour[0]*2.5+floor&&newPartial&&after.fraction>old.fraction*1.3&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'no-independent-native-rise',old,after,neighbour};
+ const onsetPower=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),limit=job.eventIndex-Math.round(.020*rate);let center=null;
+ for(let start=early;start<=limit;start+=step){const observed=energy(frame(start));if(!observed||observed.sum<onsetPower||observed.parts[0]<observed.total*.025)continue;center=start+(count-1)/2;break;}
+ if(center===null)return {ok:false,reason:'native-rise-not-located',old,after,neighbour};
+ const first=energy(frame(Math.round(center+.020*rate))),second=energy(frame(Math.round(center+.052*rate)));
+ if(!first||!second)return {ok:false,reason:'confirmation-incomplete'};
+ let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+ const stable=first.total>job.gate*job.gate*.04&&second.total>job.gate*job.gate*.04&&first.parts[0]>first.total*.025&&second.parts[0]>second.total*.025&&first.parts.slice(1).reduce((a,b)=>a+b,0)>first.parts[0]*.012&&second.parts.slice(1).reduce((a,b)=>a+b,0)>second.parts[0]*.012&&first.fraction>=.35&&second.fraction>=.35&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!stable)return {ok:false,reason:'source-centered-tone-not-stable',old,after,neighbour,first,second,shape,centerTime:this.baseTime+(job.start+center)/rate};
+ const time=Math.min(job.message.time,this.baseTime+(job.start+center)/rate);
+ return {ok:true,time,frequency,old,after,neighbour,first,second,shape};
+}
+
  // Verify a tracked note against an earlier projected source window. A slow
  // onset can already be sounding when its level crosses the attack threshold.
  periodicSourceRise(job){
+  if(job.lowPeriodicProof?.ok)return true;
+
   if(job.message?.frequency>=1600)return this.highPeriodicSourceRise(job);
   const frequency=job.message?.frequency;if(!Number.isFinite(frequency)||frequency<80||frequency>1400||!job.y)return false;
   const count=Math.floor(.032*this.rate/this.stride),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round(.02*this.rate);
@@ -308,6 +345,8 @@ class EchoAttribution {
  // two short source-time windows after projection. Drum/click decays do not
  // satisfy this; only the separate periodic rise check may refine onset time.
  stableInstrumentTone(job){
+  if(job.lowPeriodicProof?.ok){job.tonalFamilyCount=1;return true;}
+
   if(job.message?.source==='periodic'&&job.message?.frequency>=1600)return this.highStableInstrumentTone(job);
   job.tonalFamilyCount=0;
   if(!job.y||!Number.isFinite(job.eventIndex))return false;
