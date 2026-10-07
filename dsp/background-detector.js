@@ -1,20 +1,55 @@
 // The spectral front-end preserves the original microphone clock. Automatic
 // background updates never set the UI calibration flag or clear score history.
 class RhythmDetector extends LegacyRhythmDetector {
+
+ finishObservedCapture(){
+  const a=this.attribution;
+  if(!a.observedEOFLifecycleInstalled){installObservedEOFDrain(a);a.observedEOFLifecycleInstalled=true;}
+  // Only already-completed line births are flushed. No FFT frame is padded.
+  this.familyOnset.flush();
+  const stream=this.spectral,size=stream?.mic?.n,center=Number.isFinite(this.background?.lastTime)?this.background.lastTime:null;
+  const completedFrame=stream&&Number.isFinite(center)&&Number.isInteger(size)&&stream.nextCenter>=256?{center:stream.baseTime+(stream.nextCenter-256)/this.rate,end:stream.baseTime+(stream.nextCenter-256+size/2)/this.rate,size}:null;
+  return a.prepareObservedEndOfCapture(a.baseTime+a.total/this.rate,completedFrame);
+ }
+
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
-  super(rate,emit);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
+  super(rate,emit);installNativeTimbreLifetime(this.attribution);installStrongNativeTimbreLifetime(this.attribution);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
   this.confirmedAnchor=null;this.provenMatchFloor=0;this.lastCaptureEnd=null;this.lastReferenceAvailable=false;this.delayJumpEvidence=null;
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
-  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.familyOnset=new MultiHarmonicFamilyOnset(rate,2048,m=>this.onset(m));this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
-   if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return;
+   if(this.mode==='sustained'&&!m.familyProposal)return false;
+   if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
+   this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;
-   this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});
+   this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});return true;
+  };
+  this.attribution.publishNativeSupplemental=(job,r,parents,blockedBy)=>{
+   const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity};
+   const no=reason=>({accepted:false,reason,blockedBy});
+   if(!identity.h1)return no('new-body-h1-unmeasured');
+   const nativePhase=a.supplementalNativePhase(job,r);if(!nativePhase.ok)return {...no(nativePhase.reason),nativePhase};
+   const nativePeaks=a.supplementalNativeLocalPeak(job,r);if(!nativePeaks.ok)return {...no(nativePeaks.reason),nativePhase,nativePeaks};
+   const primary=this.acceptedSourceBirths.filter(p=>Math.abs(p.time-r.time)<.060);
+   if(primary.some(p=>Math.abs(p.time-r.time)<.020))return no('primary-coincidence20');
+   if(primary.some(p=>!a.sourceBirthSeparate(p,current,parents)))return no('primary-family-not-independent');
+   if(this.supplementalBirths.some(p=>Math.abs(p.time-r.time)<.060&&!a.sourceBirthSeparate(p,current,parents)))return no('supplemental-family-not-independent');
+   if(this.supplementalBirths.some(p=>Math.abs(p.time-r.time)<.020))return no('supplemental-coincidence20');
+   // Supplemental state never enters the baseline's acceptedTimes or lifetime
+   // stream. Read-only rearm proof sees only earlier supplemental families.
+   const saved=a.sourceFamilyLifetimes;let lifetime;
+   try{a.sourceFamilyLifetimes=this.supplementalBirths;lifetime=a.sourceFamilyLifetimeAllowed(job,r);}finally{a.sourceFamilyLifetimes=saved;}
+   if(!lifetime.allow)return no('supplemental-'+lifetime.reason);
+   const {familyCandidates,...message}=job.message;
+   this.supplementalBirths.push(current);while(this.supplementalBirths.length>64)this.supplementalBirths.shift();
+   this.scoredCount++;
+   this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
+   return {accepted:true,blockedBy,nativePhase,nativePeaks};
   };
  }
  ensureBackground(){
@@ -25,6 +60,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
  }
  clearConfirmedAnchor(revokeProfile=false){
+  if(revokeProfile){this.familyOnset?.reset();this.lastFamilyFrameTime=-Infinity;}
   this.confirmedAnchor=null;this.provenMatchFloor=this.reference.matches||0;this.delayJumpEvidence=null;
   if(revokeProfile&&this.background)this.background.beginCalibration({epoch:this.start||0,duration:this.duration||2.4,backing:this.reference.options.backing,oversubtraction:4});
  }
@@ -50,6 +86,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   return this.confirmedAnchor;
  }
  onset(message,gate=this.currentGate||this.threshold){
+  if(this.mode==='sustained'&&(this.auditEnabled||this.referenceEnabled)&&this.reference.options.backing&&!this.reference.noEchoProof&&this.attribution.meta.canAudit===true&&message.familyProposal!==true)return;
   this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
@@ -75,7 +112,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    return;
   }
   if(m.type==='calibrate'&&this.referenceEnabled){
-   this.periodic.reset();this.highPeriodic.reset();
+   this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;
    this.clearConfirmedAnchor();
    this.ensureBackground();this.backgroundCalibration={requestedStart:m.start,duration:m.duration,deadline:null,watchdog:m.start+Math.max(30,m.duration*5)};
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});
@@ -86,7 +123,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   super.configure(m);
   if(m.type==='arm'){
    this.clearConfirmedAnchor();this.lastCaptureEnd=null;this.lastReferenceAvailable=false;
-   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.highPeriodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
   if(m.type==='reference-sync')this.clearConfirmedAnchor();
   if(m.type==='reference-sync'&&this.referenceEnabled){
@@ -96,7 +133,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:m.backing,oversubtraction:4});
   }
   if(m.type==='backing-state'&&this.background){if(m.backing!==this.background.backing)this.clearConfirmedAnchor(true);this.background.configure({backing:m.backing});}
-  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate'){this.periodic.reset();this.highPeriodic.reset();}
+  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate'){this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;}
   if(m.type==='invalidate'){this.clearConfirmedAnchor();if(this.background){this.background.invalidate();this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});}}
  }
  independentHarmonics(frame){
@@ -122,7 +159,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   if(!referenceAvailable&&(this.lastReferenceAvailable||this.confirmedAnchor))this.clearConfirmedAnchor(true);
   this.lastReferenceAvailable=referenceAvailable;
   const confirmedAnchor=this.updateConfirmedAnchor();
-  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,
+  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,verifiedSourceDelayMs:confirmedAnchor?.delayMs??null,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,getEvidenceTime:()=>this.background?.lastTime??-Infinity,
    instrumentEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&(e.harmonic||this.background?.ready&&this.mode==='percussive'&&e.reason==='unmatched-transient')),
    tonalEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&e.status==='instrument'&&e.reason==='persistent-tonal-energy')});
   this.ensureBackground();
@@ -171,6 +208,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   // A proven waveform path subtracts only the actual correlated computer
   // waveform. Keep that path for quiet simultaneous attacks; the spectral
   // path handles the room response that cannot be verified by waveform fit.
+  if(this.mode==='sustained'&&this.active&&this.background.lastTime>=this.start&&this.background.lastTime!==this.lastFamilyFrameTime){this.lastFamilyFrameTime=this.background.lastTime;this.familyOnset.observe(result.result?.rawPower,this.background.lastTime,this.currentGate||this.threshold);}
   const sourceTime=useLinear?t:t-result.delaySamples/this.rate;
   const wasEnabled=this.referenceEnabled;
   const oldProfile=this.profile;this.profile=null;

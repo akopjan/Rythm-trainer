@@ -6,13 +6,13 @@ const analysisWorkerBoot = `
  const cancelPump=()=>{if(pumpTimer!==null){clearTimeout(pumpTimer);pumpTimer=null;}};
  const close=()=>{closed=true;cancelPump();if(inputPort)inputPort.close();};
  const fail=error=>self.postMessage({type:'analysis-error',token,message:String(error&&error.message||error).slice(0,240)});
- const pump=()=>{
-  pumpTimer=null;if(closed||!detector)return;
+ const pump=(fromCapture=false)=>{
+  if(!fromCapture)pumpTimer=null;if(closed||!detector)return;
   try{
-   const result=detector.attribution.drain({budgetMs:2,maxSteps:64});
+   const result=detector.attribution.drain({budgetMs:8,maxSteps:64});
    // Only ready work gets a continuation. New PCM must unblock observation
    // windows; an idle timer must never manufacture future signal evidence.
-   if(result.more)pumpTimer=setTimeout(pump,0);
+   if(result.more){if(pumpTimer===null)pumpTimer=setTimeout(pump,0);}else cancelPump();
   }catch(error){close();fail(error);}
  };
  const receive=event=>{
@@ -41,9 +41,8 @@ const analysisWorkerBoot = `
    if(reference!==null&&reference!==undefined&&(!(reference instanceof Float32Array)||reference.length!==mic.length))throw new Error('Unpaired rendered audio block');
    let rendered=reference;
    if(!rendered&&detector.referenceEnabled&&detector.reference.options.routed)rendered=new Float32Array(mic.length);
-   cancelPump();
    for(let i=0;i<mic.length;i+=128)detector.process(mic.subarray(i,i+128),(message.frame+i)/rate,rendered&&rendered.subarray(i,i+128));
-   pump();
+   pump(true);
   }catch(error){close();fail(error);}
  };
  self.onmessage=receive;

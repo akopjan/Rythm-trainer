@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="source-onsets-v16">
+<meta name="rhythm-trainer-version" content="source-onsets-v17">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -936,9 +936,8 @@ class ReferenceEcho {
 }
 
 // GENERATED_ATTRIBUTION_CORE_BEGIN
-globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,43,7,96,0,1,127,96,3,127,127,127,1,127,96,2,127,127,1,127,96,0,0,96,1,127,1,127,96,4,124,124,127,124,1,127,96,5,124,124,127,127,124,1,127,3,14,13,2,1,3,1,0,0,0,0,0,4,5,6,0,5,5,1,1,64,128,4,6,51,10,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,7,126,11,11,97,98,105,95,118,101,114,115,105,111,110,0,12,9,105,110,112,117,116,95,112,116,114,0,8,7,108,111,119,95,112,116,114,0,7,10,114,101,110,100,101,114,95,112,116,114,0,5,14,108,111,119,95,114,101,110,100,101,114,95,112,116,114,0,6,10,114,101,115,117,108,116,95,112,116,114,0,4,4,105,110,105,116,0,9,11,115,101,116,95,108,101,110,103,116,104,115,0,3,6,99,111,97,114,115,101,0,11,4,102,117,108,108,0,10,6,109,101,109,111,114,121,2,0,8,1,2,10,192,10,13,173,1,1,5,127,32,0,65,236,255,255,255,3,75,4,64,0,11,32,0,65,16,106,34,3,65,252,255,255,255,3,75,4,64,0,11,35,4,65,4,106,34,2,32,3,65,19,106,65,112,113,65,4,107,34,3,106,34,4,63,0,34,5,65,16,116,65,15,106,65,112,113,34,6,75,4,64,32,5,32,4,32,6,107,65,255,255,3,106,65,128,128,124,113,65,16,118,34,6,32,5,32,6,74,27,64,0,65,0,72,4,64,32,6,64,0,65,0,72,4,64,0,11,11,11,35,4,32,4,36,4,32,3,54,2,0,32,2,65,4,107,34,3,65,0,54,2,4,32,3,65,0,54,2,8,32,3,32,1,54,2,12,32,3,32,0,54,2,16,32,2,65,16,106,11,96,0,32,0,69,4,64,65,12,65,3,16,0,33,0,11,32,0,65,0,54,2,0,32,0,65,0,54,2,4,32,0,65,0,54,2,8,32,1,65,252,255,255,255,3,32,2,118,75,4,64,0,11,32,1,32,2,116,34,1,65,1,16,0,34,2,65,0,32,1,252,11,0,32,0,32,2,54,2,0,32,0,32,2,54,2,4,32,0,32,1,54,2,8,32,0,11,77,0,65,140,8,36,4,65,12,65,4,16,0,65,0,65,2,16,1,36,5,65,12,65,4,16,0,65,0,65,2,16,1,36,6,65,12,65,4,16,0,65,0,65,2,16,1,36,7,65,12,65,4,16,0,65,0,65,2,16,1,36,8,65,12,65,5,16,0,65,0,65,3,16,1,36,9,11,64,0,35,0,69,32,0,65,0,72,114,32,0,35,0,74,114,32,1,65,0,72,114,32,1,35,0,74,114,32,2,65,0,72,114,32,2,35,0,65,4,106,74,114,4,64,65,0,15,11,32,0,36,1,32,1,36,2,32,2,36,3,65,1,11,7,0,35,9,40,2,4,11,7,0,35,7,40,2,4,11,7,0,35,8,40,2,4,11,7,0,35,6,40,2,4,11,7,0,35,5,40,2,4,11,111,0,65,1,32,0,65,128,128,192,0,74,65,1,32,0,65,128,1,72,35,0,27,27,4,64,65,0,15,11,32,0,36,0,65,12,65,4,16,0,32,0,65,2,16,1,36,5,65,12,65,4,16,0,32,0,65,2,16,1,36,6,65,12,65,4,16,0,32,0,65,4,106,34,0,65,2,16,1,36,7,65,12,65,4,16,0,32,0,65,2,16,1,36,8,65,12,65,5,16,0,65,8,65,3,16,1,36,9,65,1,11,154,2,2,3,127,3,124,32,3,32,3,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,69,4,64,65,0,15,11,3,64,32,2,32,4,74,4,64,32,7,32,0,32,4,183,160,32,3,161,32,1,161,34,7,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,7,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,7,32,7,156,252,2,34,5,183,161,33,7,35,7,40,2,4,34,6,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,7,161,162,32,6,32,5,65,1,106,65,2,116,106,42,2,0,187,32,7,162,160,11,34,9,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,7,32,8,32,9,32,9,162,160,33,8,32,4,65,1,106,33,4,12,1,11,11,35,9,40,2,4,32,7,57,3,0,35,9,40,2,4,32,8,57,3,8,65,1,11,229,3,2,6,124,4,127,32,3,35,0,74,4,127,65,0,5,32,3,65,0,76,4,127,65,0,5,32,4,32,4,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,11,11,4,127,35,2,32,2,65,1,107,32,3,109,65,1,106,72,5,65,1,11,4,64,65,0,15,11,3,64,32,2,32,11,74,4,64,32,6,32,0,32,11,183,160,32,4,161,32,1,161,34,5,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,5,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,5,32,5,156,252,2,34,13,183,161,33,6,35,8,40,2,4,34,14,32,13,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,6,161,162,32,14,32,13,65,1,106,65,2,116,106,42,2,0,187,32,6,162,160,11,34,10,35,6,40,2,4,32,12,65,2,116,106,42,2,0,187,162,160,33,6,32,7,32,10,32,10,162,160,33,7,32,8,32,5,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,5,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,5,32,5,156,252,2,34,13,183,161,33,5,35,7,40,2,4,34,14,32,13,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,5,161,162,32,14,32,13,65,1,106,65,2,116,106,42,2,0,187,32,5,162,160,11,34,5,35,5,40,2,4,32,11,65,2,116,106,42,2,0,187,162,160,33,8,32,9,32,5,32,5,162,160,33,9,32,3,32,11,106,33,11,32,12,65,1,106,33,12,12,1,11,11,35,9,40,2,4,32,6,57,3,0,35,9,40,2,4,32,7,57,3,8,35,9,40,2,4,32,8,57,3,16,35,9,40,2,4,32,9,57,3,24,65,1,11,4,0,65,1,11]);
-// Numeric-only source projection. The host retains every admission guard,
-// source timestamp, lag search and joint room-path fit.
+globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES=new Uint8Array([0,97,115,109,1,0,0,0,1,60,10,96,0,1,127,96,3,127,127,127,1,127,96,0,1,124,96,4,124,124,127,124,1,127,96,5,124,124,127,127,124,1,127,96,2,127,127,1,127,96,0,0,96,3,127,124,124,1,124,96,2,127,124,1,127,96,1,127,1,127,3,21,20,5,1,6,1,0,0,0,2,2,7,8,0,0,0,9,3,3,4,4,0,5,5,1,1,64,128,4,6,80,13,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,127,1,65,0,11,124,1,68,0,0,0,0,0,0,248,127,11,124,1,68,0,0,0,0,0,0,248,127,11,7,244,1,18,11,97,98,105,95,118,101,114,115,105,111,110,0,19,9,105,110,112,117,116,95,112,116,114,0,13,7,108,111,119,95,112,116,114,0,12,10,114,101,110,100,101,114,95,112,116,114,0,5,14,108,111,119,95,114,101,110,100,101,114,95,112,116,114,0,11,10,114,101,115,117,108,116,95,112,116,114,0,4,17,110,97,116,105,118,101,95,119,105,110,100,111,119,95,112,116,114,0,6,4,105,110,105,116,0,14,11,115,101,116,95,108,101,110,103,116,104,115,0,3,12,110,97,116,105,118,101,95,112,111,119,101,114,0,9,22,110,97,116,105,118,101,95,103,111,101,114,116,122,101,108,95,115,116,97,116,101,115,0,10,14,110,97,116,105,118,101,95,115,116,97,116,101,95,97,0,8,14,110,97,116,105,118,101,95,115,116,97,116,101,95,98,0,7,6,99,111,97,114,115,101,0,18,4,102,117,108,108,0,16,8,102,117,108,108,95,100,111,116,0,15,10,99,111,97,114,115,101,95,100,111,116,0,17,6,109,101,109,111,114,121,2,0,8,1,2,10,134,28,20,173,1,1,5,127,32,0,65,236,255,255,255,3,75,4,64,0,11,32,0,65,16,106,34,3,65,252,255,255,255,3,75,4,64,0,11,35,4,65,4,106,34,2,32,3,65,19,106,65,112,113,65,4,107,34,3,106,34,4,63,0,34,5,65,16,116,65,15,106,65,112,113,34,6,75,4,64,32,5,32,4,32,6,107,65,255,255,3,106,65,128,128,124,113,65,16,118,34,6,32,5,32,6,74,27,64,0,65,0,72,4,64,32,6,64,0,65,0,72,4,64,0,11,11,11,35,4,32,4,36,4,32,3,54,2,0,32,2,65,4,107,34,3,65,0,54,2,4,32,3,65,0,54,2,8,32,3,32,1,54,2,12,32,3,32,0,54,2,16,32,2,65,16,106,11,96,0,32,0,69,4,64,65,12,65,3,16,0,33,0,11,32,0,65,0,54,2,0,32,0,65,0,54,2,4,32,0,65,0,54,2,8,32,1,65,252,255,255,255,3,32,2,118,75,4,64,0,11,32,1,32,2,116,34,1,65,1,16,0,34,2,65,0,32,1,252,11,0,32,0,32,2,54,2,0,32,0,32,2,54,2,4,32,0,32,1,54,2,8,32,0,11,91,0,65,140,8,36,4,65,12,65,4,16,0,65,0,65,2,16,1,36,5,65,12,65,4,16,0,65,0,65,2,16,1,36,6,65,12,65,4,16,0,65,0,65,2,16,1,36,7,65,12,65,4,16,0,65,0,65,2,16,1,36,8,65,12,65,5,16,0,65,0,65,3,16,1,36,9,65,12,65,5,16,0,65,0,65,3,16,1,36,10,11,64,0,35,0,69,32,0,65,0,72,114,32,0,35,0,74,114,32,1,65,0,72,114,32,1,35,0,74,114,32,2,65,0,72,114,32,2,35,0,65,4,106,74,114,4,64,65,0,15,11,32,0,36,1,32,1,36,2,32,2,36,3,65,1,11,7,0,35,9,40,2,4,11,7,0,35,7,40,2,4,11,7,0,35,10,40,2,4,11,4,0,35,12,11,4,0,35,11,11,178,1,2,3,124,1,127,35,0,69,32,0,65,0,76,114,32,0,35,0,74,114,32,1,32,1,161,68,0,0,0,0,0,0,0,0,98,114,32,2,32,2,161,68,0,0,0,0,0,0,0,0,98,114,32,2,68,0,0,0,0,0,0,0,0,101,114,4,64,68,0,0,0,0,0,0,248,127,15,11,3,64,32,0,32,6,74,4,64,35,10,40,2,4,32,6,65,3,116,106,43,3,0,32,1,32,3,162,160,32,4,161,32,3,33,4,33,3,32,6,65,1,106,33,6,12,1,11,11,32,3,32,3,162,32,4,32,4,162,160,32,1,32,3,162,32,4,162,161,34,1,68,0,0,0,0,0,0,0,0,32,1,68,0,0,0,0,0,0,0,0,100,27,32,2,32,2,162,163,11,124,2,3,124,1,127,68,0,0,0,0,0,0,248,127,36,11,68,0,0,0,0,0,0,248,127,36,12,35,0,69,32,0,65,0,76,114,32,0,35,0,74,114,32,1,32,1,161,68,0,0,0,0,0,0,0,0,98,114,4,64,65,0,15,11,3,64,32,0,32,5,74,4,64,35,10,40,2,4,32,5,65,3,116,106,43,3,0,32,1,32,2,162,160,32,3,161,32,2,33,3,33,2,32,5,65,1,106,33,5,12,1,11,11,32,2,36,11,32,3,36,12,65,1,11,7,0,35,8,40,2,4,11,7,0,35,6,40,2,4,11,7,0,35,5,40,2,4,11,127,1,1,127,65,1,32,0,65,128,128,192,0,74,65,1,32,0,65,128,1,72,35,0,27,27,4,64,65,0,15,11,32,0,36,0,65,12,65,4,16,0,32,0,65,2,16,1,36,5,65,12,65,4,16,0,32,0,65,2,16,1,36,6,65,12,65,4,16,0,32,0,65,4,106,34,1,65,2,16,1,36,7,65,12,65,4,16,0,32,1,65,2,16,1,36,8,65,12,65,5,16,0,65,8,65,3,16,1,36,9,65,12,65,5,16,0,32,0,65,3,16,1,36,10,65,1,11,131,4,2,4,127,2,124,32,3,32,3,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,69,4,64,65,0,15,11,65,127,33,5,2,64,32,1,68,0,0,0,0,0,0,0,0,99,32,0,68,0,0,0,0,0,0,0,0,99,114,32,3,68,0,0,0,0,0,0,0,0,99,114,32,0,68,0,0,0,0,0,0,240,66,100,114,32,1,68,0,0,0,0,0,0,240,66,100,114,32,3,68,0,0,0,0,0,0,240,66,100,114,32,0,156,32,0,98,114,32,1,156,32,1,98,114,32,3,156,32,3,98,114,13,0,32,0,32,3,161,32,1,161,34,9,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,35,3,65,1,107,183,32,9,32,2,65,1,107,183,160,101,11,13,0,32,9,252,2,33,5,11,32,5,65,0,78,4,64,3,64,32,2,32,4,74,4,64,32,8,35,7,40,2,4,34,7,32,4,32,5,106,34,6,65,2,116,106,42,2,0,187,32,7,32,6,65,1,106,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,8,32,4,65,1,106,33,4,12,1,11,11,5,3,64,32,2,32,4,74,4,64,32,8,32,0,32,4,183,160,32,3,161,32,1,161,34,8,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,8,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,8,32,8,156,252,2,34,5,183,161,33,8,35,7,40,2,4,34,6,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,8,161,162,32,6,32,5,65,1,106,65,2,116,106,42,2,0,187,32,8,162,160,11,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,8,32,4,65,1,106,33,4,12,1,11,11,11,35,9,40,2,4,32,8,57,3,0,65,1,11,165,4,2,4,127,3,124,32,3,32,3,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,69,4,64,65,0,15,11,65,127,33,5,2,64,32,1,68,0,0,0,0,0,0,0,0,99,32,0,68,0,0,0,0,0,0,0,0,99,114,32,3,68,0,0,0,0,0,0,0,0,99,114,32,0,68,0,0,0,0,0,0,240,66,100,114,32,1,68,0,0,0,0,0,0,240,66,100,114,32,3,68,0,0,0,0,0,0,240,66,100,114,32,0,32,0,156,98,114,32,1,156,32,1,98,114,32,3,156,32,3,98,114,13,0,32,0,32,3,161,32,1,161,34,10,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,35,3,65,1,107,183,32,10,32,2,65,1,107,183,160,101,11,13,0,32,10,252,2,33,5,11,32,5,65,0,78,4,64,3,64,32,2,32,4,74,4,64,32,8,35,7,40,2,4,34,7,32,4,32,5,106,34,6,65,2,116,106,42,2,0,187,32,7,32,6,65,1,106,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,34,0,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,8,32,9,32,0,32,0,162,160,33,9,32,4,65,1,106,33,4,12,1,11,11,5,3,64,32,2,32,4,74,4,64,32,8,32,0,32,4,183,160,32,3,161,32,1,161,34,8,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,8,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,8,32,8,156,252,2,34,5,183,161,33,8,35,7,40,2,4,34,6,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,8,161,162,32,6,32,5,65,1,106,65,2,116,106,42,2,0,187,32,8,162,160,11,34,10,35,5,40,2,4,32,4,65,2,116,106,42,2,0,187,162,160,33,8,32,9,32,10,32,10,162,160,33,9,32,4,65,1,106,33,4,12,1,11,11,11,35,9,40,2,4,32,8,57,3,0,35,9,40,2,4,32,9,57,3,8,65,1,11,250,5,2,6,127,3,124,32,3,35,0,74,4,127,65,0,5,32,3,65,0,76,4,127,65,0,5,32,4,32,4,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,11,11,4,127,35,2,32,2,65,1,107,32,3,109,65,1,106,72,5,65,1,11,4,64,65,0,15,11,65,127,33,7,2,64,32,1,68,0,0,0,0,0,0,0,0,99,32,0,68,0,0,0,0,0,0,0,0,99,114,32,4,68,0,0,0,0,0,0,0,0,99,114,32,0,68,0,0,0,0,0,0,240,66,100,114,32,1,68,0,0,0,0,0,0,240,66,100,114,32,4,68,0,0,0,0,0,0,240,66,100,114,32,0,156,32,0,98,114,32,1,156,32,1,98,114,32,4,156,32,4,98,114,13,0,32,0,32,4,161,32,1,161,34,13,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,35,3,65,1,107,183,32,13,32,2,65,1,107,183,160,101,11,13,0,32,13,252,2,33,7,11,32,7,65,0,78,4,64,3,64,32,2,32,6,74,4,64,32,11,35,8,40,2,4,34,8,32,6,32,7,106,34,9,65,2,116,34,10,106,42,2,0,187,32,8,32,9,65,1,106,65,2,116,34,8,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,35,6,40,2,4,32,5,65,2,116,106,42,2,0,187,162,160,33,11,32,12,35,7,40,2,4,34,9,32,10,106,42,2,0,187,32,8,32,9,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,35,5,40,2,4,32,6,65,2,116,106,42,2,0,187,162,160,33,12,32,3,32,6,106,33,6,32,5,65,1,106,33,5,12,1,11,11,5,3,64,32,2,32,6,74,4,64,32,11,32,0,32,6,183,160,32,4,161,32,1,161,34,13,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,13,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,13,32,13,156,252,2,34,7,183,161,33,11,35,8,40,2,4,34,8,32,7,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,11,161,162,32,8,32,7,65,1,106,65,2,116,106,42,2,0,187,32,11,162,160,11,35,6,40,2,4,32,5,65,2,116,106,42,2,0,187,162,160,33,11,32,12,32,13,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,13,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,13,32,13,156,252,2,34,7,183,161,33,12,35,7,40,2,4,34,8,32,7,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,12,161,162,32,8,32,7,65,1,106,65,2,116,106,42,2,0,187,32,12,162,160,11,35,5,40,2,4,32,6,65,2,116,106,42,2,0,187,162,160,33,12,32,3,32,6,106,33,6,32,5,65,1,106,33,5,12,1,11,11,11,35,9,40,2,4,32,11,57,3,0,35,9,40,2,4,32,12,57,3,16,65,1,11,190,6,2,6,127,6,124,32,3,35,0,74,4,127,65,0,5,32,3,65,0,76,4,127,65,0,5,32,4,32,4,161,68,0,0,0,0,0,0,0,0,97,65,0,32,1,32,1,161,68,0,0,0,0,0,0,0,0,97,65,0,32,0,32,0,161,68,0,0,0,0,0,0,0,0,97,65,0,35,3,65,2,78,65,0,32,2,35,1,76,65,0,32,2,65,0,74,65,0,35,0,27,27,27,27,27,27,11,11,4,127,35,2,32,2,65,1,107,32,3,109,65,1,106,72,5,65,1,11,4,64,65,0,15,11,65,127,33,5,2,64,32,1,68,0,0,0,0,0,0,0,0,99,32,0,68,0,0,0,0,0,0,0,0,99,114,32,4,68,0,0,0,0,0,0,0,0,99,114,32,0,68,0,0,0,0,0,0,240,66,100,114,32,1,68,0,0,0,0,0,0,240,66,100,114,32,4,68,0,0,0,0,0,0,240,66,100,114,32,0,32,0,156,98,114,32,1,156,32,1,98,114,32,4,156,32,4,98,114,13,0,32,0,32,4,161,32,1,161,34,11,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,35,3,65,1,107,183,32,11,32,2,65,1,107,183,160,101,11,13,0,32,11,252,2,33,5,11,32,5,65,0,78,4,64,3,64,32,2,32,7,74,4,64,32,12,35,8,40,2,4,34,8,32,5,32,7,106,34,9,65,2,116,34,10,106,42,2,0,187,32,8,32,9,65,1,106,65,2,116,34,8,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,34,0,35,6,40,2,4,32,6,65,2,116,106,42,2,0,187,162,160,33,12,32,13,32,0,32,0,162,160,33,13,32,14,35,7,40,2,4,34,9,32,10,106,42,2,0,187,32,8,32,9,106,42,2,0,187,68,0,0,0,0,0,0,0,0,162,160,34,0,35,5,40,2,4,32,7,65,2,116,106,42,2,0,187,162,160,33,14,32,15,32,0,32,0,162,160,33,15,32,3,32,7,106,33,7,32,6,65,1,106,33,6,12,1,11,11,5,3,64,32,2,32,7,74,4,64,32,12,32,0,32,7,183,160,32,4,161,32,1,161,34,11,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,11,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,11,32,11,156,252,2,34,5,183,161,33,12,35,8,40,2,4,34,8,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,12,161,162,32,8,32,5,65,1,106,65,2,116,106,42,2,0,187,32,12,162,160,11,34,16,35,6,40,2,4,32,6,65,2,116,106,42,2,0,187,162,160,33,12,32,13,32,16,32,16,162,160,33,13,32,14,32,11,68,0,0,0,0,0,0,0,0,99,4,127,65,1,5,32,11,35,3,65,1,107,183,102,11,4,124,68,0,0,0,0,0,0,0,0,5,32,11,32,11,156,252,2,34,5,183,161,33,11,35,7,40,2,4,34,8,32,5,65,2,116,106,42,2,0,187,68,0,0,0,0,0,0,240,63,32,11,161,162,32,8,32,5,65,1,106,65,2,116,106,42,2,0,187,32,11,162,160,11,34,11,35,5,40,2,4,32,7,65,2,116,106,42,2,0,187,162,160,33,14,32,15,32,11,32,11,162,160,33,15,32,3,32,7,106,33,7,32,6,65,1,106,33,6,12,1,11,11,11,35,9,40,2,4,32,12,57,3,0,35,9,40,2,4,32,13,57,3,8,35,9,40,2,4,32,14,57,3,16,35,9,40,2,4,32,15,57,3,24,65,1,11,4,0,65,1,11]);
+// Private QA copy of the project adapter with optional native-power support.
 class RhythmAttributionCore {
  constructor(capacity,module=null){
   const bytes=module||globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES;
@@ -951,16 +950,62 @@ class RhythmAttributionCore {
   this.y=new Float32Array(memory,e.input_ptr(),capacity);this.low=new Float32Array(memory,e.low_ptr(),capacity);
   this.render=new Float32Array(memory,e.render_ptr(),capacity+4);this.lowRender=new Float32Array(memory,e.low_render_ptr(),capacity+4);
   this.result=new Float64Array(memory,e.result_ptr(),8);
+  this.nativeWindow=typeof e.native_window_ptr==='function'?new Float64Array(memory,e.native_window_ptr(),capacity):null;
+  this.nativeReady=!!this.nativeWindow&&typeof e.native_power==='function';
+  this.nativeStatesReady=!!this.nativeWindow&&typeof e.native_goertzel_states==='function'
+   &&typeof e.native_state_a==='function'&&typeof e.native_state_b==='function';
+  this.nativeFrame=null;
+  this.sourcePowers=null;
  }
  load(job){
   if(job.y.length>this.capacity||job.low.length>this.capacity||job.render.length>this.capacity+4||job.lowRender.length!==job.render.length)throw Error('Source attribution snapshot exceeds WASM capacity');
   this.y.set(job.y);this.low.set(job.low);this.render.set(job.render);this.lowRender.set(job.lowRender);
   if(this.exports.set_lengths(job.y.length,job.low.length,job.render.length)!==1)throw Error('Source attribution WASM lengths are invalid');
+  // prepare() snapshots both reference arrays; updateResidual() changes only
+  // the microphone arrays. Opt-in callers may reuse immutable source powers.
+  this.sourcePowers=job.immutableReference===true?{full:new Map(),coarse:new Map()}:null;
  }
  updateResidual(job){this.y.set(job.y);this.low.set(job.low);}
- coarse(job,lag,stride){if(this.exports.coarse(job.start,job.historyStart,job.length,stride,lag)!==1)throw Error('Invalid coarse source projection');return this.result;}
- full(job,lag){if(this.exports.full(job.start,job.historyStart,job.length,lag)!==1)throw Error('Invalid full-rate source projection');return this.result;}
+ coarse(job,lag,stride){
+  const cache=this.sourcePowers?.coarse,key=lag+':'+stride,known=cache?.get(key);
+  if(known&&typeof this.exports.coarse_dot==='function'){
+   if(this.exports.coarse_dot(job.start,job.historyStart,job.length,stride,lag)!==1)throw Error('Invalid coarse source projection');
+   this.result[1]=known[0];this.result[3]=known[1];
+  }else{
+   if(this.exports.coarse(job.start,job.historyStart,job.length,stride,lag)!==1)throw Error('Invalid coarse source projection');
+   cache?.set(key,[this.result[1],this.result[3]]);
+  }
+  return this.result;
+ }
+ full(job,lag){
+  const cache=this.sourcePowers?.full;
+  if(cache?.has(lag)&&typeof this.exports.full_dot==='function'){
+   if(this.exports.full_dot(job.start,job.historyStart,job.length,lag)!==1)throw Error('Invalid full-rate source projection');
+   this.result[1]=cache.get(lag);
+  }else{
+   if(this.exports.full(job.start,job.historyStart,job.length,lag)!==1)throw Error('Invalid full-rate source projection');
+   cache?.set(lag,this.result[1]);
+  }
+  return this.result;
+ }
+ nativePower(frame,coefficient){
+  if(!this.nativeReady)return null;
+  const values=frame?.values;
+  if(!values||values.length<=0||values.length>this.capacity)return NaN;
+  if(this.nativeFrame!==frame){this.nativeWindow.set(values);this.nativeFrame=frame;}
+  return this.exports.native_power(values.length,coefficient,frame.norm);
+ }
+ nativeStates(frame,coefficient){
+  if(!this.nativeStatesReady)return null;
+  const values=frame?.values;
+  if(!values||values.length<=0||values.length>this.capacity)return {a:NaN,b:NaN};
+  // Shares the existing immutable-frame upload cache with nativePower.
+  if(this.nativeFrame!==frame){this.nativeWindow.set(values);this.nativeFrame=frame;}
+  if(this.exports.native_goertzel_states(values.length,coefficient)!==1)return {a:NaN,b:NaN};
+  return {a:this.exports.native_state_a(),b:this.exports.native_state_b()};
+ }
 }
+if(typeof module!=='undefined')module.exports=RhythmAttributionCore;
 
 // GENERATED_ATTRIBUTION_CORE_END
 // GENERATED_ATTRIBUTION_BEGIN
@@ -987,7 +1032,7 @@ class EchoAttribution {
   const diagnostic={accepted:preserve?this.accepted||0:0,rejected:preserve?this.rejected||0:0,lastDecision:preserve?this.lastDecision??null:null,lastDrop:preserve?this.lastDrop??null:null,dropCounts:preserve?this.dropCounts||{}:{}};
   for(const array of [this.render,this.capture,this.lowRender,this.lowCapture])array.fill(0);
   const timing=preserve&&this.timing?this.timing:{completed:0,peak:0,waitSumMs:0,maxWaitMs:0,lastWaitMs:0,drainCalls:0,drainSteps:0,drainCpuMs:0,maxDrainCpuMs:0,maxStepCpuMs:0};
-  this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};Object.assign(this,diagnostic);this.timing=timing;this.currentTime=0;this.renderBlockLength=0;this.captureBlockLength=0;
+  this.sourceFamilyLifetimes=[];this.total=0;this.baseTime=null;this.filters=[0,0];this.pending=[];this.meta={enabled:false};Object.assign(this,diagnostic);this.timing=timing;this.currentTime=0;this.renderBlockLength=0;this.captureBlockLength=0;
  }
  setDeferredAnalysis(enabled){
   this.deferredAnalysis=enabled===true;
@@ -1025,19 +1070,34 @@ class EchoAttribution {
   // waveform audit. Retain each event's source-time evidence after its future
   // observation window closes, including jobs waiting behind the head.
   const evidenceTime=Number.isFinite(meta.evidenceTime)?meta.evidenceTime:t+n/this.rate;
-  for(const job of this.pending)if(!job.evidenceSnapshot&&evidenceTime>=job.message.time+.13){
-   job.evidenceSnapshot={time:evidenceTime,own:typeof meta.instrumentEvidence==='function'&&meta.instrumentEvidence(job.message.time),tonal:meta.renderRecent===true&&typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(job.message.time),renderRecent:meta.renderRecent===true};
-  }
+  this.freezeEvidence(evidenceTime);
   // A missing, stale or unproven reference does not prove an own attack.
   if(meta.enabled!==false&&!meta.ready&&!meta.noEchoProof&&!meta.canAudit){for(const job of this.pending)this.drop(job,'reference-unavailable',{stage:'process'});this.pending=[];return;}
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return;}
   if(!this.deferredAnalysis)this.advanceReady();
  }
+ freezeEvidence(evidenceTime){
+  // A getter may expose an FFT frame completed after process() captured its
+  // metadata. Use only already-observed source time in this capture epoch.
+  if(!Number.isFinite(evidenceTime)||evidenceTime>this.currentTime)return;
+  const meta=this.meta;
+  const snapshot=time=>Object.freeze({time:evidenceTime,own:typeof meta.instrumentEvidence==='function'&&meta.instrumentEvidence(time),tonal:meta.renderRecent===true&&typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(time),renderRecent:meta.renderRecent===true});
+  for(const job of this.pending){
+   const bounds=this.familyBounds(job);
+   if(bounds){
+    if(job.familyEvidenceSnapshots||evidenceTime<bounds.last+.13)continue;
+    job.familyEvidenceSnapshots=Object.freeze(job.message.familyCandidates.map(q=>snapshot(q.time)));
+    const index=job.message.familyCandidates.findIndex(q=>q.time===job.message.time&&q.frequency===job.message.frequency);job.evidenceSnapshot=job.familyEvidenceSnapshots[Math.max(0,index)];
+   }else if(!job.evidenceSnapshot&&evidenceTime>=job.message.time+.13)job.evidenceSnapshot=snapshot(job.message.time);
+  }
+ }
  canAdvance(){
+  this.freezeEvidence(typeof this.meta.getEvidenceTime==='function'?this.meta.getEvidenceTime():this.meta.evidenceTime);
   const job=this.pending[0];if(!job)return false;
   const meta=this.meta;
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent||!meta.ready&&!meta.noEchoProof&&!meta.canAudit)return true;
   if(!job.stage&&this.total<this.captureEnd(job))return false;
+  if(this.familyBounds(job)&&!job.familyEvidenceSnapshots)return false;
   // The FFT evidence trails raw capture. Draining faster must not shorten
   // the independent harmonic observation window used to confirm an attack.
   if(this.deferredAnalysis&&typeof meta.instrumentEvidence==='function'&&(job.message.toneCheck===true||job.message.spectralCheck===true)&&!job.evidenceSnapshot)return false;
@@ -1050,6 +1110,7 @@ class EchoAttribution {
   if(meta.enabled===false||meta.noEchoProof&&!meta.renderRecent){for(const job of this.pending)this.accept(job);this.pending=[];return true;}
   const job=this.pending[0];
   if(!job.stage){
+   if(this.familyBounds(job)&&job.familyEvidenceSnapshots?.every(q=>q.own!==true)){this.reject(job,'tone-unconfirmed');this.pending.shift();return true;}
    // A small raw clock step is tolerated without resetting the PCM ring.
    // Its timestamp can therefore lead the samples actually received. Wait
    // for the exact same sample bound that prepare() will read, not raw time.
@@ -1076,6 +1137,8 @@ class EchoAttribution {
   return {steps,pending:this.pending.length,blocked:this.pending.length>0&&!more,more,elapsedMs};
  }
  queue(message,gate=.004){
+  const family=this.sanitizeFamilyCandidates(message);
+  if(family){if(!family.length){this.drop({message},'invalid-candidate',{stage:'queue'});return;}message={...message,familyCandidates:family};}
   if(message?.type!=='onset'||!Number.isFinite(message.time)){this.drop({message},'invalid-candidate',{stage:'queue'});return;}
   if(this.meta.enabled===false||this.meta.noEchoProof&&!this.meta.renderRecent){this.accept({message});return;}
   if(!this.meta.ready&&!this.meta.noEchoProof&&!this.meta.canAudit){this.drop({message},'reference-unavailable',{stage:'queue'});return;}
@@ -1086,6 +1149,7 @@ class EchoAttribution {
   this.timing.peak=Math.max(this.timing.peak,this.pending.length);
  }
  accept(job){
+  if(this.familyBounds(job)){this.beginFamilyVerification(job);return;}
   const lowProof=this.lowPeriodicSourceProof(job);
   if(lowProof.ok&&!job.lowPeriodicTimeApplied){job.message.originalPeriodicTime=job.message.originalPeriodicTime??job.message.time;job.message.time=lowProof.time;job.lowPeriodicTimeApplied=true;}
 
@@ -1102,6 +1166,10 @@ class EchoAttribution {
    else{
     const stable=this.stableInstrumentTone(job);
     confirmed=stable&&(ownEvidence||tonalEvidence&&job.tonalFamilyCount>=2);
+    // This is an additional positive confirmation only while the source can
+    // be audited and raw capture independently proves an instrument family.
+    // Established profiles and the older stable-tone paths keep their rules.
+    if(!confirmed&&ownEvidence&&this.meta.canAudit===true&&job.message.source!=='periodic'&&job.y)confirmed=this.ordinaryInstrumentTone(job);
    }
   }
   else if(job.message?.spectralCheck===true&&typeof this.meta.instrumentEvidence==='function')confirmed=ownEvidence;
@@ -1129,6 +1197,227 @@ class EchoAttribution {
  // Cold-start waveform/periodic proof alone keeps the older held-tone veto.
  // Relative family growth rejects a uniform bellows-volume change; two
  // post-onset windows reject brief inharmonic or decaying backing transients.
+ familyBounds(job){
+  const candidates=job.message?.familyCandidates;if(!job.message?.familyProposal||!Array.isArray(candidates)||!candidates.length)return null;
+  return {first:Math.min(...candidates.map(q=>q.time)),last:Math.max(...candidates.map(q=>q.time))};
+ }
+ sanitizeFamilyCandidates(message){
+  if(!message?.familyProposal||!Array.isArray(message.familyCandidates))return null;
+  const observed=Number.isFinite(message.observedTime)?message.observedTime:this.currentTime;
+  const candidates=[];
+  for(const q of message.familyCandidates.slice(0,64)){
+   if(!Number.isFinite(q?.time)||q.time>observed||!Number.isFinite(q?.frequency)||q.frequency<80||q.frequency>Math.min(3300,this.rate*.45/2))continue;
+   candidates.push(Object.freeze({frequency:q.frequency,time:q.time,level:Number.isFinite(q.level)&&q.level>=0?q.level:message.level,observedHarmonic:Number.isInteger(q.observedHarmonic)&&q.observedHarmonic>=1&&q.observedHarmonic<=4?q.observedHarmonic:1,partialFrequency:Number.isFinite(q.partialFrequency)?q.partialFrequency:q.frequency,parts:Object.freeze(Array.from({length:4},(_,i)=>Number.isFinite(q.parts?.[i])&&q.parts[i]>=0?q.parts[i]:0)),score:Number.isFinite(q.score)?q.score:0}));
+  }
+  return Object.freeze(candidates);
+ }
+ beginFamilyVerification(job){
+  if(!job.y||!job.familyEvidenceSnapshots){this.reject(job,'tone-unconfirmed');return;}
+  job.stage='families';job.familyIndex=0;job.familyResults=[];job.familyDebug=[];job.familyFrameCache=new Map();
+ }
+ familyNativePrefilter(view){
+  if(view.evidenceSnapshot?.own!==true)return false;
+  const rate=this.rate,count=Math.floor(.064*rate),requested=view.message.frequency;
+  const floor=Math.max(1e-16,view.gate*view.gate*.012),radius=Math.max(6,requested*.02);
+  const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;};
+  const before=[-.30,-.22,-.14].map(t=>this.highNativeFrame(view,view.eventIndex+Math.round(t*rate),count)).filter(Boolean);
+  const after=[-.10,-.06,-.02,.012,.05].map(t=>this.highNativeFrame(view,view.eventIndex+Math.round(t*rate),count)).filter(Boolean);
+  // Necessary native partial rise only. This permissive check never admits;
+  // each retained hypothesis still needs the unchanged native source proof.
+  // Sparse named-bin checks discard stationary held families before local
+  // frequency refinement, neighboring-peak scans and body confirmation.
+  for(const shift of [0,-radius,radius]){
+   const frequency=requested+shift;if(frequency<80||frequency>Math.min(3300,rate*.45/2))continue;
+   const energy=w=>{const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?this.highNativePower(w,frequency*h):0);return {parts,sum:parts.reduce((a,b)=>a+b,0),total:w.total};};
+   const old=before.map(energy);
+   for(const window of after){
+    const now=energy(window);
+    for(const prior of old){
+     if(!(now.sum>prior.sum*1.3&&Math.sqrt(2*now.sum)-Math.sqrt(2*prior.sum)>view.gate*.05))continue;
+     const grown=now.parts.map((p,i)=>p>prior.parts[i]*1.3+floor*.025&&p>now.total*.00001?i+1:0).filter(Boolean);
+     if(grown.some(a=>grown.some(b=>a<b&&coprime(a,b))))return true;
+    }
+   }
+  }
+  return false;
+ }
+ // Supplementary only: batchFamilyProof calls this after all existing native
+ // proofs fail. An existing successful proof/time must be returned verbatim.
+ shortBodyFamilyProof(view){
+  const own=view.evidenceSnapshot?.own===true,known=own&&(view.message?.profileReady===true||view.message?.waveformReady===true||this.meta.canAudit===true);
+  if(!known||!view.message?.familyProposal||view.message.source!=='periodic'||!view.y)return {ok:false,reason:'unproven-short-source'};
+  this.shortBodyVerifier??=new PhaseVerifiedShortNativeFamilyProof(this.rate,(frame,frequency)=>this.highNativePower(frame,frequency),false,(frame,frequency)=>this.highNativePhase(frame,frequency));
+  this.shortBodyVerifier.useImmutableSamples(view.y);
+  const proof=this.shortBodyVerifier.verify(view.y,view.eventIndex,view.message.frequency,view.gate,{owned:own,sourceTrusted:known,sourceProjected:true});
+  if(!proof.ok)return proof;
+  // This tier confirms an existing proposal's observed body. It neither
+  // relocates a previous successful point nor uses a later tone as evidence.
+  return {...proof,time:view.message.time,sourceTime:view.message.time,shortNativeBody:true};
+ }
+
+ batchFamilyProof(view){
+  const f=view.message.frequency;
+  let proof=this.computeShortPeriodicSourceProof(view);view.familyBatchAuditShort=proof;
+  if(!proof.ok&&typeof this.weakNativeFamilyProof==='function')proof=this.weakNativeFamilyProof(view);
+  if(!proof.ok)proof=this.computeLowPeriodicSourceProof(view);
+  if(!proof.ok&&f>=1600){
+   if(this.highStableInstrumentTone(view)&&this.highPeriodicSourceRise(view)&&Number.isFinite(view.highPeriodicSourceTime)){
+    // Re-center the complete native body on the physical rise, never the
+    // approximate FFT proposal or an unrelated later queue observation.
+    const body={...view,message:{...view.message,time:view.highPeriodicSourceTime},eventIndex:Math.round((view.highPeriodicSourceTime-this.baseTime)*this.rate)-view.start,highNativeFrequency:undefined,highPeriodicVerified:false};
+    if(this.highStableInstrumentTone(body))proof={ok:true,time:view.message.time,sourceTime:view.highPeriodicSourceTime,frequency:view.highNativeFrequency??f,highFamily:true};
+   }
+  }
+  if(!proof.ok)proof=this.shortBodyFamilyProof(view);
+  if(!proof.ok||!Number.isFinite(proof.sourceTime))return {ok:false,reason:proof.reason??'native-rise-not-located'};
+  // A batch proposal is a timing hypothesis. Its verified physical start may
+  // lie on either side; the original legacy proof keeps its earlier clamp.
+  if(proof.sourceTime<view.message.time-.32||proof.sourceTime>view.message.time+.064)return {ok:false,reason:'native-source-outside-window'};
+  return proof;
+ }
+ supplementalNativeLocalPeak(job,r){
+  const p=r.proof,rate=this.rate,f=p?.frequency,no=(reason,extra={})=>({ok:false,reason,...extra});
+  if(!p?.ok||p.earliestValidBody!==true||!Number.isFinite(p.sourceTime)||!Number.isFinite(f)||!Array.isArray(p.pair)||p.pair.length!==2||!Number.isInteger(p.pair[1])||p.pair[1]<1||p.pair[1]>3)return no('unlocated-native-peak-body');
+  const harmonic=p.pair[1]+1,count=Math.floor(.064*rate),center=Math.round(((p.sourceTime-this.baseTime)*rate-job.start)*2)/2;
+  const radius=Math.max(8,f*.02),steps=Math.ceil(radius/2),tolerance=Math.max(4,f*.006);
+  if(f-radius<=0||(f+radius)*harmonic>rate*.45||f*.064<4)return no('native-peak-band-or-cycles');
+  const frames=[this.highNativeFrame(job,center+.012*rate,count),this.highNativeFrame(job,center+.044*rate,count)];
+  if(frames.some(w=>!w))return no('native-peak-body-incomplete');
+  const peaks=[];
+  for(let window=0;window<2;window++)for(const h of [1,harmonic]){
+   const values=[];
+   for(let i=-steps;i<=steps;i++){const root=f+radius*i/steps;values.push({root,power:this.highNativePower(frames[window],root*h)});}
+   let at=0;for(let i=1;i<values.length;i++)if(values[i].power>values[at].power)at=i;
+   const best=values[at],interior=at>0&&at+1<values.length;
+   const local=interior&&best.power>values[at-1].power&&best.power>values[at+1].power;
+   peaks.push({window,harmonic:h,root:best.root,power:best.power,interior,local,namedPower:values[steps].power,edgePowers:[values[0].power,values.at(-1).power]});
+   if(!local)return no('native-peak-not-interior',{frequency:f,radius,tolerance,peaks});
+  }
+  const roots=peaks.map(p=>p.root);
+  if(roots.some(root=>Math.abs(root-f)>tolerance)||Math.max(...roots)-Math.min(...roots)>tolerance)return no('native-local-peaks-disagree',{frequency:f,radius,tolerance,peaks});
+  return {ok:true,reason:'native-local-peaks-confirmed',frequency:f,radius,tolerance,peaks};
+ }
+ supplementalNativePhase(job,r){
+  const p=r.proof,rate=this.rate,f=p?.frequency,no=reason=>({ok:false,reason});
+  if(!p?.ok||p.earliestValidBody!==true||!Number.isFinite(p.sourceTime)||!Number.isFinite(f)||!Array.isArray(p.pair)||p.pair.length!==2||!Number.isInteger(p.pair[1])||p.pair[1]<1||p.pair[1]>3)return no('unlocated-native-phase-body');
+  const h=p.pair[1]+1,count=Math.floor(.064*rate),center=Math.round(((p.sourceTime-this.baseTime)*rate-job.start)*2)/2;
+  if(f*.064<4||f*h>rate*.45)return no('native-phase-band-or-cycles');
+  const first=this.highNativeFrame(job,center+.012*rate,count),second=this.highNativeFrame(job,center+.044*rate,count);
+  if(!first||!second)return no('native-phase-body-incomplete');
+  const actual=[first,second].map(frame=>[1,2,3,4].map(k=>k*f<=rate*.45?this.highNativePower(frame,k*f):0));
+  if(!Array.isArray(p.first?.parts)||!Array.isArray(p.second?.parts)||actual[0].some((v,i)=>!Object.is(v,p.first.parts[i]))||actual[1].some((v,i)=>!Object.is(v,p.second.parts[i])))return no('native-phase-body-not-recorded-body');
+  const floor=Math.max(1e-16,job.gate*job.gate*.012);
+  if(actual.some(parts=>parts[0]<=floor||parts[h-1]<=Math.max(floor,parts[0]*.012)))return no('native-phase-partner-too-weak');
+  const phase=(frame,f)=>this.highNativePhase(frame,f);
+  const clocks=[1,h].map(k=>{const d=phase(second,f*k)-phase(first,f*k)-2*Math.PI*f*k*.032;return f+Math.atan2(Math.sin(d),Math.cos(d))/(2*Math.PI*.032*k);});
+  const tolerance=Math.max(4,f*.006),ok=Math.abs(clocks[0]-clocks[1])<=tolerance&&clocks.every(q=>Math.abs(q-f)<=tolerance);
+  return {ok,reason:ok?'native-supplement-phase-confirmed':'native-supplement-phase-disagreement',frequency:f,partner:h,phaseRoots:clocks,tolerance,bodyStarts:[this.baseTime+(job.start+Math.round(center+.012*rate))/rate,this.baseTime+(job.start+Math.round(center+.044*rate))/rate]};
+ }
+ sourceBirthIdentity(proof){
+  if(!proof?.ok||proof.missingFundamental===true)return {h1:false};
+  const direct=w=>w&&Array.isArray(w.parts)&&Number.isFinite(w.parts[0])&&Number.isFinite(w.total)&&w.total>0?w.parts[0]/w.total:null;
+  let first=direct(proof.first),second=direct(proof.second),method='measured-native-body';
+  if(first===null||second===null){
+   const p=proof.physical,index=p?.pair?.indexOf(1);
+   if(proof.shortNativeBody!==true||index===undefined||index<0||!Number.isFinite(p.concentration)||!Array.isArray(p.powers)||p.powers.length!==3)return {h1:false};
+   // concentration=min(2*sumA/totalA,2*sumB/totalB). It yields a
+   // conservative measured H1/total lower bound for each actual window.
+   const bound=values=>{const sum=values.reduce((a,b)=>a+b,0);return sum>0&&values.every(Number.isFinite)?p.concentration*.5*values[index]/sum:null;};
+   first=bound(p.powers[1]);second=bound(p.powers[2]);method='short-H1-measured-lower-bound';
+  }
+  return {h1:Number.isFinite(first)&&Number.isFinite(second)&&first>=.025&&second>=.025,first,second,method};
+ }
+ sourceBirthHarmonic(a,b,max=Infinity){
+  if(!(Number.isFinite(a)&&Number.isFinite(b)&&a>0&&b>0))return false;
+  const ratio=Math.max(a,b)/Math.min(a,b),h=Math.round(ratio);
+  return h>=1&&h<=max&&Math.abs(1200*Math.log2(ratio/h))<=35;
+ }
+ sourceBirthSeparate(a,b,parents=[]){
+  if(!(a?.native===true&&b?.identity?.h1===true&&Number.isFinite(a.birth)&&Number.isFinite(b.birth)&&Math.abs(a.birth-b.birth)>=.035))return false;
+  if(this.sourceBirthHarmonic(a.frequency,b.frequency))return false;
+  if(true&&parents.some(p=>p.frequency<Math.min(a.frequency,b.frequency)&&Math.abs(p.time-a.time)<.060&&Math.abs(p.time-b.time)<.060&&this.sourceBirthHarmonic(p.frequency,a.frequency,8)&&this.sourceBirthHarmonic(p.frequency,b.frequency,8)))return false;
+  return true;
+ }
+ advanceFamilyVerification(job){
+  const candidates=job.message.familyCandidates;
+  if(job.familyIndex<candidates.length){
+   const index=job.familyIndex++,q=candidates[index],snapshot=job.familyEvidenceSnapshots[index];
+   const view={...job,message:{...job.message,...q,familyCandidates:undefined,familyProposal:true,familyBatchAudit:true,source:'periodic'},eventIndex:Math.round((q.time-this.baseTime)*this.rate)-job.start,evidenceSnapshot:snapshot,lowPeriodicProof:undefined,lowPeriodicTimeApplied:false,highPeriodicVerified:false,highPeriodicSourceTime:undefined,highNativeFrequency:undefined};
+   if(snapshot?.own!==true){job.familyDebug.push({index,frequency:q.frequency,time:q.time,reason:'no-own-evidence'});return;}
+   if(!this.familyNativePrefilter(view)){job.familyDebug.push({index,frequency:q.frequency,time:q.time,reason:'no-native-energy'});return;}
+   const proof=this.batchFamilyProof(view);
+   job.familyDebug.push({index,frequency:q.frequency,time:q.time,reason:proof.ok?'instrument':proof.reason,sourceTime:proof.sourceTime});
+   if(proof.ok)job.familyResults.push({q,proof,time:proof.sourceTime,frequency:proof.frequency??q.frequency,lineage:[q]});
+   return;
+  }
+  const groups=[];
+  for(const r of job.familyResults.sort((a,b)=>a.frequency-b.frequency||a.time-b.time)){
+   const previous=groups.find(p=>Math.abs(p.time-r.time)<.060&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35);
+   if(previous){previous.lineage.push(...r.lineage);if(r.time<previous.time){previous.time=r.time;previous.proof=r.proof;}continue;}
+   groups.push(r);
+  }
+  const retained=[];
+  for(const r of groups){
+   const ancestor=retained.find(p=>{
+    const ratio=r.frequency/p.frequency,h=Math.round(ratio);if(h<2||h>4||Math.abs(1200*Math.log2(ratio/h))>35||Math.abs(p.time-r.time)>=.060)return false;
+    // Only descendants of the same observed physical line and same new
+    // source group merge. An unrelated interval (such as B4/E4) is retained.
+    return p.lineage.some(a=>r.lineage.some(b=>Math.abs(a.time-b.time)<.035&&Math.abs(a.partialFrequency-b.partialFrequency)<=Math.max(6,a.partialFrequency*.02)));
+   });
+   if(ancestor){ancestor.lineage.push(...r.lineage);continue;}retained.push(r);
+  }
+  const birthParents=groups.filter(r=>this.sourceBirthIdentity(r.proof).h1&&this.sourceFamilyLifetimeAllowed(job,r).allow).map(r=>({time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity:this.sourceBirthIdentity(r.proof)}));
+  const supplementalBlocked=[];
+  const emitted=[];
+  for(const r of retained.sort((a,b)=>a.time-b.time)){
+   if(emitted.some(time=>Math.abs(time-r.time)<.060)){
+    const lifetime=this.sourceFamilyLifetimeAllowed(job,r);
+    if(lifetime.allow)supplementalBlocked.push({r,reason:'batch60-only'});
+    continue;
+   }
+   const lifetime=this.sourceFamilyLifetimeAllowed(job,r);job.familyDebug.push({lifetime,time:r.time,frequency:r.frequency});
+   if(!lifetime.allow)continue;
+   this.recordSourceFamilyLifetime(r);emitted.push(r.time);
+   const {familyCandidates,...message}=job.message;
+   this.accepted++;this.lastDecision={time:r.time,reason:'instrument'};
+   const scored=this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'periodic',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:this.sourceBirthIdentity(r.proof)});
+   if(scored===false)supplementalBlocked.push({r,reason:'global60-only'});
+  }
+  if(typeof this.publishNativeSupplemental==='function')for(const candidate of supplementalBlocked){
+   const result=this.publishNativeSupplemental(job,candidate.r,birthParents,candidate.reason);
+   job.familyDebug.push({supplemental:result,time:candidate.r.time,frequency:candidate.r.frequency});
+  }
+  if(!emitted.length){this.reject(job,'tone-unconfirmed');return;}
+  job.done=true;this.finishTiming(job);
+ }
+
+ // A previously verified family may grow late higher partials without a
+ // second articulation. Only the same native fundamental is considered;
+ // added upper voices and other pitches are not folded into a lower family.
+ sourceFamilyLifetimeAllowed(job,r){
+  if((this.sourceFamilyLifetimes??[]).some(p=>Math.abs(p.time-r.time)<.060&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35))return {allow:false,reason:'native-family-already-emitted'};
+  const previous=(this.sourceFamilyLifetimes??[]).filter(p=>p.time<r.time&&r.time-p.time<=.32&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35).sort((a,b)=>b.time-a.time)[0];
+  if(!previous)return {allow:true,reason:'new-family'};
+  const rate=this.rate,count=Math.floor(Math.max(.006,Math.min(.012,4/r.frequency))*rate),half=(count-1)/2,frequency=r.frequency;
+  const frameAt=t=>this.highNativeFrame(job,Math.round((t-this.baseTime)*rate)-job.start-half,count);
+  const prior=frameAt(previous.time+.036),next=frameAt(r.time+.036);
+  if(!prior||!next)return {allow:true,reason:'continuity-history-unavailable'};
+  const priorPower=this.highNativePower(prior,frequency),nextPower=this.highNativePower(next,frequency),limit=Math.min(priorPower,nextPower)*.12;
+  if(!(limit>Math.max(1e-16,job.gate*job.gate*.0005)))return {allow:true,reason:'continuity-family-too-weak'};
+  const step=Math.max(1,Math.round(.004*rate));let valley=0,minimum=Infinity;
+  for(let t=previous.time+.016;t<=r.time+.004;t+=step/rate){
+   const frame=frameAt(t);if(!frame)return {allow:true,reason:'continuity-history-unavailable'};
+   const value=this.highNativePower(frame,frequency);minimum=Math.min(minimum,value);
+   if(value<limit)valley+=step;else valley=0;
+   if(valley>=Math.round(.008*rate))return {allow:true,reason:'native-family-rearmed',minimum,limit,previousTime:previous.time};
+  }
+  return {allow:false,reason:'native-family-still-active',minimum,limit,previousTime:previous.time};
+ }
+ recordSourceFamilyLifetime(r){
+  this.sourceFamilyLifetimes??=[];this.sourceFamilyLifetimes=this.sourceFamilyLifetimes.filter(p=>r.time-p.time<2.5);
+  this.sourceFamilyLifetimes.push({time:r.time,frequency:r.frequency});
+ }
+
  harmonicFamilyRise(job){
   const rate=this.rate,stride=this.stride,limit=job.eventIndex;
   if(!job.y||!Number.isFinite(limit))return false;
@@ -1211,15 +1500,29 @@ class EchoAttribution {
  // High proposals must prove their named family in native projected
  // PCM before any amplitude/novelty shortcut. Decimated aliases cannot do so.
  highNativeFrame(job,start,count){
+  start=Math.round(start);const cache=job.familyFrameCache,key=start+':'+count;if(cache?.has(key))return cache.get(key);
   if(start<0||start+count>job.y.length)return null;
   const values=new Float64Array(count);let norm=0,total=0;
-  for(let i=0;i<count;i++){const x=job.y[start+i],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}
-  return {values,norm,total};
+  if(Number.isInteger(count)&&count>=2){
+   this.nativeWindowCache??=new Map();let window=this.nativeWindowCache.get(count);
+   if(!window){const weights=new Float64Array(count);let sum=0;for(let i=0;i<count;i++){const w=.5-.5*Math.cos(2*Math.PI*i/(count-1));weights[i]=w;sum+=w;}window={weights,norm:sum};if(this.nativeWindowCache.size>=16)this.nativeWindowCache.delete(this.nativeWindowCache.keys().next().value);this.nativeWindowCache.set(count,window);}
+   norm=window.norm;for(let i=0;i<count;i++){const x=job.y[start+i];values[i]=x*window.weights[i];total+=x*x/count;}
+  }else for(let i=0;i<count;i++){const x=job.y[start+i],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}
+  const frame={values,norm,total};if(cache){frame.familyPowers=new Map();cache.set(key,frame);}return frame;
+ }
+ highNativePhase(frame,frequency){
+  const omega=2*Math.PI*frequency/this.rate,c=2*Math.cos(omega),states=this.kernel?.nativeStates(frame,c);
+  if(states!==null&&states!==undefined)return Math.atan2(states.b*Math.sin(omega),states.a-states.b*Math.cos(omega));
+  let a=0,b=0;for(const x of frame.values){const next=x+c*a-b;b=a;a=next;}
+  return Math.atan2(b*Math.sin(omega),a-b*Math.cos(omega));
  }
  highNativePower(frame,frequency){
-  const c=2*Math.cos(2*Math.PI*frequency/this.rate);let a=0,b=0;
+  if(frame.familyPowers?.has(frequency))return frame.familyPowers.get(frequency);
+  const c=2*Math.cos(2*Math.PI*frequency/this.rate);
+  if(this.kernel?.nativeReady){const result=this.kernel.nativePower(frame,c);if(Number.isFinite(result)){frame.familyPowers?.set(frequency,result);return result;}}
+  let a=0,b=0;
   for(const x of frame.values){const n=x+c*a-b;b=a;a=n;}
-  return Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);
+  const result=Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);frame.familyPowers?.set(frequency,result);return result;
  }
  highStableInstrumentTone(job){
   const frequency=job.message?.frequency;
@@ -1249,8 +1552,8 @@ class EchoAttribution {
   const old=energy(before),now=energy(after);let oldNeighbour=old.fundamental,oldSecond=old.second,oldThird=old.third;const radius=Math.max(60,frequency*.04);
   for(let offset=-radius;offset<=radius;offset+=10){const q=frequency+offset;oldNeighbour=Math.max(oldNeighbour,this.highNativePower(before,q));oldSecond=Math.max(oldSecond,this.highNativePower(before,q*2));if(q*3<=this.rate*.45)oldThird=Math.max(oldThird,this.highNativePower(before,q*3));}
   if(!(now.fundamental>after.total*(knownInstrument ? .01 : .025)&&now.second+now.third>now.fundamental*.012&&2*now.sum>after.total*(knownInstrument ? .12 : .35)&&now.fundamental>oldNeighbour*2.5&&((now.second>now.fundamental*.012&&now.second>oldSecond*2.5)||(now.third>now.fundamental*.012&&now.third>oldThird*2.5))&&2*now.sum/Math.max(1e-20,after.total)>2*old.sum/Math.max(1e-20,before.total)*1.3&&Math.sqrt(2*now.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return false;
-  const onsetPower=old.sum+(now.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*this.rate)),limit=job.eventIndex-Math.round(.020*this.rate);
-  for(let start=early;start<=limit;start+=step){const frame=this.highNativeFrame(job,start,count),observed=energy(frame);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;const sourceTime=this.baseTime+(job.start+start+(count-1)/2)/this.rate;job.message.originalPeriodicTime=job.message.time;job.message.time=Math.min(job.message.time,sourceTime);break;}
+  const onsetPower=old.sum+(now.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*this.rate)),limit=job.eventIndex+Math.round((job.message?.familyBatchAudit?.048:-.020)*this.rate);
+  for(let start=early;start<=limit;start+=step){const frame=this.highNativeFrame(job,start,count),observed=energy(frame);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;const sourceTime=this.baseTime+(job.start+start+(count-1)/2)/this.rate;job.highPeriodicSourceTime=sourceTime;job.message.originalPeriodicTime=job.message.time;job.message.time=Math.min(job.message.time,sourceTime);break;}
   job.highPeriodicVerified=true;return true;
  }
 
@@ -1262,10 +1565,10 @@ class EchoAttribution {
  // after its source rise. A delayed proposal must not sample the note release.
  // Independent partial growth prevents a held tone or folded alias from
  // supplying a new attack; optional H4 supports reed timbres with weak H2/H3.
- computeLowPeriodicSourceProof(job){
+ computeShortPeriodicSourceProof(job){
  const frequency=job.message?.frequency,rate=this.rate,count=Math.floor(.032*rate);
  const own=job.evidenceSnapshot?.own===true,known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
- if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(frequency)||frequency<80||frequency>Math.min(1400,rate*.45/2))return {ok:false,reason:'unproven-source'};
+ if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(frequency)||frequency<80||frequency>Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2))return {ok:false,reason:'unproven-source'};
  const early=job.eventIndex-Math.round(.140*rate),late=job.eventIndex+Math.round(.020*rate);
  const frame=start=>this.highNativeFrame(job,start,count),energy=window=>{if(!window)return null;const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?this.highNativePower(window,frequency*h):0),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total)};};
  const oldFrame=frame(early),afterFrame=frame(late),old=energy(oldFrame),after=energy(afterFrame);
@@ -1274,7 +1577,7 @@ class EchoAttribution {
  for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)if((frequency+offset)*h<=rate*.45)neighbour[h-1]=Math.max(neighbour[h-1],this.highNativePower(oldFrame,(frequency+offset)*h));
  const floor=Math.max(1e-16,job.gate*job.gate*.012),newPartial=[1,2,3].some(h=>after.parts[h]>after.parts[0]*.012&&after.parts[h]>neighbour[h]*2.5+floor);
  if(!(after.parts[0]>after.total*.025&&after.fraction>.35&&after.parts[0]>neighbour[0]*2.5+floor&&newPartial&&after.fraction>old.fraction*1.3&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'no-independent-native-rise',old,after,neighbour};
- const onsetPower=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),limit=job.eventIndex-Math.round(.020*rate);let center=null;
+ const onsetPower=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),limit=job.eventIndex+Math.round((job.message?.familyBatchAudit?.048:-.020)*rate);let center=null;
  for(let start=early;start<=limit;start+=step){const observed=energy(frame(start));if(!observed||observed.sum<onsetPower||observed.parts[0]<observed.total*.025)continue;center=start+(count-1)/2;break;}
  if(center===null)return {ok:false,reason:'native-rise-not-located',old,after,neighbour};
  const first=energy(frame(Math.round(center+.020*rate))),second=energy(frame(Math.round(center+.052*rate)));
@@ -1283,22 +1586,376 @@ class EchoAttribution {
  const stable=first.total>job.gate*job.gate*.04&&second.total>job.gate*job.gate*.04&&first.parts[0]>first.total*.025&&second.parts[0]>second.total*.025&&first.parts.slice(1).reduce((a,b)=>a+b,0)>first.parts[0]*.012&&second.parts.slice(1).reduce((a,b)=>a+b,0)>second.parts[0]*.012&&first.fraction>=.35&&second.fraction>=.35&&second.sum>=first.sum*.65*.65&&shape>=.85;
  if(!stable)return {ok:false,reason:'source-centered-tone-not-stable',old,after,neighbour,first,second,shape,centerTime:this.baseTime+(job.start+center)/rate};
  const time=Math.min(job.message.time,this.baseTime+(job.start+center)/rate);
- return {ok:true,time,frequency,old,after,neighbour,first,second,shape};
+ return {ok:true,time,sourceTime:this.baseTime+(job.start+center)/rate,frequency,old,after,neighbour,first,second,shape};
 }
 
- // Verify a tracked note against an earlier projected source window. A slow
- // onset can already be sounding when its level crosses the attack threshold.
+ computeLowPeriodicSourceProof(job){
+ const preserved=job.familyBatchAuditShort??this.computeShortPeriodicSourceProof(job);if(preserved.ok)return preserved;
+ const requested=job.message?.frequency,rate=this.rate,count=Math.floor(.032*rate),longCount=Math.floor(.064*rate),halfExtra=Math.round(.016*rate),limit=job.eventIndex;
+ const own=job.evidenceSnapshot?.own===true,known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-source'};
+ const frames=new Map(),powers=new WeakMap();
+ const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!frames.has(key))frames.set(key,this.highNativeFrame(job,start,n));return frames.get(key);},nativePower=(window,frequency)=>{let values=powers.get(window);if(!values){values=new Map();powers.set(window,values);}if(!values.has(frequency))values.set(frequency,this.highNativePower(window,frequency));return values.get(frequency);},energy=(window,frequency)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?nativePower(window,frequency*h):0),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
+ const floor=Math.max(1e-16,job.gate*job.gate*.012),targets=[];
+ for(const offset of (job.message?.familyBatchAudit?[-.10,-.06,-.02,.02,.05]:[-.10,-.06,-.02,.02])){
+  const start=limit+Math.round(offset*rate),window=frame(start-halfExtra,longCount);if(!window)continue;
+  let frequency=requested,peak=nativePower(window,frequency);const radius=Math.max(6,requested*.02);
+  for(let shift=-radius;shift<=radius;shift+=2){const q=requested+shift;if(q<80||q>maximum)continue;const power=nativePower(window,q);if(power>peak){peak=power;frequency=q;}}
+  const after=energy(window,frequency),short=energy(frame(start),frequency);if(!short||after.fundamentalFraction<=.025||after.fraction<=.35||short.fraction<=.35)continue;
+  targets.push({start,window,frequency,after,short});
+ }
+ targets.sort((a,b)=>b.after.sum-a.after.sum);
+ let last={ok:false,reason:'no-independent-native-rise'};
+ for(const target of targets){
+  const {frequency,after}=target,baseline=[];
+  for(let offset=-.30;offset<=-.10+.00001;offset+=.016){const start=limit+Math.round(offset*rate);if(start+longCount>target.start)continue;const window=frame(start-halfExtra,longCount),old=energy(window,frequency);if(old)baseline.push({start,window,old});}
+  baseline.sort((a,b)=>b.start-a.start);
+  for(const before of baseline){
+   const {old}=before;
+   // Necessary named-bin checks run before expensive neighboring-peak tests.
+   // Every neighbor maximum is at least the corresponding named-bin power.
+   if(!(after.parts[0]>old.parts[0]*2.5+floor&&[1,2,3].some(h=>after.parts[h]>after.parts[0]*.012&&after.parts[h]>old.parts[h]*2.5+floor)&&after.fundamentalFraction>old.fundamentalFraction*1.3&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))continue;
+   const neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+   for(let offset=-radius;offset<=radius;offset+=2)for(let h=1;h<=4;h++){const q=(frequency+offset)*h;if(q<=rate*.45)neighbour[h-1]=Math.max(neighbour[h-1],nativePower(before.window,q));}
+   // A neighbouring semitone can leak into a32ms target bin. Only a
+   // resolved native64ms prior peak beyond the existing85-cent pitch-change
+   // criterion may replace that leaked neighbour maximum with the named bin.
+   if(after.parts[0]<=neighbour[0]*2.5+floor){let priorFrequency=frequency,priorPeak=old.parts[0];const width=Math.max(25,frequency*.10);for(let shift=-width;shift<=width;shift+=2){const q=frequency+shift;if(q<80||q>maximum)continue;const value=nativePower(before.window,q);if(value>priorPeak){priorPeak=value;priorFrequency=q;}}if(Math.abs(1200*Math.log2(priorFrequency/frequency))>85)neighbour[0]=old.parts[0];}
+   const newPartial=[1,2,3].some(h=>after.parts[h]>after.parts[0]*.012&&after.parts[h]>neighbour[h]*2.5+floor);
+   if(!(after.parts[0]>neighbour[0]*2.5+floor&&newPartial&&after.fundamentalFraction>old.fundamentalFraction*1.3&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3)){last={ok:false,reason:'no-independent-native-rise',old,after,neighbour};continue;}
+   const shortOld=energy(frame(before.start),frequency);if(!shortOld)continue;
+   const onsetPower=shortOld.sum+(target.short.sum-shortOld.sum)*.06,step=Math.max(1,Math.round(.008*rate)),lastStart=Math.min(limit+Math.round((job.message?.familyBatchAudit?.048:-.020)*rate),target.start);let center=null;
+   for(let start=before.start;start<=lastStart;start+=step){const observed=energy(frame(start),frequency);if(!observed||observed.sum<onsetPower||observed.parts[0]<observed.total*.025)continue;const located=energy(frame(start-halfExtra,longCount),frequency);if(!located||located.fundamentalFraction<=.025||located.fraction<.35||located.parts[0]<=neighbour[0]*2.5+floor||![1,2,3].some(h=>located.parts[h]>located.parts[0]*.012&&located.parts[h]>neighbour[h]*2.5+floor))continue;center=start+(count-1)/2;break;}
+   if(center===null){last={ok:false,reason:'native-rise-not-located',old,after,neighbour};continue;}
+   const first=energy(frame(center+.020*rate),frequency),second=energy(frame(center+.052*rate),frequency);if(!first||!second){last={ok:false,reason:'confirmation-incomplete'};continue;}
+   let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+   const stable=first.total>job.gate*job.gate*.04&&second.total>job.gate*job.gate*.04&&first.fundamentalFraction>.025&&second.fundamentalFraction>.025&&first.parts.slice(1).reduce((a,b)=>a+b,0)>first.parts[0]*.012&&second.parts.slice(1).reduce((a,b)=>a+b,0)>second.parts[0]*.012&&first.fraction>=.35&&second.fraction>=.35&&second.sum>=first.sum*.65*.65&&shape>=.85;
+   if(!stable){last={ok:false,reason:'source-centered-tone-not-stable',old,after,neighbour,first,second,shape,centerTime:this.baseTime+(job.start+center)/rate};continue;}
+   // A local blend between two held notes is not a new native pitch.
+   // Confirm the same physical frequency independently through the grown
+   // fundamental and one higher partial in two longer native windows.
+   const nativeConfirm=[target.window,frame(target.start+halfExtra,longCount)],tolerance=Math.max(4,frequency*.006),pitchRadius=Math.max(6,frequency*.025);
+   const nativePeak=(window,h)=>{let best=0,f=frequency;for(let shift=-pitchRadius;shift<=pitchRadius;shift+=2){const q=frequency+shift;if(q<80||q>maximum||q*h>rate*.45)continue;const p=nativePower(window,q*h);if(p>best){best=p;f=q;}}return f;};
+   let stationary=false,physicalFrequencies=null;
+   if(nativeConfirm.every(Boolean))for(const h of [2,3,4]){
+    if(!(after.parts[h-1]>after.parts[0]*.012&&after.parts[h-1]>neighbour[h-1]*2.5+floor))continue;
+    const qs=[nativePeak(nativeConfirm[0],1),nativePeak(nativeConfirm[0],h),nativePeak(nativeConfirm[1],h)];
+    if(Math.max(...qs)-Math.min(...qs)<=tolerance&&qs.every(q=>Math.abs(q-frequency)<=tolerance)){stationary=true;physicalFrequencies=qs;break;}
+   }
+   if(!stationary){last={ok:false,reason:'native-family-pitch-not-stationary',frequency};continue;}
+   return {ok:true,time:Math.min(job.message.time,this.baseTime+(job.start+center)/rate),sourceTime:this.baseTime+(job.start+center)/rate,frequency,old,after,neighbour,first,second,shape,physicalFrequencies,sourceBaselineTime:this.baseTime+(job.start+before.start)/rate,targetTime:this.baseTime+(job.start+target.start)/rate};
+  }
+ }
+ return last;
+}
+
+ weakNativeFamilyProof(job){
+function preservedBatchWeakProof(job){
+ const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
+ const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
+ const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
+ const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
+ const power=(window,q)=>q>0&&q<=rate*.45?this.highNativePower(window,q):0;
+ const energy=(window,f)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>power(window,f*h)),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
+ const peak=(window,f,h=1)=>{let frequency=f,best=power(window,f*h),radius=Math.max(6,f*.02);for(let offset=-radius;offset<=radius;offset+=2){const q=f+offset;if(q<80||q>maximum||q*h>rate*.45)continue;const p=power(window,q*h);if(p>best){frequency=q;best=p;}}return {frequency,power:best};};
+ const early=limit-Math.round(.14*rate),late=limit+Math.round(.012*rate),oldFrame=frame(early),afterFrame=frame(late);if(!oldFrame||!afterFrame)return {ok:false,reason:'weak-window-incomplete'};
+ const seed=energy(afterFrame,requested),anchor=seed.parts.indexOf(Math.max(...seed.parts))+1,frequency=peak(afterFrame,requested,anchor).frequency,old=energy(oldFrame,frequency),after=energy(afterFrame,frequency),neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+ for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)neighbour[h-1]=Math.max(neighbour[h-1],power(oldFrame,(frequency+offset)*h));
+ const loudest=Math.max(...after.parts),grown=[0,1,2,3].filter(h=>after.parts[h]>Math.max(after.total*(after.fundamentalFraction>.01?.0002:.001),loudest*.012)&&after.parts[h]>neighbour[h]*2.5+floor);
+ const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;},pairs=[];for(const a of grown)for(const b of grown)if(a<b&&coprime(a+1,b+1))pairs.push([a,b]);
+ const hasFundamental=after.fundamentalFraction>.01&&grown.includes(0),partners=grown.filter(h=>h>0),missingFundamental=!hasFundamental;
+ // Two physical coprime higher partials prove a period even when H1 is weak.
+ const eligible=pairs.filter(pair=>hasFundamental||pair[0]>0),minimumFamily=partners.length>=2?.035:.12;
+ if(!(after.fraction>minimumFamily&&eligible.length&&(hasFundamental?after.fundamentalFraction>old.fundamentalFraction*1.3:after.fraction>old.fraction*1.3)&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'weak-no-independent-rise',old,after,neighbour,partners,frequency,missingFundamental,pairs};
+ const pair=eligible.sort((a,b)=>(a[0]===0)-(b[0]===0)||Math.min(after.parts[b[0]],after.parts[b[1]])-Math.min(after.parts[a[0]],after.parts[a[1]]))[0];
+ const physicalSupport=(e)=>pair.every(h=>e.parts[h]>Math.max(e.total*(hasFundamental?.0002:.001),Math.max(...e.parts)*.012)&&e.parts[h]>neighbour[h]*2.5+floor);
+ // A continuously audible weak family can swell against a constant bass.
+ // Independent growth alone cannot make its already-present physical peaks
+ // a new attack. Test native pre-onset peak contrast, not mixed RMS.
+ const priorFrames=[frame(early-Math.round(.016*rate)),oldFrame].filter(Boolean);
+ const alreadyPresent=priorFrames.some(w=>(hasFundamental?[0]:pair).every(h=>{
+  const q=frequency*(h+1),p=power(w,q),width=Math.max(32,frequency*.04),side=Math.max(power(w,q-width),power(w,q+width));
+  return p>floor&&p>side*4;
+ }));
+ // Nearby voices can mask H1 without erasing the same native H2/H3.
+ // A resolved old local peak is stronger presence evidence than a wide
+ // noise-floor contrast; a neighboring semitone gives a slope, not a peak.
+ const resolvedBefore=priorFrames.some(w=>{
+  const present=grown.filter(h=>{const q=frequency*(h+1),p=power(w,q),side=Math.max(power(w,q-8),power(w,q+8));return p>floor*.2&&p>side*1.12;});
+  return hasFundamental&&present.includes(0)||present.some(a=>present.some(b=>a<b&&coprime(a+1,b+1)));
+ });
+ if(resolvedBefore)return {ok:false,reason:'weak-native-family-already-resolved',frequency,pair,old,after};
+ let pitchMovement=null;
+ if(alreadyPresent){
+  const previousPeaks=pair.map(h=>{let q=frequency,value=power(oldFrame,q*(h+1));for(let d=-frequency*.12;d<=frequency*.12;d+=2){const candidate=frequency+d;if(candidate<60||candidate*(h+1)>rate*.45)continue;const p=power(oldFrame,candidate*(h+1));if(p>value){q=candidate;value=p;}}return {frequency:q,power:value};});
+  const priorFrequency=previousPeaks.reduce((sum,p)=>sum+p.frequency,0)/previousPeaks.length,spread=Math.max(...previousPeaks.map(p=>p.frequency))-Math.min(...previousPeaks.map(p=>p.frequency)),cents=1200*Math.log2(frequency/priorFrequency);
+  if(Math.abs(cents)>75&&spread<=Math.max(2,frequency*.006)&&previousPeaks.every(p=>p.power>floor))pitchMovement={priorFrequency,frequency,cents,spread,pair};
+  else return {ok:false,reason:'weak-family-already-present',frequency,pair,old,after};
+ }
+
+ const threshold=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),last=limit+Math.round((job.message?.familyBatchAudit?.048:-.020)*rate);let center=null;
+ for(let start=early;start<=last;start+=step){const e=energy(frame(start,shortCount),frequency);if(e&&e.sum>=threshold&&(hasFundamental?e.fundamentalFraction>.01:physicalSupport(e))){center=start+(shortCount-1)/2;break;}}
+ if(center===null)return {ok:false,reason:'weak-rise-not-located'};
+ const firstFrame=frame(center+.012*rate),secondFrame=frame(center+.044*rate);if(!firstFrame||!secondFrame)return {ok:false,reason:'weak-confirmation-incomplete'};
+ const first=energy(firstFrame,frequency),second=energy(secondFrame,frequency),firstPeaks=pair.map(h=>peak(firstFrame,frequency,h+1)),secondPeaks=pair.map(h=>peak(secondFrame,frequency,h+1));
+ const frequencies=[...firstPeaks,...secondPeaks].map(p=>p.frequency),stationary=Math.max(...frequencies)-Math.min(...frequencies)<=Math.max(4,frequency*.006);
+ const supports=(e)=>partners.filter(h=>e.parts[h]>e.parts[0]*.012&&e.parts[h]>neighbour[h]*2.5+floor).length;
+ let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+ const stable=stationary&&(!hasFundamental||first.fundamentalFraction>.01&&second.fundamentalFraction>.01)&&physicalSupport(first)&&physicalSupport(second)&&first.fraction>=minimumFamily&&second.fraction>=minimumFamily&&supports(first)>=(minimumFamily===.035?2:1)&&supports(second)>=(minimumFamily===.035?2:1)&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!stable)return {ok:false,reason:'weak-source-tone-not-stable',frequency,old,after,first,second,shape,stationary,partners,minimumFamily,centerTime:this.baseTime+(job.start+center)/rate};
+ return {ok:true,time:Math.min(job.message.time,this.baseTime+(job.start+center)/rate),sourceTime:this.baseTime+(job.start+center)/rate,frequency,weakFamily:true,old,after,first,second,shape,partners,minimumFamily,missingFundamental,pair,pitchMovement};
+}
+function supplementalShapeReleaseProof(job){
+function sealedShapeWeakProof(job){
+ const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
+ const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
+ const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
+ const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
+ const power=(window,q)=>q>0&&q<=rate*.45?this.highNativePower(window,q):0;
+ const energy=(window,f)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>power(window,f*h)),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
+ const peak=(window,f,h=1)=>{let frequency=f,best=power(window,f*h),radius=Math.max(6,f*.02);for(let offset=-radius;offset<=radius;offset+=2){const q=f+offset;if(q<80||q>maximum||q*h>rate*.45)continue;const p=power(window,q*h);if(p>best){frequency=q;best=p;}}return {frequency,power:best};};
+ const early=limit-Math.round(.14*rate),late=limit+Math.round(.012*rate),oldFrame=frame(early),afterFrame=frame(late);if(!oldFrame||!afterFrame)return {ok:false,reason:'weak-window-incomplete'};
+ const seed=energy(afterFrame,requested),anchor=seed.parts.indexOf(Math.max(...seed.parts))+1,frequency=peak(afterFrame,requested,anchor).frequency,old=energy(oldFrame,frequency),after=energy(afterFrame,frequency),neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+ for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)neighbour[h-1]=Math.max(neighbour[h-1],power(oldFrame,(frequency+offset)*h));
+ const loudest=Math.max(...after.parts),grown=[0,1,2,3].filter(h=>after.parts[h]>Math.max(after.total*(after.fundamentalFraction>.01?.0002:.001),loudest*.012)&&after.parts[h]>neighbour[h]*2.5+floor);
+ const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;},pairs=[];for(const a of grown)for(const b of grown)if(a<b&&coprime(a+1,b+1))pairs.push([a,b]);
+ const hasFundamental=after.fundamentalFraction>.01&&grown.includes(0),partners=grown.filter(h=>h>0),missingFundamental=!hasFundamental;
+ // Two physical coprime higher partials prove a period even when H1 is weak.
+ const eligible=pairs.filter(pair=>hasFundamental||pair[0]>0),minimumFamily=partners.length>=2?.035:.12;
+ if(!(after.fraction>minimumFamily&&eligible.length&&(hasFundamental?after.fundamentalFraction>old.fundamentalFraction*1.3:after.fraction>old.fraction*1.3)&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'weak-no-independent-rise',old,after,neighbour,partners,frequency,missingFundamental,pairs};
+ const pair=eligible.sort((a,b)=>(a[0]===0)-(b[0]===0)||Math.min(after.parts[b[0]],after.parts[b[1]])-Math.min(after.parts[a[0]],after.parts[a[1]]))[0];
+ const physicalSupport=(e)=>pair.every(h=>e.parts[h]>Math.max(e.total*(hasFundamental?.0002:.001),Math.max(...e.parts)*.012)&&e.parts[h]>neighbour[h]*2.5+floor);
+ // A new articulation can replace the partial balance at the same root.
+ // Require measured old higher partials; absent old power is not a shape.
+ const oldHigher=old.parts.slice(1),newHigher=after.parts.slice(1),oldMeasured=oldHigher.filter(p=>p>floor).length,newMeasured=newHigher.filter(p=>p>floor).length;
+ let shapeDot=0,shapeOld=0,shapeNew=0;for(let h=0;h<3;h++){shapeDot+=oldHigher[h]*newHigher[h];shapeOld+=oldHigher[h]**2;shapeNew+=newHigher[h]**2;}
+ const beforeAfterShape=shapeDot/Math.sqrt(Math.max(1e-30,shapeOld*shapeNew)),shapeWitness=oldMeasured>=2&&newMeasured>=2&&beforeAfterShape<.90;
+ // A continuously audible weak family can swell against a constant bass.
+ // Independent growth alone cannot make its already-present physical peaks
+ // a new attack. Test native pre-onset peak contrast, not mixed RMS.
+ const priorFrames=[frame(early-Math.round(.016*rate)),oldFrame].filter(Boolean);
+ const alreadyPresent=priorFrames.some(w=>(hasFundamental?[0]:pair).every(h=>{
+  const q=frequency*(h+1),p=power(w,q),width=Math.max(32,frequency*.04),side=Math.max(power(w,q-width),power(w,q+width));
+  return p>floor&&p>side*4;
+ }));
+ // Nearby voices can mask H1 without erasing the same native H2/H3.
+ // A resolved old local peak is stronger presence evidence than a wide
+ // noise-floor contrast; a neighboring semitone gives a slope, not a peak.
+ const resolvedBefore=priorFrames.some(w=>{
+  const present=grown.filter(h=>{const q=frequency*(h+1),p=power(w,q),side=Math.max(power(w,q-8),power(w,q+8));return p>floor*.2&&p>side*1.12;});
+  return hasFundamental&&present.includes(0)||present.some(a=>present.some(b=>a<b&&coprime(a+1,b+1)));
+ });
+ if(resolvedBefore&&!shapeWitness)return {ok:false,reason:'weak-native-family-already-resolved',frequency,pair,old,after};
+ let pitchMovement=null;
+ if(alreadyPresent&&!shapeWitness){
+  const previousPeaks=pair.map(h=>{let q=frequency,value=power(oldFrame,q*(h+1));for(let d=-frequency*.12;d<=frequency*.12;d+=2){const candidate=frequency+d;if(candidate<60||candidate*(h+1)>rate*.45)continue;const p=power(oldFrame,candidate*(h+1));if(p>value){q=candidate;value=p;}}return {frequency:q,power:value};});
+  const priorFrequency=previousPeaks.reduce((sum,p)=>sum+p.frequency,0)/previousPeaks.length,spread=Math.max(...previousPeaks.map(p=>p.frequency))-Math.min(...previousPeaks.map(p=>p.frequency)),cents=1200*Math.log2(frequency/priorFrequency);
+  if(Math.abs(cents)>75&&spread<=Math.max(2,frequency*.006)&&previousPeaks.every(p=>p.power>floor))pitchMovement={priorFrequency,frequency,cents,spread,pair};
+  else return {ok:false,reason:'weak-family-already-present',frequency,pair,old,after};
+ }
+
+ const threshold=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),last=limit-Math.round(.020*rate);let center=null;
+ for(let start=early;start<=last;start+=step){const e=energy(frame(start,shortCount),frequency);if(e&&e.sum>=threshold&&(hasFundamental?e.fundamentalFraction>.01:physicalSupport(e))){center=start+(shortCount-1)/2;break;}}
+ if(center===null)return {ok:false,reason:'weak-rise-not-located'};
+ const firstFrame=frame(center+.012*rate),secondFrame=frame(center+.044*rate);if(!firstFrame||!secondFrame)return {ok:false,reason:'weak-confirmation-incomplete'};
+ const first=energy(firstFrame,frequency),second=energy(secondFrame,frequency),firstPeaks=pair.map(h=>peak(firstFrame,frequency,h+1)),secondPeaks=pair.map(h=>peak(secondFrame,frequency,h+1));
+ const frequencies=[...firstPeaks,...secondPeaks].map(p=>p.frequency),stationary=Math.max(...frequencies)-Math.min(...frequencies)<=Math.max(4,frequency*.006);
+ const supports=(e)=>partners.filter(h=>e.parts[h]>e.parts[0]*.012&&e.parts[h]>neighbour[h]*2.5+floor).length;
+ let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+ const stable=stationary&&(!hasFundamental||first.fundamentalFraction>.01&&second.fundamentalFraction>.01)&&physicalSupport(first)&&physicalSupport(second)&&first.fraction>=minimumFamily&&second.fraction>=minimumFamily&&supports(first)>=(minimumFamily===.035?2:1)&&supports(second)>=(minimumFamily===.035?2:1)&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!stable)return {ok:false,reason:'weak-source-tone-not-stable',frequency,old,after,first,second,shape,stationary,partners,minimumFamily,centerTime:this.baseTime+(job.start+center)/rate};
+ return {ok:true,time:Math.min(job.message.time,this.baseTime+(job.start+center)/rate),sourceTime:this.baseTime+(job.start+center)/rate,frequency,weakFamily:true,old,after,first,second,shape,partners,minimumFamily,missingFundamental,pair,pitchMovement,shapeWitness,beforeAfterShape};
+}
+
+function releasePairsWeakProof(job){
+ const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
+ const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
+ const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
+ const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
+ const power=(window,q)=>q>0&&q<=rate*.45?this.highNativePower(window,q):0;
+ const energy=(window,f)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>power(window,f*h)),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
+ const peak=(window,f,h=1)=>{let frequency=f,best=power(window,f*h),radius=Math.max(6,f*.02);for(let offset=-radius;offset<=radius;offset+=2){const q=f+offset;if(q<80||q>maximum||q*h>rate*.45)continue;const p=power(window,q*h);if(p>best){frequency=q;best=p;}}return {frequency,power:best};};
+ const early=limit-Math.round(.14*rate),late=limit+Math.round(.012*rate),oldFrame=frame(early),afterFrame=frame(late);if(!oldFrame||!afterFrame)return {ok:false,reason:'weak-window-incomplete'};
+ const seed=energy(afterFrame,requested),anchor=seed.parts.indexOf(Math.max(...seed.parts))+1,frequency=peak(afterFrame,requested,anchor).frequency,old=energy(oldFrame,frequency),after=energy(afterFrame,frequency),neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+ for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)neighbour[h-1]=Math.max(neighbour[h-1],power(oldFrame,(frequency+offset)*h));
+ const loudest=Math.max(...after.parts),grown=[0,1,2,3].filter(h=>after.parts[h]>Math.max(after.total*(after.fundamentalFraction>.01?.0002:.001),loudest*.012)&&after.parts[h]>neighbour[h]*2.5+floor);
+ const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;},pairs=[];for(const a of grown)for(const b of grown)if(a<b&&coprime(a+1,b+1))pairs.push([a,b]);
+ const hasFundamental=after.fundamentalFraction>.01&&grown.includes(0),partners=grown.filter(h=>h>0),missingFundamental=!hasFundamental;
+ // Two physical coprime higher partials prove a period even when H1 is weak.
+ const eligible=pairs.filter(pair=>hasFundamental||pair[0]>0),minimumFamily=partners.length>=2?.035:.12;
+ if(!(after.fraction>minimumFamily&&eligible.length&&(hasFundamental?after.fundamentalFraction>old.fundamentalFraction*1.3:after.fraction>old.fraction*1.3)&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'weak-no-independent-rise',old,after,neighbour,partners,frequency,missingFundamental,pairs};
+ let pair=eligible.sort((a,b)=>(a[0]===0)-(b[0]===0)||Math.min(after.parts[b[0]],after.parts[b[1]])-Math.min(after.parts[a[0]],after.parts[a[1]]))[0];
+ const physicalSupport=(e)=>pair.every(h=>e.parts[h]>Math.max(e.total*(hasFundamental?.0002:.001),Math.max(...e.parts)*.012)&&e.parts[h]>neighbour[h]*2.5+floor);
+ // A new articulation can replace the partial balance at the same root.
+ // Require measured old higher partials; absent old power is not a shape.
+ const oldHigher=old.parts.slice(1),newHigher=after.parts.slice(1),oldMeasured=oldHigher.filter(p=>p>floor).length,newMeasured=newHigher.filter(p=>p>floor).length;
+ let shapeDot=0,shapeOld=0,shapeNew=0;for(let h=0;h<3;h++){shapeDot+=oldHigher[h]*newHigher[h];shapeOld+=oldHigher[h]**2;shapeNew+=newHigher[h]**2;}
+ const beforeAfterShape=shapeDot/Math.sqrt(Math.max(1e-30,shapeOld*shapeNew)),shapeWitness=oldMeasured>=2&&newMeasured>=2&&beforeAfterShape<.90;
+ // A continuously audible weak family can swell against a constant bass.
+ // Independent growth alone cannot make its already-present physical peaks
+ // a new attack. Test native pre-onset peak contrast, not mixed RMS.
+ const priorFrames=[frame(early-Math.round(.016*rate)),oldFrame].filter(Boolean);
+ const alreadyPresent=priorFrames.some(w=>(hasFundamental?[0]:pair).every(h=>{
+  const q=frequency*(h+1),p=power(w,q),width=Math.max(32,frequency*.04),side=Math.max(power(w,q-width),power(w,q+width));
+  return p>Math.max(floor,after.parts[h]*.001)&&p>side*4;
+ }));
+ // Nearby voices can mask H1 without erasing the same native H2/H3.
+ // A resolved old local peak is stronger presence evidence than a wide
+ // noise-floor contrast; a neighboring semitone gives a slope, not a peak.
+ const resolvedBefore=priorFrames.some(w=>{
+  const present=grown.filter(h=>{const q=frequency*(h+1),p=power(w,q),side=Math.max(power(w,q-8),power(w,q+8));return p>Math.max(floor*.2,after.parts[h]*.001)&&p>side*1.12;});
+  return hasFundamental&&present.includes(0)||present.some(a=>present.some(b=>a<b&&coprime(a+1,b+1)));
+ });
+ if(resolvedBefore&&!shapeWitness)return {ok:false,reason:'weak-native-family-already-resolved',frequency,pair,old,after};
+ let pitchMovement=null;
+ if(alreadyPresent&&!shapeWitness){
+  const previousPeaks=pair.map(h=>{let q=frequency,value=power(oldFrame,q*(h+1));for(let d=-frequency*.12;d<=frequency*.12;d+=2){const candidate=frequency+d;if(candidate<60||candidate*(h+1)>rate*.45)continue;const p=power(oldFrame,candidate*(h+1));if(p>value){q=candidate;value=p;}}return {frequency:q,power:value};});
+  const priorFrequency=previousPeaks.reduce((sum,p)=>sum+p.frequency,0)/previousPeaks.length,spread=Math.max(...previousPeaks.map(p=>p.frequency))-Math.min(...previousPeaks.map(p=>p.frequency)),cents=1200*Math.log2(frequency/priorFrequency);
+  if(Math.abs(cents)>75&&spread<=Math.max(2,frequency*.006)&&previousPeaks.every(p=>p.power>floor))pitchMovement={priorFrequency,frequency,cents,spread,pair};
+  else return {ok:false,reason:'weak-family-already-present',frequency,pair,old,after};
+ }
+
+ const threshold=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),last=limit-Math.round(.020*rate);let center=null;
+ for(let start=early;start<=last;start+=step){const e=energy(frame(start,shortCount),frequency);if(e&&e.sum>=threshold&&(hasFundamental?e.fundamentalFraction>.01:physicalSupport(e))){center=start+(shortCount-1)/2;break;}}
+ if(center===null)return {ok:false,reason:'weak-rise-not-located'};
+ const firstFrame=frame(center+.012*rate),secondFrame=frame(center+.044*rate);if(!firstFrame||!secondFrame)return {ok:false,reason:'weak-confirmation-incomplete'};
+ const first=energy(firstFrame,frequency),second=energy(secondFrame,frequency);
+ let stationary=false,physicalFrequencies=null;
+ for(const candidatePair of eligible){
+  const peaks=[...candidatePair.map(h=>peak(firstFrame,frequency,h+1)),...candidatePair.map(h=>peak(secondFrame,frequency,h+1))],frequencies=peaks.map(p=>p.frequency);
+  if(Math.max(...frequencies)-Math.min(...frequencies)<=Math.max(4,frequency*.006)&&frequencies.every(q=>Math.abs(q-frequency)<=Math.max(4,frequency*.006))){
+   pair=candidatePair;if(physicalSupport(first)&&physicalSupport(second)){stationary=true;physicalFrequencies=frequencies;break;}
+  }
+ }
+ const supports=(e)=>partners.filter(h=>e.parts[h]>e.parts[0]*.012&&e.parts[h]>neighbour[h]*2.5+floor).length;
+ let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+ const stable=stationary&&(!hasFundamental||first.fundamentalFraction>.01&&second.fundamentalFraction>.01)&&physicalSupport(first)&&physicalSupport(second)&&first.fraction>=minimumFamily&&second.fraction>=minimumFamily&&supports(first)>=(minimumFamily===.035?2:1)&&supports(second)>=(minimumFamily===.035?2:1)&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!stable)return {ok:false,reason:'weak-source-tone-not-stable',frequency,old,after,first,second,shape,stationary,partners,minimumFamily,centerTime:this.baseTime+(job.start+center)/rate};
+ return {ok:true,time:Math.min(job.message.time,this.baseTime+(job.start+center)/rate),sourceTime:this.baseTime+(job.start+center)/rate,frequency,weakFamily:true,old,after,first,second,shape,partners,minimumFamily,missingFundamental,pair,pitchMovement,shapeWitness,beforeAfterShape,physicalFrequencies};
+}
+
+ const preserved=sealedShapeWeakProof.call(this,job);
+ return preserved.ok?preserved:releasePairsWeakProof.call(this,job);
+}
+
+function supplementalValidBodyProof(job){
+function earliestValidBodyCore(job){
+ const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
+ const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
+ const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
+ const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
+ const power=(window,q)=>q>0&&q<=rate*.45?this.highNativePower(window,q):0;
+ const energy=(window,f)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>power(window,f*h)),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
+ const peak=(window,f,h=1)=>{let frequency=f,best=power(window,f*h),radius=Math.max(6,f*.02);for(let offset=-radius;offset<=radius;offset+=2){const q=f+offset;if(q<80||q>maximum||q*h>rate*.45)continue;const p=power(window,q*h);if(p>best){frequency=q;best=p;}}return {frequency,power:best};};
+ const early=limit-Math.round(.14*rate),late=limit+Math.round(.012*rate),oldFrame=frame(early),afterFrame=frame(late);if(!oldFrame||!afterFrame)return {ok:false,reason:'weak-window-incomplete'};
+ const seed=energy(afterFrame,requested),anchor=seed.parts.indexOf(Math.max(...seed.parts))+1,frequency=peak(afterFrame,requested,anchor).frequency,old=energy(oldFrame,frequency),after=energy(afterFrame,frequency),neighbour=old.parts.slice(),radius=Math.max(6,frequency*.02);
+ for(let offset=-radius;offset<=radius;offset+=3)for(let h=1;h<=4;h++)neighbour[h-1]=Math.max(neighbour[h-1],power(oldFrame,(frequency+offset)*h));
+ const loudest=Math.max(...after.parts),grown=[0,1,2,3].filter(h=>after.parts[h]>Math.max(after.total*(after.fundamentalFraction>.01?.0002:.001),loudest*.012)&&after.parts[h]>neighbour[h]*2.5+floor);
+ const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;},pairs=[];for(const a of grown)for(const b of grown)if(a<b&&coprime(a+1,b+1))pairs.push([a,b]);
+ const hasFundamental=after.fundamentalFraction>.01&&grown.includes(0),partners=grown.filter(h=>h>0),missingFundamental=!hasFundamental;
+ // Two physical coprime higher partials prove a period even when H1 is weak.
+ const eligible=pairs.filter(pair=>hasFundamental||pair[0]>0),minimumFamily=partners.length>=2?.035:.12;
+ if(!(after.fraction>minimumFamily&&eligible.length&&(hasFundamental?after.fundamentalFraction>old.fundamentalFraction*1.3:after.fraction>old.fraction*1.3)&&Math.sqrt(2*after.sum)-Math.sqrt(2*old.sum)>job.gate*.3))return {ok:false,reason:'weak-no-independent-rise',old,after,neighbour,partners,frequency,missingFundamental,pairs};
+ let pair=eligible.sort((a,b)=>(a[0]===0)-(b[0]===0)||Math.min(after.parts[b[0]],after.parts[b[1]])-Math.min(after.parts[a[0]],after.parts[a[1]]))[0];
+ const physicalSupport=(e)=>pair.every(h=>e.parts[h]>Math.max(e.total*(hasFundamental?.0002:.001),Math.max(...e.parts)*.012)&&e.parts[h]>neighbour[h]*2.5+floor);
+ // A new articulation can replace the partial balance at the same root.
+ // Require measured old higher partials; absent old power is not a shape.
+ const oldHigher=old.parts.slice(1),newHigher=after.parts.slice(1),oldMeasured=oldHigher.filter(p=>p>floor).length,newMeasured=newHigher.filter(p=>p>floor).length;
+ let shapeDot=0,shapeOld=0,shapeNew=0;for(let h=0;h<3;h++){shapeDot+=oldHigher[h]*newHigher[h];shapeOld+=oldHigher[h]**2;shapeNew+=newHigher[h]**2;}
+ const beforeAfterShape=shapeDot/Math.sqrt(Math.max(1e-30,shapeOld*shapeNew)),shapeWitness=oldMeasured>=2&&newMeasured>=2&&beforeAfterShape<.90;
+ // A continuously audible weak family can swell against a constant bass.
+ // Independent growth alone cannot make its already-present physical peaks
+ // a new attack. Test native pre-onset peak contrast, not mixed RMS.
+ const priorFrames=[frame(early-Math.round(.016*rate)),oldFrame].filter(Boolean);
+ const alreadyPresent=priorFrames.some(w=>(hasFundamental?[0]:pair).every(h=>{
+  const q=frequency*(h+1),p=power(w,q),width=Math.max(32,frequency*.04),side=Math.max(power(w,q-width),power(w,q+width));
+  return p>Math.max(floor,after.parts[h]*.001)&&p>side*4;
+ }));
+ // Nearby voices can mask H1 without erasing the same native H2/H3.
+ // A resolved old local peak is stronger presence evidence than a wide
+ // noise-floor contrast; a neighboring semitone gives a slope, not a peak.
+ const resolvedBefore=priorFrames.some(w=>{
+  const present=grown.filter(h=>{const q=frequency*(h+1),p=power(w,q),side=Math.max(power(w,q-8),power(w,q+8));return p>Math.max(floor*.2,after.parts[h]*.001)&&p>side*1.12;});
+  return hasFundamental&&present.includes(0)||present.some(a=>present.some(b=>a<b&&coprime(a+1,b+1)));
+ });
+ if(resolvedBefore&&!shapeWitness)return {ok:false,reason:'weak-native-family-already-resolved',frequency,pair,old,after};
+ let pitchMovement=null;
+ if(alreadyPresent&&!shapeWitness){
+  const previousPeaks=pair.map(h=>{let q=frequency,value=power(oldFrame,q*(h+1));for(let d=-frequency*.12;d<=frequency*.12;d+=2){const candidate=frequency+d;if(candidate<60||candidate*(h+1)>rate*.45)continue;const p=power(oldFrame,candidate*(h+1));if(p>value){q=candidate;value=p;}}return {frequency:q,power:value};});
+  const priorFrequency=previousPeaks.reduce((sum,p)=>sum+p.frequency,0)/previousPeaks.length,spread=Math.max(...previousPeaks.map(p=>p.frequency))-Math.min(...previousPeaks.map(p=>p.frequency)),cents=1200*Math.log2(frequency/priorFrequency);
+  if(Math.abs(cents)>75&&spread<=Math.max(2,frequency*.006)&&previousPeaks.every(p=>p.power>floor))pitchMovement={priorFrequency,frequency,cents,spread,pair};
+  else return {ok:false,reason:'weak-family-already-present',frequency,pair,old,after};
+ }
+
+ const confirm=(center)=>{
+ const firstFrame=frame(center+.012*rate),secondFrame=frame(center+.044*rate);if(!firstFrame||!secondFrame)return {ok:false,reason:'weak-confirmation-incomplete'};
+ const first=energy(firstFrame,frequency),second=energy(secondFrame,frequency);
+ const supports=(e)=>partners.filter(h=>e.parts[h]>e.parts[0]*.012&&e.parts[h]>neighbour[h]*2.5+floor).length;
+ let dot=0,aa=0,bb=0;for(let h=0;h<4;h++){dot+=first.parts[h]*second.parts[h];aa+=first.parts[h]**2;bb+=second.parts[h]**2;}const shape=dot/Math.sqrt(Math.max(1e-30,aa*bb));
+ const bodyPossible=(!hasFundamental||first.fundamentalFraction>.01&&second.fundamentalFraction>.01)&&first.fraction>=minimumFamily&&second.fraction>=minimumFamily&&supports(first)>=(minimumFamily===.035?2:1)&&supports(second)>=(minimumFamily===.035?2:1)&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!bodyPossible)return {ok:false,reason:'weak-source-tone-not-stable',frequency,old,after,first,second,shape,stationary:false,partners,minimumFamily,centerTime:this.baseTime+(job.start+center)/rate};
+ let stationary=false,physicalFrequencies=null;
+ for(const candidatePair of eligible){
+  if(!candidatePair.every(h=>[first,second].every(e=>e.parts[h]>Math.max(e.total*(hasFundamental?.0002:.001),Math.max(...e.parts)*.012)&&e.parts[h]>neighbour[h]*2.5+floor)))continue;
+  const peaks=[...candidatePair.map(h=>peak(firstFrame,frequency,h+1)),...candidatePair.map(h=>peak(secondFrame,frequency,h+1))],frequencies=peaks.map(p=>p.frequency);
+  if(Math.max(...frequencies)-Math.min(...frequencies)<=Math.max(4,frequency*.006)&&frequencies.every(q=>Math.abs(q-frequency)<=Math.max(4,frequency*.006))){
+   pair=candidatePair;if(physicalSupport(first)&&physicalSupport(second)){stationary=true;physicalFrequencies=frequencies;break;}
+  }
+ }
+
+ const stable=stationary&&(!hasFundamental||first.fundamentalFraction>.01&&second.fundamentalFraction>.01)&&physicalSupport(first)&&physicalSupport(second)&&first.fraction>=minimumFamily&&second.fraction>=minimumFamily&&supports(first)>=(minimumFamily===.035?2:1)&&supports(second)>=(minimumFamily===.035?2:1)&&second.sum>=first.sum*.65*.65&&shape>=.85;
+ if(!stable)return {ok:false,reason:'weak-source-tone-not-stable',frequency,old,after,first,second,shape,stationary,partners,minimumFamily,centerTime:this.baseTime+(job.start+center)/rate};
+ // A blend can bias H1 refinement between two held voices. Check whether the
+ // physically confirmed coprime pair was already resolved at its actual root,
+ // rather than only at the approximate H1 hint used before confirmation.
+ const resolvedConfirmedPair=priorFrames.some(w=>pair.every((h,k)=>{
+  const physicalFrequency=(physicalFrequencies[k]+physicalFrequencies[k+2])*.5*(h+1),p=power(w,physicalFrequency);
+  return p>Math.max(floor*.2,after.parts[h]*.001)&&p>Math.max(power(w,physicalFrequency-8),power(w,physicalFrequency+8))*1.12;
+ }));
+ if(resolvedConfirmedPair&&!shapeWitness&&!pitchMovement)return {ok:false,reason:'confirmed-native-pair-already-resolved',frequency,pair,physicalFrequencies};
+ return {ok:true,sourceTime:this.baseTime+(job.start+center)/rate,earliestValidBody:true,time:Math.min(job.message.time,this.baseTime+(job.start+center)/rate),frequency,weakFamily:true,old,after,first,second,shape,partners,minimumFamily,missingFundamental,pair,pitchMovement,shapeWitness,beforeAfterShape,physicalFrequencies};
+ };
+
+ const threshold=old.sum+(after.sum-old.sum)*.06,step=Math.max(1,Math.round(.008*rate)),last=limit-Math.round(.020*rate);let failure={ok:false,reason:'weak-rise-not-located'};
+ for(let start=early;start<=last;start+=step){
+  const e=energy(frame(start,shortCount),frequency);if(!e||e.sum<threshold||!(hasFundamental?e.fundamentalFraction>.01:physicalSupport(e)))continue;
+  const proof=confirm(start+(shortCount-1)/2);if(proof.ok)return proof;failure=proof;
+ }
+ return failure;
+}
+
+ const proof=earliestValidBodyCore.call(this,job);
+ if(!proof.ok||!proof.missingFundamental)return proof;
+ const rate=this.rate,maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2),frequency=proof.frequency;
+ const center=Math.round(((proof.sourceTime-this.baseTime)*rate-job.start)*2)/2,count=Math.floor(.064*rate);
+ const first=this.highNativeFrame(job,center+.012*rate,count),second=this.highNativeFrame(job,center+.044*rate,count);
+ if(!first||!second)return {ok:false,reason:'missing-root-window-incomplete'};
+ const fineRoot=(window,h,seed)=>{let q=seed,best=this.highNativePower(window,seed*h);for(let shift=-2;shift<=2;shift+=.25){const candidate=seed+shift;if(candidate<80||candidate>maximum||candidate*h>rate*.45)continue;const p=this.highNativePower(window,candidate*h);if(p>best){best=p;q=candidate;}}return q;};
+ const pair=proof.pair,seeds=proof.physicalFrequencies,refined=[...pair.map((h,k)=>fineRoot(first,h+1,seeds[k])),...pair.map((h,k)=>fineRoot(second,h+1,seeds[k+2]))];
+ if(Math.max(...refined)-Math.min(...refined)>Math.max(.5,frequency*.006))return {ok:false,reason:'missing-root-incoherent',frequency,pair,physicalFrequencies:seeds,refined};
+ return proof;
+}
+
+const preserved=preservedBatchWeakProof.call(this,job);if(preserved.ok)return preserved;
+const release=supplementalShapeReleaseProof.call(this,job);return release.ok?release:supplementalValidBodyProof.call(this,job);
+}
+
  periodicSourceRise(job){
   if(job.lowPeriodicProof?.ok)return true;
 
   if(job.message?.frequency>=1600)return this.highPeriodicSourceRise(job);
+  if(job.message?.frequency<1600)return this.lowPeriodicSourceProof(job).ok;
   const frequency=job.message?.frequency;if(!Number.isFinite(frequency)||frequency<80||frequency>1400||!job.y)return false;
   const count=Math.floor(.032*this.rate/this.stride),early=job.eventIndex-Math.round(.14*this.rate),late=job.eventIndex+Math.round(.02*this.rate);
   if(count<16||early<0||late+(count-1)*this.stride>=job.y.length)return false;
   const energy=start=>{const values=new Float64Array(count);let norm=0,total=0;for(let i=0;i<count;i++){const x=job.y[start+i*this.stride],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}let sum=0,fundamental=0;for(let h=1;h<=3;h++){const c=2*Math.cos(2*Math.PI*frequency*h/(this.rate/this.stride));let a=0,b=0;for(const x of values){const n=x+c*a-b;b=a;a=n;}const power=Math.max(0,a*a+b*b-c*a*b)/(norm*norm);if(h===1)fundamental=power;sum+=power;}return{sum,fundamental,total};};
   const before=energy(early),after=energy(late);
   if(!(after.fundamental>after.total*.025&&2*after.sum>after.total*.35&&after.sum>before.sum*2.5&&Math.sqrt(2*after.sum)-Math.sqrt(2*before.sum)>job.gate*.3))return false;
-  const onsetPower=before.sum+(after.sum-before.sum)*.06,step=Math.max(this.stride,Math.round(.008*this.rate)),limit=job.eventIndex-Math.round(.020*this.rate);
+  const onsetPower=before.sum+(after.sum-before.sum)*.06,step=Math.max(this.stride,Math.round(.008*this.rate)),limit=job.eventIndex+Math.round((job.message?.familyBatchAudit?.048:-.020)*this.rate);
   for(let start=early;start<=limit;start+=step){
    const observed=energy(start);if(observed.sum<onsetPower||observed.fundamental<observed.total*.025)continue;
    const sourceTime=this.baseTime+(job.start+start+(count-1)*this.stride/2)/this.rate;
@@ -1310,6 +1967,56 @@ class EchoAttribution {
  // a background profile exists, require a steady independent harmonic tone in
  // two short source-time windows after projection. Drum/click decays do not
  // satisfy this; only the separate periodic rise check may refine onset time.
+ // A source-projected ordinary candidate can contain a stable instrument
+ // family without dominating the full microphone energy. Physical native
+ // partials confirm presence; the unchanged attack/held-tone veto still
+ // determines whether this candidate is a new articulation.
+ordinaryInstrumentTone(job,upper=false){
+ if(!job.y||!Number.isFinite(job.eventIndex))return false;
+ const rate=this.rate,step=upper?Math.max(1,Math.round(this.rate/16000)):this.stride,n=Math.floor(.032*rate/step),wideN=Math.floor(.064*rate/step),one=job.eventIndex+Math.round(.020*rate),two=job.eventIndex+Math.round(.052*rate);
+ if(n<16||two+Math.floor(.032*rate)>job.y.length)return false;
+ const make=(start,count,stride)=>{let norm=0,total=0;const values=new Float64Array(count);for(let i=0;i<count;i++){const x=job.y[start+i*stride],w=.5-.5*Math.cos(2*Math.PI*i/(count-1));values[i]=x*w;norm+=w;total+=x*x/count;}return{values,norm,total};};
+ const power=(frame,f,sampled)=>{const c=2*Math.cos(2*Math.PI*f/sampled);let a=0,b=0;for(const x of frame.values){const y=x+c*a-b;b=a;a=y;}return Math.max(0,a*a+b*b-c*a*b)/(frame.norm*frame.norm);};
+ const first=make(one,n,step),second=make(two,n,step),wide=make(one,wideN,step),sr=rate/step;
+ const parts=(frame,f,sampled)=>[1,2,3,4].map(h=>f*h<=sampled*.45?power(frame,f*h,sampled):0),sum=x=>x.reduce((a,b)=>a+b,0);
+ let native=null;
+ const low=upper?1400:80,high=upper?Math.min(4000,sr*.45/2):Math.min(1400,sr*.45/2);
+ for(let f=low;f<=high;f+=10){
+  const ap=parts(first,f,sr),bp=parts(second,f,sr),wp=parts(wide,f,sr);
+  if(!(bp[0]>second.total*.025&&wp[0]>wide.total*.01&&2*sum(bp)>second.total*.12&&2*sum(wp)>wide.total*.12&&sum(bp)>=sum(ap)*.4225))continue;
+  if(!native)native=[make(one,Math.floor(.032*rate),1),make(two,Math.floor(.032*rate),1),make(one,Math.floor(.064*rate),1)];
+  let best=0;const local=[];for(let v=f-20;v<=f+20;v+=2){if(v<low||v>high)continue;const p=power(native[2],v,rate);local.push({frequency:v,power:p});best=Math.max(best,p);}
+  // The64ms fundamental can contain an overlapping neighbouring reed.
+  // Verify candidate centers within its main peak instead of treating one
+  // interference-shifted maximum as the exact harmonic fundamental.
+  const hypotheses=local.filter(v=>v.frequency>f-18&&v.frequency<f+18&&v.power>=best*.8).sort((a,b)=>b.power-a.power);
+  for(const hypothesis of hypotheses){const q=hypothesis.frequency;
+  const a=parts(native[0],q,rate),b=parts(native[1],q,rate),w=parts(native[2],q,rate);
+  if(!(b[0]>native[1].total*.025&&w[0]>native[2].total*.01&&2*sum(b)>native[1].total*.12&&2*sum(w)>native[2].total*.12&&sum(b.slice(1))>b[0]*.012&&sum(b)>=sum(a)*.4225))continue;
+  // At least one source partial must be present early and remain centered at
+  // the same physical harmonic later. A leadingH4 may precede a reed's f0.
+  const stationary=[];
+  for(let h=1;h<=4;h++){
+   if(q*h>rate*.45||a[h-1]<native[0].total*.003||b[h-1]<b[0]*(h===1?.01:.012))continue;
+   let fa=q,fb=q,pa=0,pb=0;for(let v=q-18;v<=q+18;v+=2){const x=power(native[0],v*h,rate),y=power(native[1],v*h,rate);if(x>pa){pa=x;fa=v;}if(y>pb){pb=y;fb=v;}}
+   if(Math.abs(fa-q)>12||Math.abs(fb-q)>12||Math.abs(fa-fb)>10||a[h-1]<pa*.8||b[h-1]<pb*.8)continue;
+   stationary.push(h);
+  }
+  if(!stationary.length)continue;
+  // Higher partials independently center on this physical fundamental, not
+  // an unrelated nearby transient or an out-of-band decimation alias.
+  let partner=false;for(let h=2;h<=4;h++){
+   if(q*h>rate*.45||b[h-1]<=b[0]*.012)continue;
+   let ph=q,peak=0;for(let v=q-18;v<=q+18;v+=2){const p=power(native[1],v*h,rate);if(p>peak){peak=p;ph=v;}}
+   if(Math.abs(ph-q)<=10&&b[h-1]>=peak*.8){partner=true;break;}
+  }
+  if(!partner)continue;
+  return true;
+  }
+ }
+ return !upper&&this.ordinaryInstrumentTone(job,true);
+}
+
  stableInstrumentTone(job){
   if(job.lowPeriodicProof?.ok){job.tonalFamilyCount=1;return true;}
 
@@ -1389,11 +2096,19 @@ class EchoAttribution {
   if(relative<0||relative>=array.length-1)return 0;
   const at=Math.floor(relative),fraction=relative-at;return array[at]*(1-fraction)+array[at+1]*fraction;
  }
- captureEnd(job){return Math.ceil((job.signalTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate);}
+ captureEnd(job){
+  const family=this.familyBounds(job);if(family)return Math.ceil((family.last-this.baseTime+.132)*this.rate);
+  // Periodic proposals already identify the source time; their callback
+  // observation delay adds no information to the source-centered proof.
+  // Ordinary attack jobs retain their original callback capture bound.
+  const sourceTime=job.message.source==='periodic'?job.message.time:job.signalTime;
+  return Math.ceil((sourceTime-this.baseTime+(job.message.toneCheck ? .132 : .052))*this.rate);
+ }
  prepare(job){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
-  job.start=Math.max(0,Math.floor((Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?.16:.024))*this.rate));job.length=this.captureEnd(job)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  const family=this.familyBounds(job);
+  job.start=Math.max(0,Math.floor((family?family.first-this.baseTime-.32:Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?(job.message.frequency<=1400?.32:.16):.024))*this.rate));job.length=this.captureEnd(job)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total){this.drop(job,'capture-window-incomplete',{stage:'prepare'});return false;}
   if(job.start<this.total-this.size){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;
@@ -1402,16 +2117,19 @@ class EchoAttribution {
   for(let i=0;i<job.length;i++){const x=this.at(this.capture,job.start+i);job.y[i]=x;job.original+=x*x;if(i%this.stride===0)job.low[i/this.stride]=this.at(this.lowCapture,job.start+i);}
   job.originalY=job.y.slice();job.atoms=[];
   if(job.original<1e-16){this.reject(job,'below-threshold');return true;}
-  const anchored=this.meta.cancelReady&&Number.isFinite(this.meta.delayMs);
-  job.anchor=anchored?this.meta.delayMs*this.rate/1000:0;
-  job.lowLag=anchored?Math.max(0,job.anchor-this.rate*.12):0;job.highLag=anchored?Math.min(this.rate*.5,job.anchor+this.rate*.20):this.rate*.5;
+  // Freeze the separately proven hardware path for this audit. A queued
+  // fit must keep its selected reference window if live metadata changes.
+  job.verifiedSourceDelayMs=Number.isFinite(this.meta.verifiedSourceDelayMs)&&this.meta.verifiedSourceDelayMs>=0&&this.meta.verifiedSourceDelayMs<=500?this.meta.verifiedSourceDelayMs:null;
+  const verified=job.verifiedSourceDelayMs!==null,anchored=verified||this.meta.cancelReady&&Number.isFinite(this.meta.delayMs);
+  job.anchor=anchored?(verified?job.verifiedSourceDelayMs:this.meta.delayMs)*this.rate/1000:0;
+  job.lowLag=anchored?Math.max(0,job.anchor-this.rate*(verified?.020:.12)):0;job.highLag=anchored?Math.min(this.rate*.5,job.anchor+this.rate*(verified?.080:.20)):this.rate*.5;
   // Snapshot every template used by this job. A low-rate callback or a pending
   // queue must not let live ring overwrites change a partially completed fit.
   job.historyStart=Math.max(0,Math.floor(job.start-job.highLag-4));
   if(job.historyStart<Math.max(0,this.total-this.size)){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   const historyLength=job.start+job.length-job.historyStart+4;
   for(const name of ['render','lowRender']){const array=new Float32Array(historyLength);for(let i=0;i<historyLength;i++)array[i]=this.at(this[name],job.historyStart+i);job[name]=array;}
-  if(this.kernel)this.kernel.load(job);
+  job.immutableReference=true;if(this.kernel)this.kernel.load(job);
   job.iteration=0;job.energy=job.original;this.beginCoarse(job);return true;
  }
  beginCoarse(job){
@@ -1438,6 +2156,7 @@ class EchoAttribution {
  }
  advance(job){
   if(job.done)return;
+  if(job.stage==='families'){this.advanceFamilyVerification(job);return;}
   if(job.stage==='coarse'){
    if(job.direct){this.coarse(job,job.anchor,'render');job.direct=false;}
    const coarseBatch=Math.max(6,Math.min(384,Math.round(48*48000/this.rate)));
@@ -1456,7 +2175,7 @@ class EchoAttribution {
    for(let batch=0;batch<fineBatch&&job.fineLag<=job.fineHigh;batch++,job.fineLag++){this.full(job,job.fineLag,'render');}
    if(job.fineLag<=job.fineHigh)return;
    if(job.secondFine){[job.fineLag,job.fineHigh]=job.secondFine;job.secondFine=null;return;}
-   if(job.fullScore<job.original*1e-8||Math.abs(job.fullGain)>6){this.accept(job);return;}
+   if(job.fullScore<job.original*1e-8||Math.abs(job.fullGain)>6||this.familyBounds(job)&&job.fullScore<job.energy*0.01){this.accept(job);return;}
    this.subtract(job);
    const rms=Math.sqrt(job.energy/job.length),explained=1-job.energy/job.original;
    // A loud echo may accompany a quiet instrument. The veto requires both
@@ -1594,6 +2313,222 @@ class HighPeriodicNoteOnset extends PeriodicNoteOnset {
  }
 }
 
+// PRIVATE candidate experiment. A resolved partial is not proof of a note.
+// Every frequency hypothesis must pass native source/family admission.
+class PartialLineOnset {
+ constructor(rate,n,emit){this.rate=rate;this.n=n;this.emit=emit;this.reset();}
+ reset(){this.nodes=[];this.lastTime=-Infinity;}
+ observe(power,time,gate){
+  if(!power||!Number.isFinite(time)||time<=this.lastTime)return;
+  if(time-this.lastTime>.12)this.reset();this.lastTime=time;
+  const binHz=this.rate/this.n,high=Math.min(13200,this.rate*.45),floor=Math.max(1e-16,gate*gate*.002);
+  let total=0;for(const p of power)total+=Math.max(0,p);if(total<floor)return;
+  const median=bin=>{const a=[];for(let j=Math.max(1,bin-6);j<=Math.min(power.length-2,bin+6);j++)a.push(power[j]);a.sort((a,b)=>a-b);return a[a.length>>1]||0;};
+  const peaks=[];
+  for(let bin=Math.ceil(80/binHz);bin<power.length-1&&bin*binHz<=high;bin++){
+   const p=power[bin];if(!(p>power[bin-1]&&p>=power[bin+1]&&p>Math.max(floor,total*.001,median(bin)*8)))continue;
+   const a=Math.log(Math.max(1e-30,power[bin-1])),b=Math.log(Math.max(1e-30,p)),c=Math.log(Math.max(1e-30,power[bin+1])),d=a-2*b+c;
+   const shift=Math.abs(d)>1e-12?Math.max(-.5,Math.min(.5,.5*(a-c)/d)):0;
+   peaks.push({f:(bin+shift)*binHz,p});
+  }
+  const used=new Set(),ready=[];
+  for(const q of peaks.sort((a,b)=>b.p-a.p).slice(0,56)){
+   let best=-1,distance=Infinity;
+   for(let i=0;i<this.nodes.length;i++){
+    if(used.has(i))continue;const node=this.nodes[i],d=Math.abs(q.f-node.anchorF)/Math.max(binHz*.3,node.anchorF*.04);
+    if(d<distance){distance=d;best=i;}
+   }
+   if(best<0||distance>1){this.nodes.push({anchorF:q.f,f:q.f,first:time,last:time,count:1,peak:q.p,valley:q.p,armed:true,rising:true,ever:false,lastProposal:-Infinity});used.add(this.nodes.length-1);continue;}
+   const node=this.nodes[best];used.add(best);
+   if(time-node.last>.055){node.first=time;node.count=0;node.armed=true;node.rising=true;node.peak=q.p;node.valley=q.p*.25;}
+   node.last=time;node.count++;node.f=node.f*.6+q.f*.4;node.peak=Math.max(node.peak*.994,q.p);node.valley=Math.min(node.valley,q.p);
+   if(q.p<node.peak*.18&&!node.armed){node.armed=true;node.rising=false;node.first=null;node.count=0;node.valley=q.p;}
+   if(node.armed&&!node.rising){
+    node.valley=Math.min(node.valley,q.p);
+    if(q.p>Math.max(floor*2,node.valley*2.5)){node.rising=true;node.first=time;node.count=1;}
+    else node.count=0;
+   }
+   if(node.armed&&node.rising&&node.count>=5&&time-node.first>=.026&&time-node.lastProposal>.12&&(!node.ever||q.p>node.valley*2.5)){
+    const alternatives=[];
+    for(let observedHarmonic=1;observedHarmonic<=4;observedHarmonic++){
+     const f=node.f/observedHarmonic;if(f<80||f>3300)continue;
+     const parts=[];let score=0;
+     for(let h=1;h<=4;h++){
+      const center=f*h/binHz;let p=0,at=-1;for(let j=Math.max(1,Math.floor(center)-1);j<=Math.min(power.length-2,Math.ceil(center)+1);j++)if(power[j]>p){p=power[j];at=j;}
+      if(at<0||p<Math.max(floor,median(at)*6))p=0;parts.push(p);score+=Math.sqrt(p)/Math.sqrt(h);
+     }
+     alternatives.push({frequency:f,time:node.first,observedHarmonic,partialFrequency:node.f,parts,score});
+    }
+    alternatives.sort((a,b)=>b.score-a.score);
+    if(alternatives.length)ready.push({node,alternatives,energy:q.p});
+    node.armed=false;node.ever=true;node.lastProposal=time;node.valley=q.p;node.peak=q.p;
+   }
+  }
+  this.nodes=this.nodes.filter(node=>time-node.last<.30).slice(-128);
+  for(const q of ready.sort((a,b)=>b.energy-a.energy).slice(0,6)){
+   const chosen=q.alternatives[0];
+   this.emit({type:'onset',source:'periodic',familyProposal:true,partialProposal:true,
+    time:chosen.time,frequency:chosen.frequency,observedTime:time,level:Math.sqrt(q.energy),
+    partialFrequency:q.node.f,proposalKind:'resolved-partial-rise',familyCandidates:q.alternatives});
+  }
+ }
+}
+// Batch adjacent stable line births into a single source-audit job. Each
+// alternative keeps its own source timestamp; the validator must use it.
+class MultiHarmonicFamilyOnset {
+ constructor(rate,n,emit){this.emit=emit;this.line=new PartialLineOnset(rate,n,m=>this.collect(m));this.pending=[];this.pendingSince=null;this.lastTime=-Infinity;}
+ reset(){this.line.reset();this.pending=[];this.pendingSince=null;this.lastTime=-Infinity;}
+ collect(message){if(this.pendingSince===null)this.pendingSince=message.observedTime;this.pending.push(message);}
+ flush(){
+  if(!this.pending.length)return;
+  const candidates=[];
+  for(const message of this.pending)for(const q of message.familyCandidates){
+   const old=candidates.find(p=>Math.abs(p.time-q.time)<.035&&Math.abs(1200*Math.log2(p.frequency/q.frequency))<35);
+   if(!old)candidates.push({...q,level:message.level});else if(q.score>old.score)Object.assign(old,q,{level:message.level});
+  }
+  candidates.sort((a,b)=>b.score-a.score);const kept=candidates.slice(0,64),chosen=kept[0];
+  if(chosen)this.emit({type:'onset',source:'periodic',familyProposal:true,partialProposal:true,time:chosen.time,frequency:chosen.frequency,level:chosen.level,observedTime:this.pending.at(-1).observedTime,proposalKind:'batched-partial-rise',familyCandidates:kept,lineProposals:this.pending.length});
+  this.pending=[];this.pendingSince=null;
+ }
+ observe(power,time,gate){
+  if(!Number.isFinite(time)||time<=this.lastTime)return;
+  if(time-this.lastTime>.12)this.reset();this.lastTime=time;
+  this.line.observe(power,time,gate);if(this.pendingSince!==null&&time-this.pendingSince>=.080)this.flush();
+ }
+}
+
+// Private supplementary proof. Call only after the actual rendered source was
+// projected from native-rate PCM and an independent instrument snapshot exists.
+// This verifies short bodies; it neither finds candidates nor replaces the
+// existing long proof, source projection, or family/time deduplication.
+class PhaseVerifiedShortNativeFamilyProof {
+  constructor(rate, nativePower=null, collectDiagnostics=false, nativePhase=null) {
+    this.rate = rate; this.nativePower=nativePower;this.nativePhase=nativePhase;
+    this.collectDiagnostics=collectDiagnostics; this.hannCache=new Map();
+  }
+
+  useImmutableSamples(samples) {
+    if(this.immutableSamples!==samples){this.immutableSamples=samples;this.immutableFrames=new Map();}
+  }
+
+  frame(samples, start, count) {
+    start = Math.round(start);
+    if (start < 0 || start + count > samples.length) return null;
+    const cache=this.immutableSamples===samples?this.immutableFrames:null,key=start+':'+count;
+    if(cache?.has(key))return cache.get(key);
+    const values = new Float64Array(count);
+    let weights=this.hannCache.get(count);
+    if(!weights){weights=Float64Array.from({length:count},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(count-1)));this.hannCache.set(count,weights);}
+    let norm = 0, total = 0;
+    for (let i = 0; i < count; i++) {
+      const x = samples[start + i], w = weights[i];
+      values[i] = x * w; norm += w; total += x * x / count;
+    }
+    const result={ values, norm, total, familyPowers:new Map() };
+    if(cache){if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(key,result);}
+    return result;
+  }
+
+  power(frame, frequency) {
+    if(frame.familyPowers.has(frequency))return frame.familyPowers.get(frequency);
+    if(this.nativePower){const value=this.nativePower(frame,frequency);if(Number.isFinite(value)){frame.familyPowers.set(frequency,value);return value;}}
+    const c = 2 * Math.cos(2 * Math.PI * frequency / this.rate);
+    let a = 0, b = 0;
+    for (const x of frame.values) { const n = x + c * a - b; b = a; a = n; }
+    const result=Math.max(0, a * a + b * b - c * a * b) / (frame.norm * frame.norm);
+    frame.familyPowers.set(frequency,result);return result;
+  }
+
+  peak(frame, requested, harmonic) {
+    const radius = requested * .10, step = radius / 16;
+    let frequency = requested, power = this.power(frame, requested * harmonic);
+    for (let i = -16; i <= 16; i++) {
+      const q = requested + i * step;
+      const p = this.power(frame, q * harmonic);
+      if (p > power) { frequency = q; power = p; }
+    }
+    const center = frequency;
+    for (let i = -4; i <= 4; i++) {
+      const q = center + i * step / 4, p = this.power(frame, q * harmonic);
+      if (p > power) { frequency = q; power = p; }
+    }
+    return { frequency, power, harmonic };
+  }
+
+
+  phase(frame, frequency) {
+    if(this.nativePhase)return this.nativePhase(frame,frequency);
+    const omega=2*Math.PI*frequency/this.rate,c=2*Math.cos(omega);let a=0,b=0;
+    for(const x of frame.values){const next=x+c*a-b;b=a;a=next;}
+    return Math.atan2(b*Math.sin(omega),a-b*Math.cos(omega));
+  }
+
+  verify(samples, eventIndex, frequency, gate, evidence = {}) {
+    const reject = (reason, detail = {}) => ({ ok: false, reason, ...detail });
+    if (evidence.owned !== true || evidence.sourceTrusted !== true || evidence.sourceProjected !== true) return reject('unproven-source');
+    if (!Number.isFinite(frequency) || frequency < 80 || frequency > Math.min(3300, this.rate * .45 / 4)) return reject('invalid-frequency');
+    if (!Number.isFinite(gate) || gate < 0 || !Number.isFinite(eventIndex)) return reject('invalid-input');
+    const n = Math.round(.016 * this.rate);
+    const before = this.frame(samples, eventIndex - n, n);
+    const first = this.frame(samples, eventIndex + Math.round(.008 * this.rate), n);
+    const second = this.frame(samples, eventIndex + Math.round(.024 * this.rate), n);
+    if (!before || !first || !second) return reject('source-window-incomplete');
+    const frames=[before,first,second],peaks=[[],[],[]];
+    const peakAt=(frameIndex,h)=>peaks[frameIndex][h-1]??=(this.peak(frames[frameIndex],frequency,h));
+    const floor = Math.max(1e-16, gate * gate * .012);
+    const pairs = [[1, 4], [2, 3], [3, 4], [1, 3], [1, 2], [5, 7], [5, 6], [6, 7], [7, 8], [3, 7], [4, 7], [3, 5], [4, 5], [1, 5], [1, 6], [1, 7], [1, 8], [2, 5], [2, 7], [3, 8], [5, 8]];
+    const diagnostics = [];
+    for (const pair of pairs) {
+      if (pair.some(h => frequency * h * .016 < 4 || frequency * h > this.rate*.45)) continue;
+      let old;
+      const a = pair.map(h => peakAt(1,h));
+      const b = pair.map(h => peakAt(2,h));
+      const roots = [...a, ...b].map(q => q.frequency);
+      const root = roots.reduce((s, f) => s + f, 0) / roots.length;
+      const sumA = a.reduce((s, q) => s + q.power, 0), sumB = b.reduce((s, q) => s + q.power, 0);
+      const concentration = Math.min(2 * sumA / Math.max(1e-30, first.total), 2 * sumB / Math.max(1e-30, second.total));
+      const describe=()=>({ pair, root, roots, oldRoots: old.map(q => q.frequency), powers: [old, a, b].map(parts => parts.map(q => q.power)), concentration });
+      let physical;
+      if(this.collectDiagnostics){old=pair.map(h=>peakAt(0,h));physical=describe();diagnostics.push(physical);}
+      const higherOnly = pair.every(h => h >= 3);
+      if (Math.max(...roots) - Math.min(...roots) > root * .008 || Math.abs(1200 * Math.log2(root / frequency)) > 55) continue;
+      if (a.some(q => q.power <= floor) || b.some(q => q.power <= floor)) continue;
+      if (concentration < (higherOnly ? .012 : .12) || sumB < sumA * .35 || sumA < sumB * .25) continue;
+      if ([a, b].some(parts => Math.min(...parts.map(q => q.power)) < Math.max(...parts.map(q => q.power)) * .008)) continue;
+      old??=pair.map(h=>peakAt(0,h));physical??=describe();
+      // Before the event an already present nearby family defeats novelty.
+      // A resolved semitone at a high native partial may instead show a pitch
+      // transition even when the 16ms fundamental window leaks the old note.
+      const priorSame = old.map((q, i) => Math.abs(1200 * Math.log2(q.frequency / root)) < 60 && q.power >= Math.min(a[i].power, b[i].power) * .20);
+      if (priorSame.every(Boolean)) continue;
+      const novel = old.map((q, i) => Math.min(a[i].power, b[i].power) > q.power * 2.5 + floor || (q.power > floor && Math.abs(1200 * Math.log2(q.frequency / root)) > 85 && !priorSame[i]));
+      if (!novel.every(Boolean)) continue;
+      // Independent phase clocks distinguish a true native period from
+      // nearby shoulders whose16ms spectral maxima happen to agree.
+      const phaseRoots=pair.map(h=>{const difference=this.phase(second,root*h)-this.phase(first,root*h)-2*Math.PI*root*h*.016,error=Math.atan2(Math.sin(difference),Math.cos(difference));return root+error/(2*Math.PI*.016*h);});
+      physical.phaseRoots=phaseRoots;
+      if(Math.abs(phaseRoots[0]-phaseRoots[1])>Math.max(4,root*.006)||phaseRoots.some(q=>Math.abs(q-root)>Math.max(6,root*.02)))continue;
+      // A smooth AM valley is not a new key attack: keep earlier resolved
+      // native-family presence separate from the short immediate baseline.
+      const prior=this.frame(samples,eventIndex-Math.round(.14*this.rate),Math.round(.064*this.rate));
+      if(prior){
+        const priorPeaks=pair.map(h=>this.peak(prior,root,h));
+        const priorSameFamily=priorPeaks.every((q,i)=>Math.abs(1200*Math.log2(q.frequency/root))<=75&&q.power>Math.max(floor*.2,Math.min(a[i].power,b[i].power)*.001))&&Math.abs(priorPeaks[0].frequency-priorPeaks[1].frequency)<=root*.008;
+        if(priorSameFamily){
+          // A rearticulation may cross an observed silent release. Do not
+          // infer this solely from a relative dip in the louder body.
+          const shortN=Math.round(.008*this.rate),hop=Math.round(.004*this.rate),limits=pair.map((h,i)=>Math.max(1e-16,gate*gate*.00005,Math.min(a[i].power,b[i].power)*.001));
+          let silent=0,rearmed=false;
+          for(let at=Math.round(eventIndex-.10*this.rate);at<=eventIndex;at+=hop){const frame=this.frame(samples,at,shortN);if(!frame)continue;const absent=pair.every((h,i)=>this.power(frame,root*h)<limits[i]);silent=absent?silent+hop:0;if(silent>=Math.round(.008*this.rate)){rearmed=true;break;}}
+          if(!rearmed){physical.priorResolved=true;continue;}
+        }
+      }
+      return { ok: true, reason: 'phase-verified-short-native-family', frequency: root, sourceIndex: Math.round(eventIndex), physical, windowsMs: [-16, 8, 24], proofEndIndex: Math.round(eventIndex) + Math.round(.040 * this.rate) };
+    }
+    return reject('short-native-family-unconfirmed', { diagnostics });
+  }
+}
+
 // GENERATED_PERIODIC_END
 class SustainedOnset {
  constructor(rate,emit){
@@ -1672,24 +2607,158 @@ class LegacyRhythmDetector {
   this.envelope=Math.max(level,this.envelope*.955);
  }
 }
+// Private lifecycle prototype. Invoke only after a finite capture ends and
+// normal ready work is drained. Every proof keeps its exact existing gates;
+// its native frame lookup rejects missing recorded windows rather than pads.
+function installObservedEOFDrain(attribution){
+ const normalCaptureEnd=attribution.captureEnd;
+ attribution.captureEnd=function(job){return job.eofObservedBodyOnly===true?job.eofCaptureEnd:normalCaptureEnd.call(this,job);};
+ attribution.prepareObservedEndOfCapture=function(endTime,completedFrame=null){
+  const rate=this.rate,observedEnd=this.baseTime+this.total/rate;
+  if(!Number.isFinite(endTime)||Math.abs(endTime-observedEnd)>1/rate)return {ok:false,reason:'capture-end-mismatch',jobs:[]};
+  const meta=this.meta,evidenceTime=typeof meta.getEvidenceTime==='function'?meta.getEvidenceTime():meta.evidenceTime;
+  if(!Number.isFinite(evidenceTime)||evidenceTime>observedEnd||typeof meta.instrumentEvidence!=='function')return {ok:false,reason:'unobserved-independent-evidence',jobs:[]};
+  if(meta.enabled===false||(!meta.ready&&!meta.canAudit)||!meta.renderRecent)return {ok:false,reason:'unproven-source-reference',jobs:[]};
+  // Independent evidence is stamped at the FFT centre. A completed finite
+  // frame also contains its already recorded right half; this is distinct
+  // from either future input or a padded new FFT. Validate both clocks and
+  // the frame's exact length before using that observed coverage at EOF.
+  let evidenceEnd=evidenceTime;
+  if(completedFrame!==null){
+   if(!Number.isFinite(completedFrame.center)||!Number.isFinite(completedFrame.end)||!Number.isInteger(completedFrame.size)||completedFrame.size<2||completedFrame.size>4096||Math.abs(completedFrame.center-evidenceTime)>1/rate||Math.abs(completedFrame.end-completedFrame.center-completedFrame.size/(2*rate))>1/rate||completedFrame.end>observedEnd+1/rate)return {ok:false,reason:'unobserved-fft-coverage',jobs:[]};
+   evidenceEnd=Math.min(completedFrame.end,observedEnd);
+  }
+
+  const rows=[];
+  for(const job of this.pending){
+   if(job.stage||job.done||job.eofObservedBodyOnly||!this.familyBounds(job))continue;
+   if(normalCaptureEnd.call(this,job)<=this.total&&job.familyEvidenceSnapshots)continue;
+   const candidates=[],snapshots=[],excluded=[];
+   for(let index=0;index<job.message.familyCandidates.length;index++){
+    const q=job.message.familyCandidates[index];
+    // The40 ms short body is a minimum for considering a finite proposal.
+    // Each existing longer proof may still require additional real samples.
+    const bound=Math.ceil((q.time-this.baseTime+.040)*rate);
+    if(bound+4>this.total){excluded.push({time:q.time,frequency:q.frequency,reason:'native-body-unavailable'});continue;}
+    if(evidenceEnd<q.time+.040){excluded.push({time:q.time,frequency:q.frequency,reason:'independent-body-unobserved'});continue;}
+    const previous=job.familyEvidenceSnapshots?.[index];
+    const own=previous?previous.own===true:meta.instrumentEvidence(q.time)===true;
+    const known=own&&(job.message.profileReady===true||job.message.waveformReady===true||meta.canAudit===true);
+    if(!known){excluded.push({time:q.time,frequency:q.frequency,reason:'no-owned-source-evidence'});continue;}
+    candidates.push(q);snapshots.push(previous??Object.freeze({time:evidenceTime,own,tonal:typeof meta.tonalEvidence==='function'&&meta.tonalEvidence(q.time)===true,renderRecent:true,finiteBodyOnly:true}));
+   }
+   rows.push({time:job.message.time,eligible:candidates.length,excluded});
+   if(!candidates.length)continue;
+   job.message={...job.message,familyCandidates:Object.freeze(candidates)};
+   job.familyEvidenceSnapshots=Object.freeze(snapshots);
+   const index=candidates.findIndex(q=>q.time===job.message.time&&q.frequency===job.message.frequency);
+   job.evidenceSnapshot=snapshots[Math.max(0,index)];
+   job.eofObservedBodyOnly=true;
+   // prepare() snapshots four interpolation samples beyond its capture. End
+   // the microphone audit four samples early so every rendered sample read
+   // is genuinely in this same observed capture epoch.
+   job.eofCaptureEnd=this.total-4;
+   job.eofObservedEnd=this.total;
+  }
+  return {ok:true,reason:'observed-finite-body-only',evidenceTime,evidenceEnd,completedFrame,observedEnd,jobs:rows};
+ };
+ return attribution;
+}
+
+// Private positive exception, only after an actual successful owned native
+// proof. A missing fundamental or an approximate spectral proposal is never
+// enough. Recompute the witnessed old/new reed balance from projected PCM.
+function nativeTimbreTransitionAllowed(job,r){
+ const p=r.proof,rate=this.rate,q=r.q;
+ const no=reason=>({allow:false,reason});
+ if(!p?.ok||p.shapeWitness!==true||p.missingFundamental!==false||p.earliestValidBody!==true||p.pitchMovement)return no('no-measured-timbre-proof');
+ if(!Array.isArray(p.pair)||p.pair.length!==2||p.pair[0]!==0||!Number.isInteger(p.pair[1])||p.pair[1]<1||p.pair[1]>3)return no('no-fundamental-native-pair');
+ const measuredHarmonic=p.pair[1]+1;
+ const index=job.message?.familyCandidates?.findIndex(a=>a.time===q?.time&&a.frequency===q?.frequency),snapshot=index>=0?job.familyEvidenceSnapshots?.[index]:job.evidenceSnapshot;
+ if(snapshot?.own!==true||!job.y||!Number.isFinite(q?.time)||!Number.isFinite(p.frequency)||!Number.isFinite(p.sourceTime))return no('no-owned-timbre-body');
+ const root=p.frequency,count=Math.floor(.064*rate),event=Math.round((q.time-this.baseTime)*rate)-job.start,center=Math.round(((p.sourceTime-this.baseTime)*rate-job.start)*2)/2;
+ const old=this.highNativeFrame(job,event-Math.round(.140*rate),count),after=this.highNativeFrame(job,event+Math.round(.012*rate),count),first=this.highNativeFrame(job,center+.012*rate,count),second=this.highNativeFrame(job,center+.044*rate,count);
+ if(!old||!after||!first||!second||root*.064<4)return no('timbre-native-window-incomplete');
+ const parts=frame=>[1,2,3,4].map(h=>this.highNativePower(frame,root*h)),before=parts(old),grown=parts(after),one=parts(first),two=parts(second),floor=Math.max(1e-16,job.gate*job.gate*.012);
+ const recorded=p.old?.parts,recordedAfter=p.after?.parts;
+ if(!recorded||!recordedAfter||before.some((v,i)=>!Object.is(v,recorded[i]))||grown.some((v,i)=>!Object.is(v,recordedAfter[i])))return no('timbre-witness-not-this-native-pcm');
+ const shape=(a,b)=>{let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}return dot/Math.sqrt(Math.max(1e-30,aa*bb));};
+ const oldHigher=before.slice(1),newHigher=grown.slice(1),transition=shape(oldHigher,newHigher),postShape=shape(one,two);
+ if(oldHigher.filter(v=>v>floor).length<2||newHigher.filter(v=>v>floor).length<2||!(transition<.90&&postShape>=.85))return no('no-native-timbre-transition');
+ if(!Number.isFinite(p.beforeAfterShape)||Math.abs(transition-p.beforeAfterShape)>1e-12)return no('inconsistent-timbre-witness');
+ if([first,second].some((frame,k)=>{const body=k?two:one;return body[0]<=Math.max(floor,frame.total*.01)||body[measuredHarmonic-1]<=Math.max(floor,body[0]*.012);}))return no('weak-fundamental-second-body');
+ const physical=p.physicalFrequencies,tolerance=Math.max(4,root*.006);
+ if(!Array.isArray(physical)||physical.length!==4||physical.some(f=>!Number.isFinite(f)||Math.abs(f-root)>tolerance)||Math.max(...physical)-Math.min(...physical)>tolerance)return no('unresolved-native-timbre-pair');
+ const phase=(frame,f)=>this.highNativePhase(frame,f);
+ const clocks=[1,measuredHarmonic].map(h=>{const d=phase(second,root*h)-phase(first,root*h)-2*Math.PI*root*h*.032;return root+Math.atan2(Math.sin(d),Math.cos(d))/(2*Math.PI*.032*h);});
+ if(Math.abs(clocks[0]-clocks[1])>tolerance||clocks.some(f=>Math.abs(f-root)>tolerance))return no('timbre-native-phase-disagreement');
+ return {allow:true,reason:'measured-native-timbre-transition',beforeAfterShape:transition,postShape,physicalFrequencies:physical,phaseRoots:clocks};
+}
+
+function installNativeTimbreLifetime(attribution){
+ const original=attribution.sourceFamilyLifetimeAllowed;
+ attribution.sourceFamilyLifetimeAllowed=function(job,r){
+  const preserved=original.call(this,job,r);
+  if(preserved.allow||preserved.reason!=='native-family-still-active')return preserved;
+  const transition=nativeTimbreTransitionAllowed.call(this,job,r);
+  return transition.allow?{...transition,previousTime:preserved.previousTime}:preserved;
+ };
+ return attribution;
+}
+
 // GENERATED_DETECTOR_BEGIN
 // The spectral front-end preserves the original microphone clock. Automatic
 // background updates never set the UI calibration flag or clear score history.
 class RhythmDetector extends LegacyRhythmDetector {
+
+ finishObservedCapture(){
+  const a=this.attribution;
+  if(!a.observedEOFLifecycleInstalled){installObservedEOFDrain(a);a.observedEOFLifecycleInstalled=true;}
+  // Only already-completed line births are flushed. No FFT frame is padded.
+  this.familyOnset.flush();
+  const stream=this.spectral,size=stream?.mic?.n,center=Number.isFinite(this.background?.lastTime)?this.background.lastTime:null;
+  const completedFrame=stream&&Number.isFinite(center)&&Number.isInteger(size)&&stream.nextCenter>=256?{center:stream.baseTime+(stream.nextCenter-256)/this.rate,end:stream.baseTime+(stream.nextCenter-256+size/2)/this.rate,size}:null;
+  return a.prepareObservedEndOfCapture(a.baseTime+a.total/this.rate,completedFrame);
+ }
+
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
-  super(rate,emit);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
+  super(rate,emit);installNativeTimbreLifetime(this.attribution);installStrongNativeTimbreLifetime(this.attribution);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
   this.confirmedAnchor=null;this.provenMatchFloor=0;this.lastCaptureEnd=null;this.lastReferenceAvailable=false;this.delayJumpEvidence=null;
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
-  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.familyOnset=new MultiHarmonicFamilyOnset(rate,2048,m=>this.onset(m));this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
-   if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return;
+   if(this.mode==='sustained'&&!m.familyProposal)return false;
+   if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
+   this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;
-   this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});
+   this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});return true;
+  };
+  this.attribution.publishNativeSupplemental=(job,r,parents,blockedBy)=>{
+   const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity};
+   const no=reason=>({accepted:false,reason,blockedBy});
+   if(!identity.h1)return no('new-body-h1-unmeasured');
+   const nativePhase=a.supplementalNativePhase(job,r);if(!nativePhase.ok)return {...no(nativePhase.reason),nativePhase};
+   const nativePeaks=a.supplementalNativeLocalPeak(job,r);if(!nativePeaks.ok)return {...no(nativePeaks.reason),nativePhase,nativePeaks};
+   const primary=this.acceptedSourceBirths.filter(p=>Math.abs(p.time-r.time)<.060);
+   if(primary.some(p=>Math.abs(p.time-r.time)<.020))return no('primary-coincidence20');
+   if(primary.some(p=>!a.sourceBirthSeparate(p,current,parents)))return no('primary-family-not-independent');
+   if(this.supplementalBirths.some(p=>Math.abs(p.time-r.time)<.060&&!a.sourceBirthSeparate(p,current,parents)))return no('supplemental-family-not-independent');
+   if(this.supplementalBirths.some(p=>Math.abs(p.time-r.time)<.020))return no('supplemental-coincidence20');
+   // Supplemental state never enters the baseline's acceptedTimes or lifetime
+   // stream. Read-only rearm proof sees only earlier supplemental families.
+   const saved=a.sourceFamilyLifetimes;let lifetime;
+   try{a.sourceFamilyLifetimes=this.supplementalBirths;lifetime=a.sourceFamilyLifetimeAllowed(job,r);}finally{a.sourceFamilyLifetimes=saved;}
+   if(!lifetime.allow)return no('supplemental-'+lifetime.reason);
+   const {familyCandidates,...message}=job.message;
+   this.supplementalBirths.push(current);while(this.supplementalBirths.length>64)this.supplementalBirths.shift();
+   this.scoredCount++;
+   this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
+   return {accepted:true,blockedBy,nativePhase,nativePeaks};
   };
  }
  ensureBackground(){
@@ -1700,6 +2769,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
  }
  clearConfirmedAnchor(revokeProfile=false){
+  if(revokeProfile){this.familyOnset?.reset();this.lastFamilyFrameTime=-Infinity;}
   this.confirmedAnchor=null;this.provenMatchFloor=this.reference.matches||0;this.delayJumpEvidence=null;
   if(revokeProfile&&this.background)this.background.beginCalibration({epoch:this.start||0,duration:this.duration||2.4,backing:this.reference.options.backing,oversubtraction:4});
  }
@@ -1725,6 +2795,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   return this.confirmedAnchor;
  }
  onset(message,gate=this.currentGate||this.threshold){
+  if(this.mode==='sustained'&&(this.auditEnabled||this.referenceEnabled)&&this.reference.options.backing&&!this.reference.noEchoProof&&this.attribution.meta.canAudit===true&&message.familyProposal!==true)return;
   this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
@@ -1750,7 +2821,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    return;
   }
   if(m.type==='calibrate'&&this.referenceEnabled){
-   this.periodic.reset();this.highPeriodic.reset();
+   this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;
    this.clearConfirmedAnchor();
    this.ensureBackground();this.backgroundCalibration={requestedStart:m.start,duration:m.duration,deadline:null,watchdog:m.start+Math.max(30,m.duration*5)};
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});
@@ -1761,7 +2832,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   super.configure(m);
   if(m.type==='arm'){
    this.clearConfirmedAnchor();this.lastCaptureEnd=null;this.lastReferenceAvailable=false;
-   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.highPeriodic.reset();this.acceptedTimes=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+   this.background=null;this.spectral=null;this.backgroundCalibration=null;this.auditTime=null;this.ownEvidence=[];this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
   }
   if(m.type==='reference-sync')this.clearConfirmedAnchor();
   if(m.type==='reference-sync'&&this.referenceEnabled){
@@ -1771,7 +2842,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:m.backing,oversubtraction:4});
   }
   if(m.type==='backing-state'&&this.background){if(m.backing!==this.background.backing)this.clearConfirmedAnchor(true);this.background.configure({backing:m.backing});}
-  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate'){this.periodic.reset();this.highPeriodic.reset();}
+  if(m.type==='mode'||m.type==='calibrate'||m.type==='invalidate'){this.periodic.reset();this.highPeriodic.reset();this.familyOnset.reset();this.lastFamilyFrameTime=-Infinity;}
   if(m.type==='invalidate'){this.clearConfirmedAnchor();if(this.background){this.background.invalidate();this.background.beginCalibration({epoch:this.start,duration:this.duration,backing:this.reference.options.backing,oversubtraction:4});}}
  }
  independentHarmonics(frame){
@@ -1797,7 +2868,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   if(!referenceAvailable&&(this.lastReferenceAvailable||this.confirmedAnchor))this.clearConfirmedAnchor(true);
   this.lastReferenceAvailable=referenceAvailable;
   const confirmedAnchor=this.updateConfirmedAnchor();
-  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,
+  this.attribution.process(render,captured,linear,t,{enabled:true,...isolation,verifiedSourceDelayMs:confirmedAnchor?.delayMs??null,predictedBlock:this.reference.predictedBlock,evidenceTime:this.background?.lastTime??-Infinity,getEvidenceTime:()=>this.background?.lastTime??-Infinity,
    instrumentEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&(e.harmonic||this.background?.ready&&this.mode==='percussive'&&e.reason==='unmatched-transient')),
    tonalEvidence:time=>this.ownEvidence.some(e=>e.time>=time-.025&&e.time<=time+.13&&e.status==='instrument'&&e.reason==='persistent-tonal-energy')});
   this.ensureBackground();
@@ -1846,6 +2917,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   // A proven waveform path subtracts only the actual correlated computer
   // waveform. Keep that path for quiet simultaneous attacks; the spectral
   // path handles the room response that cannot be verified by waveform fit.
+  if(this.mode==='sustained'&&this.active&&this.background.lastTime>=this.start&&this.background.lastTime!==this.lastFamilyFrameTime){this.lastFamilyFrameTime=this.background.lastTime;this.familyOnset.observe(result.result?.rawPower,this.background.lastTime,this.currentGate||this.threshold);}
   const sourceTime=useLinear?t:t-result.delaySamples/this.rate;
   const wasEnabled=this.referenceEnabled;
   const oldProfile=this.profile;this.profile=null;
@@ -1917,6 +2989,58 @@ if(typeof AudioWorkletProcessor!=='undefined'){
  }
  registerProcessor('rhythm-detector',RhythmProcessor);
 }
+
+// Private positive lifetime exception. This accepts no new native proof:
+// a complete existing low-family proof and its exact old/new PCM witnesses
+// must exist before a measured timbre change can release a held lifetime.
+function strongNativeTimbreTransitionAllowed(job,r){
+ const p=r.proof,q=r.q,rate=this.rate,no=reason=>({allow:false,reason});
+ if(!p?.ok||p.weakFamily||p.earliestValidBody||p.pitchMovement||!Number.isFinite(p.sourceBaselineTime)||!Number.isFinite(p.targetTime)||!Number.isFinite(p.sourceTime)||!Number.isFinite(p.frequency))return no('no-complete-low-native-witness');
+ if(!(p.sourceBaselineTime<p.targetTime)||!Array.isArray(p.neighbour)||p.neighbour.length!==4)return no('no-measured-low-native-baseline');
+ const index=job.message?.familyCandidates?.findIndex(a=>a.time===q?.time&&a.frequency===q?.frequency),snapshot=index>=0?job.familyEvidenceSnapshots?.[index]:job.evidenceSnapshot;
+ if(snapshot?.own!==true||!job.y||!Number.isFinite(q?.time)||!Number.isFinite(job.gate))return no('no-owned-strong-timbre-body');
+ const root=p.frequency,longCount=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),halfExtra=Math.round(.016*rate),at=t=>Math.round((t-this.baseTime)*rate)-job.start;
+ const center=Math.round(((p.sourceTime-this.baseTime)*rate-job.start)*2)/2;
+ const frames=[this.highNativeFrame(job,at(p.sourceBaselineTime)-halfExtra,longCount),this.highNativeFrame(job,at(p.targetTime)-halfExtra,longCount),this.highNativeFrame(job,center+.020*rate,shortCount),this.highNativeFrame(job,center+.052*rate,shortCount)];
+ if(frames.some(frame=>!frame)||root*.032<4)return no('strong-timbre-native-window-incomplete');
+ const parts=frame=>[1,2,3,4].map(h=>root*h<=rate*.45?this.highNativePower(frame,root*h):0),measured=frames.map(parts),recorded=[p.old,p.after,p.first,p.second];
+ if(recorded.some((body,k)=>!Array.isArray(body?.parts)||body.parts.length!==4||measured[k].some((value,h)=>!Object.is(value,body.parts[h]))||!Object.is(frames[k].total,body.total)))return no('strong-timbre-witness-not-this-native-pcm');
+ const shape=(a,b)=>{let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}return dot/Math.sqrt(Math.max(1e-30,aa*bb));};
+ const [old,after,first,second]=measured,floor=Math.max(1e-16,job.gate*job.gate*.012),beforeAfterShape=shape(old.slice(1),after.slice(1)),postShape=shape(first,second);
+ if(old.slice(1).filter(v=>v>floor).length<2||after.slice(1).filter(v=>v>floor).length<2||!(beforeAfterShape<.90&&postShape>=.85)||Math.abs(postShape-p.shape)>1e-12)return no('no-strong-native-timbre-transition');
+ if(!(after[0]>p.neighbour[0]*2.5+floor&&after[0]/Math.max(1e-20,frames[1].total)>old[0]/Math.max(1e-20,frames[0].total)*1.3)||[first,second].some((body,k)=>body[0]<=Math.max(floor,frames[k+2].total*.025)))return no('no-independent-strong-fundamental');
+ const tolerance=Math.max(4,root*.006),physical=p.physicalFrequencies;
+ if(!Array.isArray(physical)||physical.length!==3||physical.some(f=>!Number.isFinite(f)||Math.abs(f-root)>tolerance)||Math.max(...physical)-Math.min(...physical)>tolerance)return no('no-complete-native-frequency-witness');
+ const phase=(frame,f)=>this.highNativePhase(frame,f);
+ const phaseRoot=h=>{const d=phase(frames[3],root*h)-phase(frames[2],root*h)-2*Math.PI*root*h*.032;return root+Math.atan2(Math.sin(d),Math.cos(d))/(2*Math.PI*.032*h);},fundamentalClock=phaseRoot(1),clocks=[];
+ for(const harmonic of [2,3,4]){
+  if(root*harmonic>rate*.45||!(after[harmonic-1]>Math.max(after[0]*.012,p.neighbour[harmonic-1]*2.5+floor))||[first,second].some(body=>body[harmonic-1]<=Math.max(floor,body[0]*.012)))continue;
+  const roots=[fundamentalClock,phaseRoot(harmonic)];clocks.push({harmonic,roots});
+  if(Math.abs(roots[0]-roots[1])>tolerance||roots.some(f=>!Number.isFinite(f)||Math.abs(f-root)>tolerance))continue;
+  return {allow:true,reason:'measured-strong-native-timbre-transition',beforeAfterShape,postShape,physicalFrequencies:physical,phaseRoots:roots,measuredHarmonic:harmonic,sourceBaselineTime:p.sourceBaselineTime,targetTime:p.targetTime};
+ }
+ return {allow:false,reason:'strong-timbre-native-phase-disagreement',beforeAfterShape,postShape,phaseClocks:clocks};
+}
+
+function installStrongNativeTimbreLifetime(attribution){
+ const original=attribution.sourceFamilyLifetimeAllowed;
+ attribution.sourceFamilyLifetimeAllowed=function(job,r){
+  const preserved=original.call(this,job,r);
+  if(preserved.allow||preserved.reason!=='native-family-still-active')return preserved;
+  // This exception compares a new64ms measured baseline with an already
+  // accepted period. Reserve one whole native64ms period after that prior
+  // source rise before the baseline may begin. A baseline overlapping the
+  // prior attack/initial body cannot establish a second articulation.
+  const p=r.proof,rate=this.rate;
+  if(!Number.isFinite(p?.sourceBaselineTime)||!Number.isFinite(preserved.previousTime))return preserved;
+  const baselineStart=Math.round((p.sourceBaselineTime-this.baseTime)*rate)-Math.round(.016*rate),previousIndex=Math.round((preserved.previousTime-this.baseTime)*rate);
+  if(baselineStart<previousIndex+Math.floor(.064*rate))return preserved;
+  const transition=strongNativeTimbreTransitionAllowed.call(this,job,r);
+  return transition.allow?{...transition,previousTime:preserved.previousTime}:preserved;
+ };
+ return attribution;
+}
+
 </script>
 <script>
 'use strict';
@@ -2484,13 +3608,13 @@ const analysisWorkerBoot = `
  const cancelPump=()=>{if(pumpTimer!==null){clearTimeout(pumpTimer);pumpTimer=null;}};
  const close=()=>{closed=true;cancelPump();if(inputPort)inputPort.close();};
  const fail=error=>self.postMessage({type:'analysis-error',token,message:String(error&&error.message||error).slice(0,240)});
- const pump=()=>{
-  pumpTimer=null;if(closed||!detector)return;
+ const pump=(fromCapture=false)=>{
+  if(!fromCapture)pumpTimer=null;if(closed||!detector)return;
   try{
-   const result=detector.attribution.drain({budgetMs:2,maxSteps:64});
+   const result=detector.attribution.drain({budgetMs:8,maxSteps:64});
    // Only ready work gets a continuation. New PCM must unblock observation
    // windows; an idle timer must never manufacture future signal evidence.
-   if(result.more)pumpTimer=setTimeout(pump,0);
+   if(result.more){if(pumpTimer===null)pumpTimer=setTimeout(pump,0);}else cancelPump();
   }catch(error){close();fail(error);}
  };
  const receive=event=>{
@@ -2519,9 +3643,8 @@ const analysisWorkerBoot = `
    if(reference!==null&&reference!==undefined&&(!(reference instanceof Float32Array)||reference.length!==mic.length))throw new Error('Unpaired rendered audio block');
    let rendered=reference;
    if(!rendered&&detector.referenceEnabled&&detector.reference.options.routed)rendered=new Float32Array(mic.length);
-   cancelPump();
    for(let i=0;i<mic.length;i+=128)detector.process(mic.subarray(i,i+128),(message.frame+i)/rate,rendered&&rendered.subarray(i,i+128));
-   pump();
+   pump(true);
   }catch(error){close();fail(error);}
  };
  self.onmessage=receive;
