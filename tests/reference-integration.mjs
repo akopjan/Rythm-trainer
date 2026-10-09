@@ -38,6 +38,7 @@ function createApp(storage = storageDouble(), options = {}) {
     addEventListener(type, callback) {(this.listeners[type] ??= []).push(callback);}
     async fire(type, event = {}) {for (const callback of this.listeners[type] ?? []) await callback({target: this, ...event});}
     querySelector(tag) {return descendants(this).find(child => child.tagName === tag.toUpperCase());}
+    querySelectorAll(tag) {return descendants(this).filter(child => child.tagName === tag.toUpperCase());}
     getBoundingClientRect() {return {width: 850, height: 290};}
     focus() {doc.activeElement = this;}
     click() {if (this.tagName === 'A') downloads.push({href: this.href, filename: this.download, blob: blobs.get(this.href)});return this.fire('click');}
@@ -92,7 +93,7 @@ function createApp(storage = storageDouble(), options = {}) {
   const win = {AudioWorkletNode: options.worklet ? FakeWorkletNode : undefined, AudioContext: FakeContext, devicePixelRatio: 1, location, localStorage: storage, setTimeout: timeout, clearTimeout: id => timers.delete(id), addEventListener(type, callback) {(windowListeners[type] ??= []).push(callback);}};
   const urls = {createObjectURL(blob) {const url = 'blob:test-' + nextId++;blobs.set(url, blob);return url;}, revokeObjectURL(url) {revoked.push(url);blobs.delete(url);}};
   const fakePerformance = {now: () => now, timeOrigin: 1700000000000};
-  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', 'AudioWorkletNode', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,handleDSP,updateStats,clearResults,normalizeLatency,measureLatency,applyLatencyCorrection,summarizeBars,applySettings,captureSettings,saveSettings,flushSettings,importSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getProcessor:()=>processor,getSource:()=>source,getSilent:()=>silent,getFallback:()=>fallback,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async requested => {micRequests.push(requested);if (options.getUserMedia) return await options.getUserMedia(requested, fakeStream);return fakeStream(requested);}}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now}, FakeWorkletNode);
+  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', 'AudioWorkletNode', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,handleDSP,updateStats,clearResults,normalizeLatency,measureLatency,applyLatencyCorrection,summarizeBars,applySettings,captureSettings,saveSettings,flushSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getProcessor:()=>processor,getSource:()=>source,getSilent:()=>silent,getFallback:()=>fallback,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async requested => {micRequests.push(requested);if (options.getUserMedia) return await options.getUserMedia(requested, fakeStream);return fakeStream(requested);}}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now}, FakeWorkletNode);
   return {api, el, doc, win, storage, cookies, scheduled, contexts, nodes, micRequests, streams, worklets, timers, intervals, frames, downloads, revoked,
     async advance(milliseconds) {const end = now + milliseconds;while (true) {const due = [...timers.entries()].filter(([, timer]) => timer.due <= end).sort((a, b) => a[1].due - b[1].due)[0];if (!due) break;now = due[1].due;timers.delete(due[0]);await due[1].callback();}now = end;},
     async pagehide() {for (const callback of windowListeners.pagehide ?? []) await callback();},
@@ -102,8 +103,6 @@ function createApp(storage = storageDouble(), options = {}) {
   };
 }
 
-function fileFor(value, size) {const text = typeof value === 'string' ? value : JSON.stringify(value);return {size: size ?? new TextEncoder().encode(text).length, text: async () => text};}
-function chooseFile(app, file) {app.el('settings-file').files = [file];return app.api.importSettings();}
 function deferred() {let resolve, reject;const promise = new Promise((yes, no) => {resolve = yes;reject = no;});return {promise, resolve, reject};}
 async function check(name, run) {try {const evidence = await run();record(name, evidence.ok, evidence);} catch (error) {record(name, false, {error: error.message, stack: error.stack?.split('\n').slice(0, 3)});}}
 
@@ -136,9 +135,9 @@ await check('An older settings snapshot without a reference flag safely enables 
   return {ok: app.api.captureSettings().referenceSync === true && app.api.state.bpm === 137 && app.api.pattern.every(row => row.every(value => !value)), bpm: app.api.state.bpm};
 });
 
-await check('JSON settings export and import preserve an explicit disabled reference choice', async () => {
+await check('JSON settings export and direct restoration preserve an explicit disabled reference choice', async () => {
   const first = createApp();first.api.applySettings({referenceSync: false});first.api.exportSettings();
-  const exported = JSON.parse(await first.downloads[0].blob.text()), second = createApp();await chooseFile(second, fileFor(exported));
+  const exported = JSON.parse(await first.downloads[0].blob.text()), second = createApp();second.api.applySettings(exported);
   return {ok: exported.referenceSync === false && second.api.captureSettings().referenceSync === false && !second.el('reference-sync').checked, referenceSync: exported.referenceSync};
 });
 

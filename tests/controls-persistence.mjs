@@ -85,7 +85,7 @@ function createApp(storage = storageDouble(), options = {}) {
   const win = {AudioContext: FakeContext, devicePixelRatio: 1, location, localStorage: storage, setTimeout: timeout, clearTimeout: id => timers.delete(id), addEventListener(type, callback) {(windowListeners[type] ??= []).push(callback);}};
   const urls = {createObjectURL(blob) {const url = 'blob:test-' + nextId++;blobs.set(url, blob);return url;}, revokeObjectURL(url) {revoked.push(url);blobs.delete(url);}};
   const fakePerformance = {now: () => now, timeOrigin: 1700000000000};
-  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,applySettings,captureSettings,saveSettings,flushSettings,importSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async () => fakeStream()}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now});
+  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,applySettings,captureSettings,saveSettings,flushSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async () => fakeStream()}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now});
   return {api, el, doc, win, storage, cookies, scheduled, contexts, timers, intervals, frames, downloads, revoked,
     async advance(milliseconds) {const end = now + milliseconds;while (true) {const due = [...timers.entries()].filter(([, timer]) => timer.due <= end).sort((a, b) => a[1].due - b[1].due)[0];if (!due) break;now = due[1].due;timers.delete(due[0]);await due[1].callback();}now = end;},
     async pagehide() {for (const callback of windowListeners.pagehide ?? []) await callback();},
@@ -95,9 +95,6 @@ function createApp(storage = storageDouble(), options = {}) {
   };
 }
 
-function fileFor(value, size) {const text = typeof value === 'string' ? value : JSON.stringify(value);return {size: size ?? new TextEncoder().encode(text).length, text: async () => text};}
-function chooseFile(app, file) {app.el('settings-file').files = [file];return app.api.importSettings();}
-function deferred() {let resolve, reject;const promise = new Promise((yes, no) => {resolve = yes;reject = no;});return {promise, resolve, reject};}
 async function check(name, run) {try {const evidence = await run();record(name, evidence.ok, evidence);} catch (error) {record(name, false, {error: error.message, stack: error.stack?.split('\n').slice(0, 3)});}}
 
 const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => track === 0 ? [0, 8].includes(position % 16) : track === 1 ? [4, 12].includes(position % 16) : track === 2 ? position % 2 === 0 : false));
@@ -155,58 +152,23 @@ await check('Export blob URLs are revoked after the browser download is initiate
   return {ok: app.revoked.includes(url), revokedUrls: app.revoked.length};
 });
 
-await check('A valid JSON import restores controls and persists the accepted snapshot', async () => {
-  const app = createApp();await chooseFile(app, fileFor({version: 1, bpm: 145, beats: 3, bars: 2, division: 8, click: false, clickVolume: 18, pattern: [[true]], trackEnabled: [false, true], trackVolumes: [0, 35]}));
+await check('Direct settings restoration updates controls and persists the accepted snapshot', async () => {
+  const app = createApp();app.api.applySettings({version: 1, bpm: 145, beats: 3, bars: 2, division: 8, click: false, clickVolume: 18, pattern: [[true]], trackEnabled: [false, true], trackVolumes: [0, 35]});app.api.saveSettings();const persisted = app.api.flushSettings();
   const saved = JSON.parse(app.storage.values.get(settingsKey));
-  return {ok: app.api.state.bpm === 145 && app.api.state.beats === 3 && app.api.pattern[0][0] && app.api.state.trackEnabled[0] === false && saved.clickVolume === 18 && app.el('settings-info').textContent.includes('загружены'), savedBpm: saved.bpm};
+  return {ok: persisted && app.api.state.bpm === 145 && app.api.state.beats === 3 && app.api.pattern[0][0] && app.api.state.trackEnabled[0] === false && saved.clickVolume === 18 && app.el('settings-info').textContent.includes('сохранены'), savedBpm: saved.bpm};
 });
 
-await check('Valid import reports unavailable autosave when storage is blocked', async () => {
-  const app = createApp(storageDouble({}, false, true));await chooseFile(app, fileFor({bpm: 145}));
-  return {ok: app.api.state.bpm === 145 && app.el('settings-info').textContent.includes('автосохранение недоступно') && app.el('settings-info').textContent.includes('следующего запуска'), message: app.el('settings-info').textContent};
+await check('Restored settings remain active with visible backup guidance when autosave is blocked', async () => {
+  const app = createApp(storageDouble({}, false, true));app.api.applySettings({bpm: 145});app.api.saveSettings();const persisted = app.api.flushSettings();
+  return {ok: persisted === false && app.api.state.bpm === 145 && !app.storage.values.has(settingsKey) && app.el('settings-info').textContent.includes('не разрешил') && app.el('settings-info').textContent.includes('файл'), message: app.el('settings-info').textContent};
 });
 
 for (const [label, value] of [['null', 'null'], ['array', '[]'], ['unrelated object', '{"document":"hello"}'], ['constructor-only object', '{"constructor":{}}'], ['toString-only object', '{"toString":"settings"}'], ['parsed prototype-only object', '{"__proto__":{"bpm":250}}'], ['invalid JSON', '{broken'], ['future version', '{"version":99,"bpm":250}']]) {
-  await check(`Import rejects ${label} while preserving current controls and pattern`, async () => {
-    const app = createApp();await app.cell(0, 0).fire('click');app.el('bpm').value = 123;await app.el('bpm').fire('change');const before = JSON.stringify(app.api.captureSettings());
-    await chooseFile(app, fileFor(value));
-    return {ok: JSON.stringify(app.api.captureSettings()) === before && app.el('settings-info').textContent.includes('не изменены'), message: app.el('settings-info').textContent};
+  await check(`Saved settings reject ${label} and preserve safe default controls and pattern`, async () => {
+    const app = createApp(storageDouble({[settingsKey]: value}));
+    return {ok: app.api.state.bpm === 100 && JSON.stringify(app.api.pattern) === JSON.stringify(presetPattern()) && app.doc.querySelectorAll('.step').length === 32 && app.contexts.length === 0 && app.el('settings-info').textContent.includes('недоступны'), message: app.el('settings-info').textContent};
   });
 }
-
-await check('Oversized imports are rejected before reading their contents', async () => {
-  const app = createApp();let reads = 0;await chooseFile(app, {size: 65537, async text() {reads++;return '{"bpm":250}';}});
-  return {ok: reads === 0 && app.api.state.bpm === 100 && app.el('settings-info').textContent.includes('слишком большой'), reads};
-});
-
-await check('The newest concurrent import wins even when an earlier read finishes last', async () => {
-  const app = createApp(), slow = deferred();const first = chooseFile(app, {size: 20, text: () => slow.promise});
-  await chooseFile(app, fileFor({bpm: 180}));slow.resolve('{"bpm":120}');await first;
-  return {ok: app.api.state.bpm === 180 && JSON.parse(app.storage.values.get(settingsKey)).bpm === 180, finalBpm: app.api.state.bpm};
-});
-
-await check('An obsolete failed import cannot overwrite a newer successful notice', async () => {
-  const app = createApp(), slow = deferred();const first = chooseFile(app, {size: 20, text: () => slow.promise});
-  await chooseFile(app, fileFor({bpm: 180}));const message = app.el('settings-info').textContent;slow.reject(new Error('Old file failed'));await first;
-  return {ok: app.api.state.bpm === 180 && app.el('settings-info').textContent === message, message: app.el('settings-info').textContent};
-});
-
-await check('Starting playback during an asynchronous import cancels that import', async () => {
-  const app = createApp(), slow = deferred();app.el('mic').checked = false;const importing = chooseFile(app, {size: 20, text: () => slow.promise});
-  await app.api.start();slow.resolve('{"bpm":250}');await importing;
-  const evidence = {ok: app.api.state.running && app.api.state.bpm === 100 && app.el('settings-info').textContent.includes('отменена'), message: app.el('settings-info').textContent};app.api.stop();return evidence;
-});
-
-await check('A start-and-stop race still invalidates a previously opened settings file', async () => {
-  const app = createApp(), slow = deferred();app.el('mic').checked = false;const importing = chooseFile(app, {size: 20, text: () => slow.promise});
-  await app.api.start();app.api.stop();slow.resolve('{"bpm":250}');await importing;
-  return {ok: !app.api.state.running && app.api.state.bpm === 100 && app.el('settings-info').textContent.includes('отменена'), bpm: app.api.state.bpm};
-});
-
-await check('Opening import during playback is refused and its UI control is disabled', async () => {
-  const app = createApp();app.el('mic').checked = false;await app.api.start();let reads = 0;await chooseFile(app, {size: 20, async text() {reads++;return '{"bpm":250}';}});
-  const evidence = {ok: app.el('import-settings').disabled && reads === 0 && app.api.state.bpm === 100 && app.el('settings-info').textContent.includes('Остановите'), reads};app.api.stop();return evidence;
-});
 
 await check('A blank pattern schedules quarter-note metronome clicks without default eighth-note drums', async () => {
   const app = createApp();app.api.applySettings({mic: false, click: true, pattern: []});await app.api.start();const ctx = app.api.getContext(), epoch = app.api.state.epoch;
