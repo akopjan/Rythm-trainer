@@ -38,7 +38,7 @@ function createApp(storage = storageDouble(), options = {}) {
     async fire(type, event = {}) {for (const callback of this.listeners[type] ?? []) await callback({target: this, ...event});}
     querySelector(tag) {return descendants(this).find(child => child.tagName === tag.toUpperCase());}
     querySelectorAll(tag) {return descendants(this).filter(child => child.tagName === tag.toUpperCase());}
-    getBoundingClientRect() {return {width: 850, height: 290};}
+    getBoundingClientRect() {return {x: 0, y: 0, left: 0, top: 0, right: 850, bottom: 290, width: 850, height: 290};}
     focus() {doc.activeElement = this;}
     click() {if (this.tagName === 'A') downloads.push({href: this.href, filename: this.download, blob: blobs.get(this.href)});return this.fire('click');}
     remove() {if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this);this.removed = true;}
@@ -50,7 +50,7 @@ function createApp(storage = storageDouble(), options = {}) {
   }
   for (const [id, value] of [['bars', '1'], ['division', '8'], ['signature', '4'], ['input-mode', 'sustained']]) el(id).value = value;
   el('rhythm-dsp').textContent = scripts[0];el('start').append(new Element('SPAN'), new Element('PATH'));el('chart').parentElement = new Element();el('meter').parentElement = new Element();
-  const painter = Object.fromEntries(['scale', 'fillRect', 'beginPath', 'setLineDash', 'moveTo', 'lineTo', 'stroke', 'fillText', 'arc', 'fill'].map(name => [name, () => {}]));el('chart').getContext = () => painter;
+  const painter = Object.fromEntries(['scale', 'fillRect', 'beginPath', 'setLineDash', 'moveTo', 'lineTo', 'stroke', 'fillText', 'arc', 'fill', 'save', 'restore', 'rect', 'clip'].map(name => [name, () => {}]));el('chart').getContext = () => painter;
   const doc = {
     hidden: false, activeElement: null, location, body: new Element('BODY'), listeners: {}, getElementById: el, createElement: tag => new Element(tag.toUpperCase()), createTextNode: text => ({textContent: text}),
     querySelectorAll(selector) {
@@ -101,6 +101,22 @@ const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({le
 await check('First launch restores the complete drum groove with the metronome off', async () => {
   const app = createApp(), snapshot = app.api.captureSettings();
   return {ok: JSON.stringify(snapshot.pattern) === JSON.stringify(presetPattern()) && snapshot.click === false && snapshot.trackEnabled.every(Boolean) && app.doc.querySelectorAll('.step').length === 32, selectedDrumCells: snapshot.pattern.flat().filter(Boolean).length, metronome: snapshot.click};
+});
+
+await check('Note duration stems remain optional for a fresh app and legacy snapshots', async () => {
+  const first = createApp(), legacy = createApp(storageDouble({[settingsKey]: JSON.stringify({version: 1, bpm: 126})}));
+  return {ok: first.el('show-note-durations').checked === false && first.api.captureSettings().showNoteDurations === false && legacy.el('show-note-durations').checked === false && legacy.api.captureSettings().showNoteDurations === false && legacy.api.state.bpm === 126, defaultVisible: first.el('show-note-durations').checked, legacyVisible: legacy.el('show-note-durations').checked};
+});
+
+await check('Note duration display toggles autosave and restore through cookies in fresh app instances', async () => {
+  const cookies = cookieDouble(), first = createApp(storageDouble({}, true, true), {protocol: 'https:', cookies});
+  first.el('show-note-durations').checked = true;await first.el('show-note-durations').fire('change');
+  const before = cookies.writes.length;await first.advance(700);
+  const enabled = JSON.parse(decodeURIComponent(cookies.values.get(settingsKey))), second = createApp(storageDouble({}, true, true), {protocol: 'https:', cookies});
+  const restoredEnabled = second.el('show-note-durations').checked === true && second.api.captureSettings().showNoteDurations === true;
+  second.el('show-note-durations').checked = false;await second.el('show-note-durations').fire('change');await second.advance(700);
+  const disabled = JSON.parse(decodeURIComponent(cookies.values.get(settingsKey))), third = createApp(storageDouble({}, true, true), {protocol: 'https:', cookies});
+  return {ok: before === 0 && enabled.showNoteDurations === true && restoredEnabled && disabled.showNoteDurations === false && third.el('show-note-durations').checked === false && third.api.captureSettings().showNoteDurations === false, restoredEnabled, restoredDisabled: third.el('show-note-durations').checked === false, cookieWrites: cookies.writes.length};
 });
 
 await check('Settings and hidden 3/4 pattern positions restore in a fresh app instance', async () => {

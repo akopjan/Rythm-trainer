@@ -163,5 +163,6 @@
     100,
     100
   ],
-  "referenceSync": true
+  "referenceSync": true,
+  "showNoteDurations": false
 }

@@ -14,7 +14,7 @@ class RhythmDetector extends LegacyRhythmDetector {
 
  static compileWasm(){return RhythmWasmCore.compile();}
  constructor(rate,emit,module=null){
-  super(rate,emit);installNativeTimbreLifetime(this.attribution);installStrongNativeTimbreLifetime(this.attribution);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
+  super(rate,emit);this.durationEnabled=false;this.noteDurations=new NoteDurationTracker(rate,m=>this.emit(m));installNativeTimbreLifetime(this.attribution);installStrongNativeTimbreLifetime(this.attribution);this.wasmModule=module;this.background=null;this.spectral=null;this.auditEnabled=false;this.auditTime=null;this.backgroundCalibration=null;this.ownEvidence=[];
   this.confirmedAnchor=null;this.provenMatchFloor=0;this.lastCaptureEnd=null;this.lastReferenceAvailable=false;this.delayJumpEvidence=null;
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
@@ -27,7 +27,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
    this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;
-   this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'});return true;
+   this.publishInstrumentNote({...m,id:this.referenceId,isolated:true,source:'instrument'});return true;
   };
   this.attribution.publishNativeSupplemental=(job,r,parents,blockedBy)=>{
    const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity};
@@ -48,9 +48,13 @@ class RhythmDetector extends LegacyRhythmDetector {
    const {familyCandidates,...message}=job.message;
    this.supplementalBirths.push(current);while(this.supplementalBirths.length>64)this.supplementalBirths.shift();
    this.scoredCount++;
-   this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
+   this.publishInstrumentNote({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
    return {accepted:true,blockedBy,nativePhase,nativePeaks};
   };
+ }
+ publishInstrumentNote(message){
+  if(!this.durationEnabled){this.emit(message);return;}
+  this.noteDurations.accept(message,durationId=>this.emit({...message,durationId}));
  }
  ensureBackground(){
   if(!this.background){
@@ -96,6 +100,10 @@ class RhythmDetector extends LegacyRhythmDetector {
   }else this.emit(message);
  }
  configure(m){
+  if(m.type==='note-durations'){this.noteDurations.reset(this.referenceId,'display-toggle');this.durationEnabled=m.enabled===true;return;}
+  if(['arm','reference-sync','mode','calibrate','invalidate','duration-reset'].includes(m.type))this.noteDurations.reset(m.type==='reference-sync'?m.id:this.referenceId,m.type);
+  if(m.type==='duration-reset')return;
+
   if(m.type==='background-capture-start'){
    if(this.referenceEnabled&&m.id===this.referenceId&&m.kind==='without'&&typeof m.captureId==='string'&&Number.isFinite(m.start)&&Number.isFinite(m.end)&&m.end>m.start){
     this.ensureBackground();this.background.beginDeclaredCalibration({captureId:m.captureId,start:m.start,end:m.end,minAge:.45});
@@ -152,7 +160,7 @@ class RhythmDetector extends LegacyRhythmDetector {
  process(samples,t,render){
   if(!this.referenceEnabled||this.probe)return super.process(samples,t,render);
   if(!samples?.length)return;
-  if(this.lastCaptureEnd!==null&&Math.abs(t-this.lastCaptureEnd)>.03)this.clearConfirmedAnchor(true);
+  if(this.lastCaptureEnd!==null&&Math.abs(t-this.lastCaptureEnd)>.03){this.noteDurations.reset(this.referenceId,'clock-gap');this.clearConfirmedAnchor(true);}
   this.lastCaptureEnd=t+samples.length/this.rate;
   const captured=samples,linear=this.reference.process(captured,render,t),isolation=this.reference.analysisInfo();
   const referenceAvailable=this.reference.referencePresent&&this.reference.options.routed;
@@ -169,6 +177,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   const renderPresent=r.referencePresent&&backing&&t-r.lastRenderActive<=this.duration+.5;
   const phaseTrusted=r.locked&&Boolean(confirmedAnchor);
   const result=this.spectral.process(captured,t,{referenceEcho:r,referenceTrusted:r.referencePresent&&(phaseTrusted||r.noEchoProof),phaseTrusted,backing,renderPresent,explicitCalibration:this.background.calibrating,applyConfirmedProfile:Boolean(confirmedAnchor&&this.background.ready&&backing&&referenceAvailable),hardwareDelayMs:confirmedAnchor&&!r.locked?confirmedAnchor.delayMs:undefined});
+  if(this.durationEnabled){const time=this.background.lastTime,size=this.spectral.mic.n;this.noteDurations.observe({power:result.result?.power,noisePower:this.background.noise,time,complete:Number.isFinite(time)&&time-this.spectral.baseTime>=size/(2*this.rate)&&time+size/(2*this.rate)<=t+samples.length/this.rate+1e-8});}
   if(this.background.lastTime!==this.ownEvidence.at(-1)?.time)this.ownEvidence.push({time:this.background.lastTime,status:this.background.status,reason:this.background.reason,harmonic:this.independentHarmonics(result.result)});
   while(this.ownEvidence.length&&t-this.ownEvidence[0].time>.6)this.ownEvidence.shift();
   const level=Math.sqrt(captured.reduce((sum,x)=>sum+x*x,0)/captured.length);

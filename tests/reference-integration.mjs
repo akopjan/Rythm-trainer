@@ -39,7 +39,7 @@ function createApp(storage = storageDouble(), options = {}) {
     async fire(type, event = {}) {for (const callback of this.listeners[type] ?? []) await callback({target: this, ...event});}
     querySelector(tag) {return descendants(this).find(child => child.tagName === tag.toUpperCase());}
     querySelectorAll(tag) {return descendants(this).filter(child => child.tagName === tag.toUpperCase());}
-    getBoundingClientRect() {return {width: 850, height: 290};}
+    getBoundingClientRect() {return {x: 0, y: 0, left: 0, top: 0, right: 850, bottom: 290, width: 850, height: 290};}
     focus() {doc.activeElement = this;}
     click() {if (this.tagName === 'A') downloads.push({href: this.href, filename: this.download, blob: blobs.get(this.href)});return this.fire('click');}
     remove() {if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this);this.removed = true;}
@@ -51,7 +51,7 @@ function createApp(storage = storageDouble(), options = {}) {
   }
   for (const [id, value] of [['bars', '1'], ['division', '8'], ['signature', '4'], ['input-mode', 'sustained']]) el(id).value = value;
   el('rhythm-dsp').textContent = scripts[0];el('start').append(new Element('SPAN'), new Element('PATH'));el('chart').parentElement = new Element();el('meter').parentElement = new Element();
-  const painter = Object.fromEntries(['scale', 'fillRect', 'beginPath', 'setLineDash', 'moveTo', 'lineTo', 'stroke', 'fillText', 'arc', 'fill'].map(name => [name, () => {}]));el('chart').getContext = () => painter;
+  const painter = Object.fromEntries(['scale', 'fillRect', 'beginPath', 'setLineDash', 'moveTo', 'lineTo', 'stroke', 'fillText', 'arc', 'fill', 'save', 'restore', 'rect', 'clip'].map(name => [name, () => {}]));el('chart').getContext = () => painter;
   const doc = {
     hidden: false, activeElement: null, location, body: new Element('BODY'), listeners: {}, getElementById: el, createElement: tag => new Element(tag.toUpperCase()), createTextNode: text => ({textContent: text}),
     querySelectorAll(selector) {

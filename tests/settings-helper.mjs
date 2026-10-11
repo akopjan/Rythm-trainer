@@ -40,7 +40,7 @@ try {
   record('Portable settings sanitizer is available independently of DOM and audio', typeof sanitize === 'function');
 } catch (error) {record('Portable settings sanitizer is available independently of DOM and audio', false, {error: error.message});}
 
-const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: false, autoNormalize: true, referenceSync: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
+const defaultFields = {version: 1, bpm: 100, bars: 1, beats: 4, division: 8, mic: true, click: false, autoNormalize: true, showNoteDurations: false, referenceSync: true, inputMode: 'sustained', volume: 55, clickVolume: 100, threshold: -48, latency: 0, tolerance: 30};
 const permittedKeys = [...Object.keys(defaultFields), 'pattern', 'trackEnabled', 'trackVolumes'].sort();
 const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => track === 0 ? [0, 8].includes(position % 16) : track === 1 ? [4, 12].includes(position % 16) : track === 2 ? position % 2 === 0 : false));
 function defaultsOk(value) {
@@ -75,7 +75,7 @@ if (sanitize) {
 
   check('Every supported user setting survives a complete portable snapshot', () => {
     const pattern = Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => (position + track) % 5 === 0));
-    const input = {version: 1, bpm: 137.5, bars: 2, beats: 3, division: 16, mic: false, click: false, autoNormalize: false, inputMode: 'percussive', volume: 0, clickVolume: 37, threshold: -60, latency: -27.375, tolerance: 18, pattern, trackEnabled: [true, false, true, false], trackVolumes: [0, 25, 70, 100]};
+    const input = {version: 1, bpm: 137.5, bars: 2, beats: 3, division: 16, mic: false, click: false, autoNormalize: false, showNoteDurations: true, inputMode: 'percussive', volume: 0, clickVolume: 37, threshold: -60, latency: -27.375, tolerance: 18, pattern, trackEnabled: [true, false, true, false], trackVolumes: [0, 25, 70, 100]};
     const settings = sanitize(input);
     return {ok: Object.keys(input).every(key => JSON.stringify(settings[key]) === JSON.stringify(input[key])), settings};
   });
@@ -115,8 +115,13 @@ if (sanitize) {
   });
 
   check('Boolean fields accept only actual booleans', () => {
-    const settings = sanitize({mic: 'false', click: 0, autoNormalize: null, trackEnabled: ['false', 0, null, {}]});
-    return {ok: settings.mic === true && settings.click === false && settings.autoNormalize === true && settings.trackEnabled.every(value => value === true), settings};
+    const settings = sanitize({mic: 'false', click: 0, autoNormalize: null, showNoteDurations: 'true', trackEnabled: ['false', 0, null, {}]});
+    return {ok: settings.mic === true && settings.click === false && settings.autoNormalize === true && settings.showNoteDurations === false && settings.trackEnabled.every(value => value === true), settings};
+  });
+
+  check('Note duration display preserves both explicit booleans in portable snapshots', () => {
+    const enabled = sanitize({showNoteDurations: true}), disabled = sanitize({showNoteDurations: false});
+    return {ok: enabled.showNoteDurations === true && sanitize(enabled).showNoteDurations === true && disabled.showNoteDurations === false && sanitize(disabled).showNoteDurations === false};
   });
 
   check('Sparse and short patterns become four complete 32-position boolean tracks', () => {

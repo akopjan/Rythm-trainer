@@ -30,7 +30,7 @@ class Element {
   async fire(type,event = {}) {for (const fn of this.listeners[type] ?? []) await fn({target:this,...event});}
   querySelector(tag) {return this.children.find(c => c.tagName === tag.toUpperCase());}
   querySelectorAll(tag) {return this.children.flatMap(c => c instanceof Element ? [...(c.tagName === tag.toUpperCase() ? [c] : []), ...c.querySelectorAll(tag)] : []);}
-  getBoundingClientRect() {return {width:850,height:290};}
+  getBoundingClientRect() {return {x:0,y:0,left:0,top:0,right:850,bottom:290,width:850,height:290};}
   focus() {doc.activeElement = this;}
 }
 const elements = new Map();
@@ -53,7 +53,7 @@ el('start').append(new Element('SPAN'),new Element('PATH'));
 el('chart').parentElement = new Element(); el('meter').parentElement = new Element();
 const drawing = [];
 const painter = {};
-for(const method of ['scale','fillRect','beginPath','setLineDash','moveTo','lineTo','stroke','fillText','arc','fill']) {
+for(const method of ['scale','fillRect','beginPath','setLineDash','moveTo','lineTo','stroke','fillText','arc','fill','save','restore','rect','clip']) {
   painter[method] = (...args) => drawing.push({method,args,fillStyle:painter.fillStyle});
 }
 el('chart').getContext = () => painter;

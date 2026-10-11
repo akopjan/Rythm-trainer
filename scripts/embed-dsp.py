@@ -13,6 +13,7 @@ blocks={
  'ATTRIBUTION_CORE':'globalThis.RHYTHM_ATTRIBUTION_WASM_BYTES=new Uint8Array('+json.dumps(list((root/'dsp/attribution-core.wasm').read_bytes()),separators=(',',':'))+');\n'+(root/'dsp/attribution-kernel.js').read_text(),
  'ATTRIBUTION':(root/'dsp/echo-attribution.js').read_text(),
  'PERIODIC':(root/'dsp/periodic-note-onset.js').read_text(),
+ 'NOTE_DURATION':(root/'dsp/note-duration.js').read_text(),
  'DETECTOR':(root/'dsp/background-detector.js').read_text(),
  'SAMPLE_RECORDER':(root/'js/sample-recorder.js').read_text(),
  'ANALYSIS_WORKER':(root/'js/analysis-worker.js').read_text(),
