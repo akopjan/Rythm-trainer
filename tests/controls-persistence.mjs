@@ -24,7 +24,7 @@ function createApp(storage = storageDouble(), options = {}) {
   let nextId = 1, now = 0;
   const protocol = options.protocol ?? 'file:', cookies = options.cookies ?? cookieDouble();
   const location = {protocol, href: protocol === 'file:' ? 'file:///index.html' : protocol + '//trainer.example/index.html'};
-  const elements = new Map(), timers = new Map(), intervals = new Map(), frames = new Map(), scheduled = [], contexts = [], blobs = new Map(), revoked = [], downloads = [], windowListeners = {};
+  const elements = new Map(), timers = new Map(), intervals = new Map(), frames = new Map(), scheduled = [], contexts = [], blobs = new Map(), revoked = [], downloads = [], windowListeners = {}, mediaRequests = [], mediaTracks = [], constraintChanges = [];
   class Element {
     constructor(tagName = 'DIV') {
       this.tagName = tagName;this.value = '';this.checked = false;this.disabled = false;this.children = [];this.listeners = {};this.dataset = {};this.attributes = {};this.className = '';this.textContent = '';this.innerHTML = '';this.files = [];
@@ -80,13 +80,17 @@ function createApp(storage = storageDouble(), options = {}) {
     createBuffer(channels, length, rate) {const pcm = new Float32Array(length);return {duration: length / rate, getChannelData: () => pcm};}
     createBufferSource() {const node = new AudioNode();node.start = when => {node.when = when;scheduled.push(node);};node.stop = () => {node.stopped = true;};return node;}
   }
-  const fakeStream = () => {const track = {readyState: 'live', listeners: {}, getSettings: () => ({echoCancellation: true}), addEventListener(type, callback) {this.listeners[type] = callback;}, stop() {this.readyState = 'ended';}};return {getAudioTracks: () => [track], getTracks: () => [track]};};
+  const fakeStream = () => {let echoCancellation=Object.hasOwn(options,'actualEchoCancellation')?options.actualEchoCancellation:false;
+    const track = {readyState: 'live', listeners: {}, getSettings: () => ({echoCancellation}), getCapabilities: () => ({echoCancellation: [false, true, 'all']}),
+      async applyConstraints(value) {constraintChanges.push(value);if(value.echoCancellation!==undefined)echoCancellation=value.echoCancellation;},
+      addEventListener(type, callback) {this.listeners[type] = callback;}, stop() {this.readyState = 'ended';}};
+    mediaTracks.push(track);return {getAudioTracks: () => [track], getTracks: () => [track]};};
   const timeout = (callback, delay = 0) => {const id = nextId++;timers.set(id, {callback, due: now + delay});return id;};
   const win = {AudioContext: FakeContext, devicePixelRatio: 1, location, localStorage: storage, setTimeout: timeout, clearTimeout: id => timers.delete(id), addEventListener(type, callback) {(windowListeners[type] ??= []).push(callback);}};
   const urls = {createObjectURL(blob) {const url = 'blob:test-' + nextId++;blobs.set(url, blob);return url;}, revokeObjectURL(url) {revoked.push(url);blobs.delete(url);}};
   const fakePerformance = {now: () => now, timeOrigin: 1700000000000};
-  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,applySettings,captureSettings,saveSettings,flushSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async () => fakeStream()}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now});
-  return {api, el, doc, win, storage, cookies, scheduled, contexts, timers, intervals, frames, downloads, revoked,
+  const api = new Function('document', 'window', 'navigator', 'RhythmDetector', 'performance', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval', 'Blob', 'URL', 'setTimeout', 'location', 'Date', scripts[1] + `;return {state,pattern,start,stop,schedule,addHit,applySettings,captureSettings,saveSettings,flushSettings,exportSettings,renderGrid,setControls,getContext:()=>context,getTrackGains:()=>trackGains,getClickGain:()=>clickGain,getMaster:()=>master,getBuffers:()=>buffers,getClickBuffers:()=>clickBuffers};`)(doc, win, {mediaDevices: {getUserMedia: async constraints => {mediaRequests.push(constraints);return fakeStream();}}}, Detector, fakePerformance, class {observe() {}}, callback => {const id = nextId++;frames.set(id, callback);return id;}, id => frames.delete(id), callback => {const id = nextId++;intervals.set(id, callback);return id;}, id => intervals.delete(id), Blob, urls, timeout, location, {now: () => clockEpoch + now});
+  return {api, el, doc, win, storage, cookies, scheduled, contexts, timers, intervals, frames, downloads, revoked, mediaRequests, mediaTracks, constraintChanges,
     async advance(milliseconds) {const end = now + milliseconds;while (true) {const due = [...timers.entries()].filter(([, timer]) => timer.due <= end).sort((a, b) => a[1].due - b[1].due)[0];if (!due) break;now = due[1].due;timers.delete(due[0]);await due[1].callback();}now = end;},
     async pagehide() {for (const callback of windowListeners.pagehide ?? []) await callback();},
     trackEnabled(row) {return doc.querySelectorAll('[data-track-enabled]').find(element => Number(element.dataset.trackEnabled) === row);},
@@ -98,6 +102,28 @@ function createApp(storage = storageDouble(), options = {}) {
 async function check(name, run) {try {const evidence = await run();record(name, evidence.ok, evidence);} catch (error) {record(name, false, {error: error.message, stack: error.stack?.split('\n').slice(0, 3)});}}
 
 const presetPattern = () => Array.from({length: 4}, (_, track) => Array.from({length: 32}, (_, position) => track === 0 ? [0, 8].includes(position % 16) : track === 1 ? [4, 12].includes(position % 16) : track === 2 ? position % 2 === 0 : false));
+for(const referenceSync of [false,true]){
+  await check(`Microphone startup requests unprocessed input with delay tracking ${referenceSync?'enabled':'disabled'}`,async()=>{
+    const app=createApp();app.api.applySettings({mic:true,referenceSync});await app.api.start();
+    const request=app.mediaRequests[0],started=app.api.state.running;
+    const ok=started&&app.mediaRequests.length===1&&request.audio.echoCancellation===false&&request.audio.noiseSuppression===false&&request.audio.autoGainControl===false&&request.audio.channelCount===1&&request.video===false&&app.constraintChanges.length===0&&app.mediaTracks[0].getSettings().echoCancellation===false&&app.el('audio-info').textContent.includes('Эхоподавление браузера: выключено');
+    app.api.stop();
+    return {ok,referenceSync,requested:request,appliedConstraints:app.constraintChanges,started};
+  });
+}
+for(const referenceSync of [false,true])for(const reportedEcho of [true,'all']){
+  await check(`Startup rejects browser-reported echo processing ${String(reportedEcho)} with delay tracking ${referenceSync?'enabled':'disabled'}`,async()=>{
+    const app=createApp(storageDouble(),{actualEchoCancellation:reportedEcho});app.api.applySettings({mic:true,referenceSync});await app.api.start();
+    return {ok:app.mediaRequests.length===1&&app.mediaRequests[0].audio.echoCancellation===false&&app.constraintChanges.length===0&&!app.api.state.running&&!app.api.state.pending&&app.mediaTracks[0].readyState==='ended'&&app.contexts[0].state==='closed'&&app.el('status').textContent.includes('Браузер не отключил эхоподавление, которое может подавлять звук баяна'),referenceSync,reportedEcho,status:app.el('status').textContent};
+  });
+}
+for(const referenceSync of [false,true]){
+  await check(`An unknown browser echo status is reported honestly with delay tracking ${referenceSync?'enabled':'disabled'}`,async()=>{
+    const app=createApp(storageDouble(),{actualEchoCancellation:undefined});app.api.applySettings({mic:true,referenceSync});await app.api.start();
+    const started=app.api.state.running,status=app.el('audio-info').textContent,ok=started&&app.mediaRequests[0].audio.echoCancellation===false&&app.constraintChanges.length===0&&status.includes('Эхоподавление браузера: статус не сообщается')&&!status.includes('Эхоподавление браузера: выключено');
+    app.api.stop();return {ok,referenceSync,started,status};
+  });
+}
 await check('First launch restores the complete drum groove with the metronome off', async () => {
   const app = createApp(), snapshot = app.api.captureSettings();
   return {ok: JSON.stringify(snapshot.pattern) === JSON.stringify(presetPattern()) && snapshot.click === false && snapshot.trackEnabled.every(Boolean) && app.doc.querySelectorAll('.step').length === 32, selectedDrumCells: snapshot.pattern.flat().filter(Boolean).length, metronome: snapshot.click};

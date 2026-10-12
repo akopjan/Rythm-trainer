@@ -23,7 +23,8 @@ function fixture(){
 }
 
 const f=fixture(),{api,state,nodes,attributes}=f,events=state.events;
-check('Unconfigured filter has no false filtered signal',f.width()===0&&f.label()==='Фильтр не настроен'&&!nodes.get('filter-setup').disabled);
+check('Visible and accessible meter names identify the input supplied to recognition',html.includes('>На анализ</span>')&&html.includes('aria-label="Уровень звука, поступающего в распознавание"'));
+check('An unconfigured input waits for a real analysis frame',f.width()===0&&f.label()==='Фильтр не настроен'&&!nodes.get('filter-setup').disabled);
 api.acceptFilteredLevel({id:4,time:1,value:.001,active:true});check('Minus 60 dB is meter floor',f.width()===0);
 api.acceptFilteredLevel({id:4,time:2,value:Math.sqrt(.001),active:true});check('Minus 30 dB is halfway',Math.abs(f.width()-50)<1e-10);
 check('Accessible value tracks level',attributes['aria-valuenow']==='50'&&attributes['data-active']==='true');
@@ -31,7 +32,8 @@ check('Actual filtering enables its label and disables redundant setup',f.label(
 api.acceptFilteredLevel({id:4,time:3,value:0,active:true});check('Zero filtered input stays finite',f.width()===0);
 api.acceptFilteredLevel({id:4,time:4,value:4,active:true});check('Filtered level is capped',f.width()===100);
 api.acceptFilteredLevel({id:4,time:5,value:1,active:false});
-check('Loud raw input never fills the filtered meter',f.width()===0&&attributes['aria-valuenow']==='0'&&attributes['data-active']==='false'&&f.label()==='Фильтр не настроен');
+check('Unfiltered analysis input remains visible without claiming that suppression is active',f.width()===100&&attributes['aria-valuenow']==='100'&&attributes['data-active']==='false'&&f.label()==='Фильтр не настроен');
+check('Inactive analysis uses the existing gray meter style',/\.filtered-meter\[data-active="false"\]\s+div\s*\{background:var\(--muted\)/.test(html));
 check('Losing filtering restores setup guidance',!nodes.get('filter-setup').disabled&&f.observed.status.at(-1).includes('Настроить фильтр'));
 const previous=state.filteredLevel;
 for(const [name,message]of [
@@ -39,7 +41,7 @@ for(const [name,message]of [
  ['nonfinite timestamp',{id:4,time:NaN,value:1,active:true}],['nonfinite level',{id:4,time:8,value:NaN,active:true}],['negative level',{id:4,time:8,value:-1,active:true}],['nonboolean active',{id:4,time:8,value:1,active:'true'}],
 ]){
  const statusCount=f.observed.status.length;api.acceptFilteredLevel(message);
- check(name+' cannot change the meter, status, or setup state',state.filteredLevel===previous&&f.width()===0&&f.observed.status.length===statusCount&&!nodes.get('filter-setup').disabled);
+ check(name+' cannot change the meter, status, or setup state',state.filteredLevel===previous&&f.width()===100&&f.observed.status.length===statusCount&&!nodes.get('filter-setup').disabled);
 }
 for(const flag of ['pending','measuring']){
  state[flag]=true;api.acceptFilteredLevel({id:4,time:8,value:1,active:true});check(flag+' rejects meter callbacks',state.filteredLevel===previous);state[flag]=false;
@@ -71,14 +73,28 @@ check('Echo readiness does not claim that raw input is filtered',ready.label()==
 ready.api.acceptFilteredLevel({id:4,time:2,value:.02,active:true});
 check('Actual active meter refreshes readiness and playing instruction',ready.nodes.get('isolation-info').textContent.startsWith('Фильтр работает')&&ready.observed.status.at(-1)==='Фильтр работает. Можно играть.');
 ready.api.acceptFilteredLevel({id:4,time:3,value:.5,active:false});
-check('Filter loss removes the stale suppression promise',ready.width()===0&&ready.nodes.get('isolation-info').textContent.includes('фильтр ещё не настроен')&&ready.observed.status.at(-1).includes('Настроить фильтр'));
+check('Filter loss retains analysis level while removing the stale suppression promise',ready.width()>80&&ready.attributes['data-active']==='false'&&ready.nodes.get('isolation-info').textContent.includes('фильтр ещё не настроен')&&ready.observed.status.at(-1).includes('Настроить фильтр'));
 const oldIsolation=ready.state.isolation,statusCount=ready.observed.status.length;
 ready.api.acceptAnalysis({id:3,time:100,status:'clear',reason:'no-audible-echo'});
 check('Old analysis callback cannot disguise an unconfigured filter as clear',ready.state.isolation===oldIsolation&&ready.observed.status.length===statusCount&&ready.label()==='Фильтр не настроен');
 for(const reason of ['backing-silent','no-audible-echo']){
  const g=fixture();g.api.acceptAnalysis({id:4,time:1,status:'clear',reason});g.api.acceptFilteredLevel({id:4,time:2,value:1,active:false});
- check(reason+' names raw input without a false suppression promise',g.label()==='Без фильтра'&&g.width()===0&&g.nodes.get('isolation-info').textContent.includes('Используется вход микрофона')&&g.observed.status.at(-1)==='Слушаем микрофон. Играйте в выбранную сетку.'&&g.nodes.get('filter-setup').disabled);
+ check(reason+' displays raw analysis input without a false suppression promise',g.label()==='Без фильтра'&&g.width()===100&&g.attributes['data-active']==='false'&&g.nodes.get('isolation-info').textContent.includes('Используется вход микрофона')&&g.observed.status.at(-1)==='Слушаем микрофон. Играйте в выбранную сетку.'&&g.nodes.get('filter-setup').disabled);
 }
 const silent=fixture();silent.observed.backing=false;silent.api.updateFilteredMeter();silent.api.updateIsolationInfo();
 check('Silent backing needs no filter setup',silent.label()==='Без фильтра'&&silent.width()===0&&silent.nodes.get('isolation-info').textContent.includes('Используется вход микрофона')&&silent.api.prepareInputStatus()==='Слушаем микрофон. Играйте в выбранную сетку.');
-console.log(JSON.stringify({passed,total:passed}));
+{
+ const g=fixture();
+ for(const [time,value]of[[1,.00011],[2,.001],[3,Math.sqrt(.001)],[4,.163],[119.9,.02]]){
+  g.api.acceptFilteredLevel({id:4,time,value,active:false});
+  const expected=Math.min(100,Math.max(0,(20*Math.log10(Math.max(value,1e-6))+60)/60*100));
+  check('Current unfiltered analysis frames track supplied level through the late session',Math.abs(g.width()-expected)<1e-10&&g.attributes['data-active']==='false'&&g.label()==='Фильтр не настроен');
+ }
+ const value=g.state.filteredLevel;
+ g.state.pending=true;g.api.updateFilteredMeter();check('Pending startup hides the preceding session analysis level',g.width()===0&&g.attributes['aria-valuenow']==='0');
+ g.state.pending=false;g.state.running=false;g.api.updateFilteredMeter();check('Stopped analysis hides the retained previous level',g.width()===0&&g.attributes['data-active']==='false');
+ g.state.running=true;g.nodes.get('mic').checked=false;g.api.updateFilteredMeter();check('Disabled microphone hides retained analysis samples',g.width()===0&&g.label()==='Микрофон выключен');
+ g.nodes.get('mic').checked=true;g.api.resetFilteredMeter();g.api.acceptFilteredLevel({id:3,time:120,value:1,active:false});
+ check('Reset and an old session callback cannot display a stale analysis frame',g.width()===0&&g.state.filteredLevel!==value&&!Number.isFinite(g.state.filteredLevel.time));
+}
+console.log(JSON.stringify({passed,failed:0,total:passed,scope:'Analysis-input meter level, independent filter status, callback freshness and explicit setup controls; no microphone or acoustic recognition claim.'}));
