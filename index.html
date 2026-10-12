@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="aligned-notes-v19">
+<meta name="rhythm-trainer-version" content="bass-dedup-v20">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -2860,6 +2860,10 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&!m.familyProposal)return false;
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
+   // A supplement can arrive before its primary harmonic. Apply the same
+   // harmonic duplicate rule in this reverse order, without merging unrelated
+   // verified pitches or extending the existing 60 ms attack group.
+   if(this.mode==='sustained'&&m.familyProposal===true&&m.sourceVerified===true&&m.source==='periodic'&&this.supplementalBirths.some(p=>p.native===true&&Math.abs(p.time-m.time)<.060&&this.attribution.sourceBirthHarmonic(p.frequency,m.frequency)))return false;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
    this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;

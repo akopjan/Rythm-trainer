@@ -24,6 +24,10 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&!m.familyProposal)return false;
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
+   // A supplement can arrive before its primary harmonic. Apply the same
+   // harmonic duplicate rule in this reverse order, without merging unrelated
+   // verified pitches or extending the existing 60 ms attack group.
+   if(this.mode==='sustained'&&m.familyProposal===true&&m.sourceVerified===true&&m.source==='periodic'&&this.supplementalBirths.some(p=>p.native===true&&Math.abs(p.time-m.time)<.060&&this.attribution.sourceBirthHarmonic(p.frequency,m.frequency)))return false;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
    this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;
