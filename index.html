@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="clean-input-v22">
+<meta name="rhythm-trainer-version" content="source-alias-v23">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -2859,19 +2859,21 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&!m.familyProposal)return false;
+   if(this.hasPublishedSourceAlias(m))return false;
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
    // A supplement can arrive before its primary harmonic. Apply the same
    // harmonic duplicate rule in this reverse order, without merging unrelated
    // verified pitches or extending the existing 60 ms attack group.
    if(this.mode==='sustained'&&m.familyProposal===true&&m.sourceVerified===true&&m.source==='periodic'&&this.supplementalBirths.some(p=>p.native===true&&Math.abs(p.time-m.time)<.060&&this.attribution.sourceBirthHarmonic(p.frequency,m.frequency)))return false;
    this.acceptedTimes.push(m.time);while(this.acceptedTimes.length>32)this.acceptedTimes.shift();
-   this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
+   this.acceptedSourceBirths.push({time:m.time,birth:m.originalFamilyTime??null,frequency:m.frequency??null,native:m.sourceVerified===true&&m.familyProposal===true&&m.source==='periodic',identity:m.nativeBirthIdentity??null,captureTime:m.captureTime??null});while(this.acceptedSourceBirths.length>32)this.acceptedSourceBirths.shift();
    this.scoredCount++;
    this.publishInstrumentNote({...m,id:this.referenceId,isolated:true,source:'instrument'});return true;
   };
   this.attribution.publishNativeSupplemental=(job,r,parents,blockedBy)=>{
-   const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity};
+   const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity,captureTime:job.message.captureTime??null};
    const no=reason=>({accepted:false,reason,blockedBy});
+   if(this.hasPublishedSourceAlias({time:r.time,frequency:r.frequency,originalFamilyTime:r.q.time,captureTime:job.message.captureTime,nativeBirthIdentity:identity,source:'periodic',sourceVerified:true,familyProposal:true}))return no('source-alias-already-published');
    if(!identity.h1)return no('new-body-h1-unmeasured');
    const nativePhase=a.supplementalNativePhase(job,r);if(!nativePhase.ok)return {...no(nativePhase.reason),nativePhase};
    const nativePeaks=a.supplementalNativeLocalPeak(job,r);if(!nativePeaks.ok)return {...no(nativePeaks.reason),nativePhase,nativePeaks};
@@ -2891,6 +2893,17 @@ class RhythmDetector extends LegacyRhythmDetector {
    this.publishInstrumentNote({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
    return {accepted:true,blockedBy,nativePhase,nativePeaks};
   };
+ }
+ // A weak fundamental and its harmonic can receive different refined times
+ // from one source observation. Merge only that shared native event; distinct
+ // source births and batches remain eligible, including real eighth notes.
+ hasPublishedSourceAlias(m){
+  if(this.mode!=='sustained'||m.familyProposal!==true||m.sourceVerified!==true||m.source!=='periodic'||!Number.isFinite(m.originalFamilyTime)||!Number.isFinite(m.captureTime)||typeof m.nativeBirthIdentity?.h1!=='boolean')return false;
+  const precision=1/this.rate+1e-9;
+  return [...this.acceptedSourceBirths,...this.supplementalBirths].some(p=>
+   p.native===true&&typeof p.identity?.h1==='boolean'&&(!p.identity.h1||!m.nativeBirthIdentity.h1)&&
+   Number.isFinite(p.birth)&&Number.isFinite(p.captureTime)&&Math.abs(p.birth-m.originalFamilyTime)<=precision&&Math.abs(p.captureTime-m.captureTime)<=precision&&
+   Math.abs(p.time-m.time)<=.25&&this.attribution.sourceBirthHarmonic(p.frequency,m.frequency,8));
  }
  publishInstrumentNote(message){
   if(!this.durationEnabled){this.emit(message);return;}
