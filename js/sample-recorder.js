@@ -2,8 +2,8 @@
 // Hooks: initSampleRecorder(), recordSampleDiagnostics(message), stopSampleRecording(reason).
 const sampleRecorderWorklet=String.raw`
 class RhythmSampleCapture extends AudioWorkletProcessor {
- constructor(options){super();const p=options.processorOptions||{};this.limit=Math.max(1,Math.min(Math.round(sampleRate*20),Math.round(p.samples)||1));this.batch=Math.max(128,Math.round(sampleRate/4));this.mic=new Float32Array(this.batch);this.reference=new Float32Array(this.batch);this.used=0;this.count=0;this.first=null;this.expectedSourceFrame=null;this.lastSourceEndFrame=null;this.finished=false;this.referenceMissing=0;this.clockBoundaryCount=0;this.clockMetadataTruncatedAt=null;this.port.onmessage=e=>{if(e.data?.type==='stop')this.finish('manual');};}
- clockSummary(){return {clockBoundaryCount:this.clockBoundaryCount,clockBoundariesDropped:Math.max(0,this.clockBoundaryCount-64),clockMetadataTruncatedAt:this.clockMetadataTruncatedAt,lastSourceEndFrame:this.lastSourceEndFrame};}
+ constructor(options){super();const p=options.processorOptions||{};this.limit=Math.max(1,Math.min(Math.round(sampleRate*120),Math.round(p.samples)||1));this.batch=Math.max(128,Math.round(sampleRate/4));this.mic=new Float32Array(this.batch);this.reference=new Float32Array(this.batch);this.used=0;this.count=0;this.first=null;this.expectedSourceFrame=null;this.lastSourceEndFrame=null;this.finished=false;this.referenceMissing=0;this.clockBoundaryCount=0;this.clockMetadataTruncatedAt=null;this.port.onmessage=e=>{if(e.data?.type==='stop')this.finish('manual');};}
+ clockSummary(){return {clockBoundaryCount:this.clockBoundaryCount,clockBoundariesDropped:Math.max(0,this.clockBoundaryCount-2048),clockMetadataTruncatedAt:this.clockMetadataTruncatedAt,lastSourceEndFrame:this.lastSourceEndFrame};}
  flush(){if(!this.used)return;const mic=this.mic.slice(0,this.used),reference=this.reference.slice(0,this.used);this.port.postMessage({type:'chunk',offset:this.count-this.used,mic,reference,...this.clockSummary()},[mic.buffer,reference.buffer]);this.used=0;}
  finish(reason,details={}){if(this.finished)return;this.flush();this.finished=true;this.port.postMessage({type:reason==='missing-input'?'error':'done',reason,samples:this.count,startFrame:this.first,endFrame:this.clockBoundaryCount?null:this.lastSourceEndFrame,referenceMissingSamples:this.referenceMissing,...this.clockSummary(),...details});}
  process(inputs,outputs){
@@ -13,8 +13,8 @@ class RhythmSampleCapture extends AudioWorkletProcessor {
   else if(currentFrame!==this.expectedSourceFrame){
    // A source-clock observation cannot prove PCM was lost or duplicated.
    // Preserve arrival order and record timing boundaries separately.
-   if(this.clockBoundaryCount<64)this.flush();this.clockBoundaryCount++;
-   if(this.clockBoundaryCount<=64)this.port.postMessage({type:'clock-boundary',offset:this.count,expectedFrame:this.expectedSourceFrame,actualFrame:currentFrame,deltaFrames:currentFrame-this.expectedSourceFrame,inputLength:mic.length});
+   if(this.clockBoundaryCount<2048)this.flush();this.clockBoundaryCount++;
+   if(this.clockBoundaryCount<=2048)this.port.postMessage({type:'clock-boundary',offset:this.count,expectedFrame:this.expectedSourceFrame,actualFrame:currentFrame,deltaFrames:currentFrame-this.expectedSourceFrame,inputLength:mic.length});
    else if(this.clockMetadataTruncatedAt===null)this.clockMetadataTruncatedAt=this.count;
   }
   const n=Math.min(mic.length,this.limit-this.count);this.referenceMissing+=Math.max(0,n-(reference?.length||0));
@@ -123,9 +123,9 @@ function sampleDiagnosticsValue(value,depth=0){
  if(Array.isArray(value))return value.slice(0,16).map(x=>sampleDiagnosticsValue(x,depth+1));if(value&&typeof value==='object'){const result={};for(const key of Object.keys(value).slice(0,24))if(key!=='samples'&&key!=='reference'&&key!=='profile'&&key!=='buffer')result[key]=sampleDiagnosticsValue(value[key],depth+1);return result;}return null;
 }
 function recordSampleDiagnostics(message){
- const recording=sampleRecorderState.active;if(!recording||!['detection-state','filtered-level','background-state','analysis-state','acoustic-sync'].includes(message?.type)||message.id!==undefined&&message.id!==recording.sessionId)return;
+ const recording=sampleRecorderState.active;if(!recording||!['detection-state','filtered-level','background-state','analysis-state','acoustic-sync','onset'].includes(message?.type)||message.id!==undefined&&message.id!==recording.sessionId)return;
  const snapshot=sampleDiagnosticsValue(message);snapshot.receivedContextTime=Number.isFinite(recording.ctx?.currentTime)?recording.ctx.currentTime:null;recording.diagnosticLatest[message.type]=snapshot;
- if(recording.diagnostics.length<2000)recording.diagnostics.push(snapshot);else recording.diagnosticsDropped++;
+ if(recording.diagnostics.length<12000)recording.diagnostics.push(snapshot);else recording.diagnosticsDropped++;
 }
 function sampleClockSummary(recording,message){
  if(Number.isInteger(message.clockBoundaryCount)&&message.clockBoundaryCount>=(recording.clockBoundaryCount||0))recording.clockBoundaryCount=message.clockBoundaryCount;
@@ -136,11 +136,11 @@ function sampleClockSummary(recording,message){
 function sampleReceive(recording,message){
  if(sampleRecorderState.active!==recording||recording.finished)return;
  if(message.type==='error'){sampleClockSummary(recording,message);sampleCaptureFailure(recording,message);return;}
- if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 20 с.':'Запоминаем фон — баян пока не играйте. Осталось 8 с.');return;}
+ if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 120 с.':'Запоминаем фон — баян пока не играйте. Осталось 8 с.');return;}
  if(message.type==='clock-boundary'){
   if(!Number.isInteger(message.offset)||message.offset!==recording.count||!Number.isInteger(message.expectedFrame)||!Number.isInteger(message.actualFrame)||message.deltaFrames!==message.actualFrame-message.expectedFrame||message.deltaFrames===0){sampleCaptureFailure(recording,{...message,reason:'clock-boundary-invalid'});return;}
   recording.clockBoundaryCount=(recording.clockBoundaryCount||0)+1;recording.clockBoundaries??=[];
-  if(recording.clockBoundaries.length<64)recording.clockBoundaries.push({offset:message.offset,expectedFrame:message.expectedFrame,actualFrame:message.actualFrame,deltaFrames:message.deltaFrames,inputLength:message.inputLength});
+  if(recording.clockBoundaries.length<2048)recording.clockBoundaries.push({offset:message.offset,expectedFrame:message.expectedFrame,actualFrame:message.actualFrame,deltaFrames:message.deltaFrames,inputLength:message.inputLength});
   else {recording.clockBoundariesDropped=(recording.clockBoundariesDropped||0)+1;recording.clockMetadataTruncatedAt??=message.offset;}
   sampleSetStatus('Временные метки звука изменились. Запись продолжается; полученный звук сохраняется.');return;
  }
@@ -200,7 +200,7 @@ async function startSampleRecording(kind){
   if(!state.running){if(!$('mic').checked){$('mic').checked=true;$('mic').dispatchEvent(new Event('change'));}await start();}
   if(generation!==sampleRecorderState.generation)return;
   if(!state.running||!context||context.state!=='running'||!source||!master||!stream?.getAudioTracks().some(track=>track.readyState==='live'))throw new Error('Для записи нужен работающий микрофон. Включите «Микрофон» и нажмите Start.');
-  const ctx=context,token=state.token,duration=kind==='with'?20:8;recording={kind,sessionId:token,ctx,sampleRate:ctx.sampleRate,limit:Math.round(ctx.sampleRate*duration),count:0,startFrame:null,mic:[],reference:[],diagnostics:[],diagnosticLatest:{},diagnosticsDropped:0,finished:false,micSource:source,renderSource:master,metadata:{version:2,kind,createdAt:new Date().toISOString(),requestedDurationSeconds:duration,sampleRate:ctx.sampleRate,settings:captureSettings(),trackSettings:sampleDiagnosticsValue(stream.getAudioTracks()[0].getSettings?.()||{}),context:{baseLatency:ctx.baseLatency??null,outputLatency:ctx.outputLatency??null,requestedAt:ctx.currentTime},pageURL:window.location.href,appVersion:document.querySelector('meta[name="rhythm-trainer-version"]')?.content||window.location.search||'unversioned',reference:'Actual rendered master bus after instrument and overall gains; paired by sample with microphone. Microphone is before application filters; browser processing is listed in trackSettings.'}};
+  const ctx=context,token=state.token,duration=kind==='with'?120:8;recording={kind,sessionId:token,ctx,sampleRate:ctx.sampleRate,limit:Math.round(ctx.sampleRate*duration),count:0,startFrame:null,mic:[],reference:[],diagnostics:[],diagnosticLatest:{},diagnosticsDropped:0,finished:false,micSource:source,renderSource:master,metadata:{version:2,kind,createdAt:new Date().toISOString(),requestedDurationSeconds:duration,sampleRate:ctx.sampleRate,settings:captureSettings(),trackSettings:sampleDiagnosticsValue(stream.getAudioTracks()[0].getSettings?.()||{}),context:{baseLatency:ctx.baseLatency??null,outputLatency:ctx.outputLatency??null,requestedAt:ctx.currentTime},pageURL:window.location.href,appVersion:document.querySelector('meta[name="rhythm-trainer-version"]')?.content||window.location.search||'unversioned',reference:'Actual rendered master bus after instrument and overall gains; paired by sample with microphone. Microphone is before application filters; browser processing is listed in trackSettings.'}};
   let workletError=null;
   if(ctx.audioWorklet&&window.AudioWorkletNode){
    try{if(!sampleRecorderState.workletModules.has(ctx)){const moduleURL=URL.createObjectURL(new Blob([sampleRecorderWorklet],{type:'application/javascript'}));const loading=ctx.audioWorklet.addModule(moduleURL).finally(()=>URL.revokeObjectURL(moduleURL));sampleRecorderState.workletModules.set(ctx,loading);}await sampleRecorderState.workletModules.get(ctx);if(generation!==sampleRecorderState.generation||context!==ctx||state.token!==token||!state.running)return;recording.node=new AudioWorkletNode(ctx,'rhythm-sample-capture',{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[1],channelCount:1,channelCountMode:'explicit',processorOptions:{samples:recording.limit}});recording.node.port.onmessage=event=>sampleReceive(recording,event.data);recording.metadata.captureMode='AudioWorklet';}catch(error){workletError=error;}
@@ -223,7 +223,7 @@ async function startSampleRecording(kind){
   recording.node.onprocessorerror=()=>sampleReceive(recording,{type:'error',reason:'processor-error',expectedFrame:recording.expectedSourceFrame??null,samples:recording.count,startFrame:recording.startFrame,endFrame:recording.lastSourceEndFrame??null});recording.silent=ctx.createGain();recording.silent.gain.value=0;recording.node.connect(recording.silent);recording.silent.connect(ctx.destination);sampleRecorderState.active=recording;sampleRecorderState.pending=false;
   if(recording.merger){recording.micSource.connect(recording.merger,0,0);recording.renderSource.connect(recording.merger,0,1);recording.merger.connect(recording.node);}else{recording.micSource.connect(recording.node,0,0);recording.renderSource.connect(recording.node,0,1);}
   recording.watchdog=setTimeout(()=>{if(sampleRecorderState.active===recording){sampleFinish(recording,'audio-interrupted');sampleSetStatus('Поток звука прервался. Доступная часть сохранена; повторите запись.');}},(duration+5)*1000);
-  sampleRecorderControls();sampleSetStatus(kind==='with'?'Запись началась — играйте на баяне 20 секунд.':'Запись началась — 8 секунд не играйте на баяне. Ритм звучит.');
+  sampleRecorderControls();sampleSetStatus(kind==='with'?'Запись началась — играйте на баяне 2 минуты.':'Запись началась — 8 секунд не играйте на баяне. Ритм звучит.');
  }catch(error){if(recording)sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;if(generation===sampleRecorderState.generation){sampleRecorderState.pending=false;sampleSetStatus(`Запись не началась: ${error.message}`);sampleRecorderControls();}}
 }
 function stopSampleRecording(reason='manual'){
