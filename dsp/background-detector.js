@@ -19,6 +19,12 @@ class RhythmDetector extends LegacyRhythmDetector {
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
   this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.familyOnset=new MultiHarmonicFamilyOnset(rate,2048,m=>this.onset(m));this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  const lifetime=this.attribution.sourceFamilyLifetimeAllowed.bind(this.attribution);
+  this.attribution.sourceFamilyLifetimeAllowed=(job,r)=>{
+   const existing=lifetime(job,r);if(!existing.allow||this.mode!=='sustained')return existing;
+   const continuation=this.attribution.sourceBassHarmonicContinuation(job,r,[...this.acceptedSourceBirths,...this.supplementalBirths]);
+   return continuation.duplicate?{...continuation,allow:false}:existing;
+  };
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{

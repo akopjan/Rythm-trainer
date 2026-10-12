@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="inline-duration-v24">
+<meta name="rhythm-trainer-version" content="bass-continuity-v25">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -1326,6 +1326,56 @@ class EchoAttribution {
   const tolerance=Math.max(4,f*.006),ok=Math.abs(clocks[0]-clocks[1])<=tolerance&&clocks.every(q=>Math.abs(q-f)<=tolerance);
   return {ok,reason:ok?'native-supplement-phase-confirmed':'native-supplement-phase-disagreement',frequency:f,partner:h,phaseRoots:clocks,tolerance,bodyStarts:[this.baseTime+(job.start+Math.round(center+.012*rate))/rate,this.baseTime+(job.start+Math.round(center+.044*rate))/rate]};
  }
+ // A bass can expose a later upper harmonic while its earlier reed body still
+ // sounds. Require measured pre/post phase continuity in two carriers and no
+ // intervening release; harmonic interval or elapsed time alone never vetoes.
+ sourceBassHarmonicContinuation(job,r,history){
+  const p=r.proof,identity=this.sourceBirthIdentity(p),rate=this.rate;
+  const no=reason=>({duplicate:false,reason});
+  if(!p?.ok||!job.y||!Number.isFinite(r.time)||!Number.isFinite(r.frequency)||!Number.isFinite(p.sourceTime)||Math.abs(p.sourceTime-r.time)>1/rate+1e-9)return no('no-native-body');
+  const index=job.message?.familyCandidates?.findIndex(q=>q.time===r.q?.time&&q.frequency===r.q?.frequency),snapshot=index>=0?job.familyEvidenceSnapshots?.[index]:job.evidenceSnapshot;
+  if(snapshot?.own!==true)return no('no-owned-native-body');
+  const parents=history.filter(q=>q.native===true&&Number.isFinite(q.time)&&q.frequency<r.frequency&&typeof q.identity?.h1==='boolean'&&(!q.identity.h1||!identity.h1)&&q.time<r.time&&r.time-q.time>=.060&&r.time-q.time<=.220&&Math.min(q.frequency,r.frequency)<=240&&this.sourceBirthHarmonic(q.frequency,r.frequency,8)&&Math.round(Math.max(q.frequency,r.frequency)/Math.min(q.frequency,r.frequency))>=2).sort((a,b)=>b.time-a.time).slice(0,3);
+  if(!parents.length)return no('no-recent-bass-ancestor');
+  for(const prior of parents){
+   const f=Math.max(prior.frequency,r.frequency),count=Math.floor(.032*rate),centers=[prior.time+.036,r.time-.020,r.time+.020,r.time+.060];
+   if(f*.032<4||f*3>rate*.45)continue;
+   const starts=centers.map(t=>Math.round((t-this.baseTime)*rate)-job.start-Math.floor(count/2));
+   const frames=starts.map(t=>this.highNativeFrame(job,t,count));if(frames.some(v=>!v))continue;
+   const floor=Math.max(1e-16,job.gate*job.gate*.012);
+   const values=[1,2,3].map(h=>frames.map(frame=>({power:this.highNativePower(frame,f*h),phase:this.highNativePhase(frame,f*h)})));
+   if(!(values[0][0].power>floor&&values[0][2].power>floor))continue;
+   for(const h of [2,3]){
+    const carriers=[1,h];
+    if(carriers.some(k=>values[k-1].some(v=>!(v.power>floor))))continue;
+    const clocks=carriers.map(k=>{const v=values[k-1],dt=(starts[3]-starts[2])/rate,d=v[3].phase-v[2].phase-2*Math.PI*f*k*dt;return f+Math.atan2(Math.sin(d),Math.cos(d))/(2*Math.PI*dt*k);});
+    const tolerance=Math.max(4,f*.012),errors=carriers.map((k,i)=>{
+     const v=values[k-1],dt=(starts[2]-starts[1])/rate,d=v[2].phase-v[1].phase-2*Math.PI*clocks[i]*k*dt;
+     return {harmonic:k,error:Math.atan2(Math.sin(d),Math.cos(d))};
+    });
+    const coherent=clocks.every(v=>Math.abs(v-f)<=tolerance)&&errors.every(v=>Math.abs(v.error)<=(v.harmonic===1?.45:.80));
+    if(!coherent)continue;
+    // Require both measured carriers to be quiet in the same source slice.
+    // A brief gap permits rearticulation; one beating partial alone does not
+    // terminate the already sounding bass family.
+    const step=Math.max(1,Math.round(.004*rate)),counts=carriers.map(k=>Math.floor(Math.max(.006,Math.min(.012,4/(f*k)))*rate)),limits=carriers.map(k=>Math.min(values[k-1][0].power,values[k-1][2].power)*.12);
+    let released=false,incomplete=false;
+    for(let t=prior.time+.020;t<=r.time+.020;t+=step/rate){
+     const quiet=carriers.map((k,i)=>{
+      const frame=this.highNativeFrame(job,Math.round((t-this.baseTime)*rate)-job.start-Math.floor(counts[i]/2),counts[i]);
+      if(!frame){incomplete=true;return false;}
+      return this.highNativePower(frame,f*k)<limits[i];
+     });
+     if(incomplete)break;
+     if(quiet.every(Boolean)){released=true;break;}
+    }
+    if(released||incomplete)continue;
+    return {duplicate:true,reason:'bass-partial-still-active',previousTime:prior.time,frequency:f,continuity:{h,clocks,tolerance,errors}};
+   }
+  }
+  return no('no-continuous-bass-partial');
+ }
+
  sourceBirthIdentity(proof){
   if(!proof?.ok||proof.missingFundamental===true)return {h1:false};
   const direct=w=>w&&Array.isArray(w.parts)&&Number.isFinite(w.parts[0])&&Number.isFinite(w.total)&&w.total>0?w.parts[0]/w.total:null;
@@ -2858,6 +2908,12 @@ class RhythmDetector extends LegacyRhythmDetector {
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
   this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.familyOnset=new MultiHarmonicFamilyOnset(rate,2048,m=>this.onset(m));this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  const lifetime=this.attribution.sourceFamilyLifetimeAllowed.bind(this.attribution);
+  this.attribution.sourceFamilyLifetimeAllowed=(job,r)=>{
+   const existing=lifetime(job,r);if(!existing.allow||this.mode!=='sustained')return existing;
+   const continuation=this.attribution.sourceBassHarmonicContinuation(job,r,[...this.acceptedSourceBirths,...this.supplementalBirths]);
+   return continuation.duplicate?{...continuation,allow:false}:existing;
+  };
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};
   this.attribution.emit=m=>{
