@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="source-alias-v23">
+<meta name="rhythm-trainer-version" content="inline-duration-v24">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -24,6 +24,10 @@
 .sequencer{position:relative}.track-label,.track-heading{position:sticky;left:0;background:#fff;z-index:3}.track-label{box-shadow:4px 0 0 #fff}.timeline-playhead{position:absolute;width:2px;background:var(--orange);opacity:.72;pointer-events:none;z-index:2;top:7px;bottom:7px;transform:translateX(-1px)}#chart-playhead{top:32px;bottom:40px}.timeline-playhead[hidden],.legend [hidden]{display:none}.stem-symbol{width:2px!important;height:12px!important;border-radius:1px!important;background:var(--muted)!important}.secondary-panels{grid-template-columns:repeat(2,minmax(0,1fr))}.technical-panel{margin-top:7px;background:transparent;border-color:transparent}.technical-panel>summary{font-size:11px;font-weight:400;color:var(--muted);padding:5px 10px;min-height:26px}.technical-panel[open]{background:#fff;border-color:var(--line)}
 @media(min-width:721px) and (min-height:701px){.practice-workspace{height:calc(100svh - 149px)}}
 @media(max-width:720px){.secondary-panels{grid-template-columns:1fr}.technical-panel>summary{min-height:30px}}
+
+/* Keep note display control in the existing single-line graph caption. */
+.chart-caption{flex-wrap:nowrap;gap:10px}.chart-caption .legend{flex-wrap:nowrap;gap:10px;flex-shrink:0}.duration-display{flex-shrink:0;font-size:11px;gap:5px}.chart-caption .last-hit{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+@media(max-width:480px){.chart-caption{gap:6px}.chart-caption .legend{gap:6px}.duration-display{font-size:10px;gap:4px}.duration-label-long{display:none}}
 </style>
 </head>
 <body>
@@ -47,7 +51,7 @@
 <section class="analysis-panel" aria-labelledby="results-title">
 <div class="results-head"><h2 id="results-title">Анализ игры</h2><div id="detection-counts" class="detection-counts" aria-label="Распознавание звуков"><div class="detection-count"><span>Найдено</span><strong id="detection-candidates">0</strong></div><div class="detection-count"><span>Подтверждено</span><strong id="detection-accepted">0</strong></div><div class="detection-count"><span>Отсеяно</span><strong id="detection-rejected">0</strong></div></div><div class="chart-actions"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><button class="quiet" id="reset">Сбросить</button></div></div>
 <div class="chart-wrap"><div id="chart-playhead" class="timeline-playhead" hidden aria-hidden="true"></div><canvas id="chart" tabindex="0" role="img" aria-label="Отклонения атак от ближайших позиций сетки. Выше нуля — позже, ниже — раньше."></canvas><div class="empty-chart" id="empty">Начните играть — здесь появятся точки атак.</div></div>
-<div class="chart-caption"><div class="legend"><span><i style="--c:var(--blue)"></i>Раньше</span><span><i style="--c:var(--green)"></i>В допуске</span><span><i style="--c:var(--red)"></i>Позже</span><span id="duration-legend" hidden><i class="stem-symbol"></i>Палочка — звучание</span></div><span class="last-hit" id="last-hit">Последние 6 циклов · каждая атака — точка</span></div>
+<div class="chart-caption"><div class="legend"><span><i style="--c:var(--blue)"></i>Раньше</span><span><i style="--c:var(--green)"></i>В допуске</span><span><i style="--c:var(--red)"></i>Позже</span></div><label class="check duration-display" title="Выключено — только точки атак. Включено — точки с палочками длительности; измеряются новые ноты. При перекрытии нот длительность может быть недоступна."><input id="show-note-durations" type="checkbox"><span>Длительности<span class="duration-label-long"> нот</span></span><span id="duration-legend" class="sr-only" hidden>Палочка — звучание</span></label><span class="last-hit" id="last-hit">Последние 6 циклов · каждая атака — точка</span></div>
 </section>
 </div>
 <div class="secondary-panels">
@@ -75,7 +79,6 @@
 
 <details class="secondary-panel" id="sound-panel"><summary>Настройки звука</summary><div class="panel-content">
 <div class="advanced">
-<div><label class="check"><input id="show-note-durations" type="checkbox">Показывать длительности нот</label><p>Точка — время атаки. Палочка вверх — время звучания после неё. Конец оценивается по очищенному звуку; при перекрытии нот оценка может быть недоступна. После включения измеряются новые ноты.</p></div>
 
 <div><label class="field">Инструмент<select id="input-mode"><option value="sustained" selected>Баян / мелодический инструмент</option><option value="percussive">Ударные / хлопки</option></select></label><p>Для баяна учитываем плавное начало и смену нот.</p></div>
 <div><label class="field">Громкость ритма <output id="volume-value">55%</output><input id="volume" type="range" min="0" max="100" value="55"></label><p>Тихий ритм меньше попадает в микрофон.</p></div>
