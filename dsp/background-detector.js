@@ -22,8 +22,11 @@ class RhythmDetector extends LegacyRhythmDetector {
   const lifetime=this.attribution.sourceFamilyLifetimeAllowed.bind(this.attribution);
   this.attribution.sourceFamilyLifetimeAllowed=(job,r)=>{
    const existing=lifetime(job,r);if(!existing.allow||this.mode!=='sustained')return existing;
-   const continuation=this.attribution.sourceBassHarmonicContinuation(job,r,[...this.acceptedSourceBirths,...this.supplementalBirths]);
-   return continuation.duplicate?{...continuation,allow:false}:existing;
+   const history=[...this.acceptedSourceBirths,...this.supplementalBirths];
+   const continuation=this.attribution.sourceBassHarmonicContinuation(job,r,history);
+   if(continuation.duplicate)return {...continuation,allow:false};
+   const observed=this.attribution.sourceObservedFamilyAttack(job,r,history);
+   return observed.duplicate?{...observed,allow:false}:existing;
   };
   const reject=this.attribution.reject.bind(this.attribution);
   this.attribution.reject=(job,reason)=>{this.rejectedCount++;reject(job,reason);};

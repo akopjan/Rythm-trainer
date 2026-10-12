@@ -352,6 +352,57 @@ class EchoAttribution {
   return no('no-continuous-bass-partial');
  }
 
+ // Different reed voices from one chord attack can receive different refined
+ // times. Group them only within the same observed source batch, when this
+ // voice's native fundamental already rose with the earlier attack and never
+ // released. A new source observation or a newly starting H1 stays eligible.
+ sourceObservedFamilyAttack(job,r,history){
+  const rate=this.rate,p=r.proof,no=reason=>({duplicate:false,reason});
+  if(!p?.ok||!job.y||!Number.isFinite(r.time)||!Number.isFinite(r.frequency)||!Number.isFinite(p.sourceTime)||Math.abs(p.sourceTime-r.time)>1/rate+1e-9||!this.sourceBirthIdentity(p).h1)return no('no-measured-native-h1');
+  const index=job.message?.familyCandidates?.findIndex(q=>q.time===r.q?.time&&q.frequency===r.q?.frequency),snapshot=index>=0?job.familyEvidenceSnapshots?.[index]:job.evidenceSnapshot;
+  if(snapshot?.own!==true)return no('no-owned-native-body');
+  const sharedFamily=(a,b)=>{
+   if(!(Number.isFinite(a)&&a>0&&Number.isFinite(b)&&b>0))return false;
+   // A common lower family may expose its second and third partial as two
+   // apparent roots. This relation alone never groups their rhythm points.
+   for(let h=1;h<=8;h++){const k=Math.round(b*h/a);if(k>=1&&k<=8&&Math.abs(1200*Math.log2(b*h/(a*k)))<=35)return true;}
+   return false;
+  };
+  const parents=history.filter(q=>q.native===true&&q.identity?.h1===false&&Number.isFinite(q.time)&&q.time<r.time&&r.time-q.time>=.060&&r.time-q.time<=.220&&Math.abs(1200*Math.log2(q.frequency/r.frequency))>=35&&Number.isFinite(q.birth)&&Number.isFinite(r.q?.time)&&Math.abs(q.birth-r.q.time)<.035&&Number.isFinite(q.captureTime)&&Number.isFinite(job.message?.captureTime)&&Math.abs(q.captureTime-job.message.captureTime)<=1/rate+1e-9&&sharedFamily(q.frequency,r.frequency)).sort((a,b)=>b.time-a.time).slice(0,3);
+  const frequency=r.frequency,count=Math.floor(.032*rate),floor=Math.max(1e-16,job.gate*job.gate*.012);
+  const frameAt=(t,n=count)=>this.highNativeFrame(job,Math.round((t-this.baseTime)*rate)-job.start-Math.floor(n/2),n);
+  for(const prior of parents){
+   const before=frameAt(prior.time-.040),early=frameAt(prior.time+.036),body=frameAt(r.time+.036);if(!before||!early||!body)continue;
+   const power=(frame,h=1)=>this.highNativePower(frame,frequency*h),old=power(before),first=power(early),last=power(body);
+   // A substantial early H1 rise proves the voice belongs to the original
+   // attack rather than merely sharing a high partial with an older bass.
+   if(!(first>floor&&last>floor&&first>=last*.25&&first>old*4&&first/Math.max(1e-20,early.total)>.01&&Math.sqrt(2*first)-Math.sqrt(2*old)>job.gate*.3))continue;
+   // The early partner must already be measured above the gate floor. Reed
+   // balance can change during the attack; require relative strength in the
+   // confirmed body rather than imposing that later balance on the transient.
+   const partners=[2,3].filter(h=>frequency*h<=rate*.45&&power(early,h)>floor&&power(body,h)>Math.max(floor,last*.012));
+   if(!partners.length)continue;
+   // Detuned upper reeds can beat while H1 remains continuous. Keep the
+   // original strict fundamental phase bound; a separate phased root is
+   // eligible even when an old bass already supplied a strong octave carrier.
+   const phaseFrames=[-.020,.020,.060].map(dt=>frameAt(r.time+dt));if(phaseFrames.some(q=>!q))continue;
+   const phase=phaseFrames.map(q=>this.highNativePhase(q,frequency)),wrap=q=>Math.atan2(Math.sin(q),Math.cos(q));
+   const clock=frequency+wrap(phase[2]-phase[1]-2*Math.PI*frequency*.040)/(2*Math.PI*.040),phaseError=wrap(phase[1]-phase[0]-2*Math.PI*clock*.040);
+   if(Math.abs(clock-frequency)>Math.max(4,frequency*.012)||Math.abs(phaseError)>.45)continue;
+   // A new aligned oscillator may share the old carrier's phase. A separate
+   // sharp native H1 rise still rearms the voice without requiring silence.
+   const envelopeStep=.008;let previous=null,earlySlope=0,lateSlope=0,incompleteEnvelope=false;
+   for(let dt=-.032;dt<=r.time-prior.time+.044;dt+=envelopeStep){const frame=frameAt(prior.time+dt);if(!frame){incompleteEnvelope=true;break;}const value=Math.sqrt(2*power(frame));if(previous!==null){const rise=value-previous;if(dt<=.036)earlySlope=Math.max(earlySlope,rise);if(dt>=r.time-prior.time-.024)lateSlope=Math.max(lateSlope,rise);}previous=value;}
+   if(incompleteEnvelope||lateSlope>Math.max(job.gate*.15,earlySlope*.5))continue;
+   const shortCount=Math.floor(Math.max(.006,Math.min(.012,4/frequency))*rate),step=Math.max(1,Math.round(.004*rate)),limit=Math.min(first,last)*.12;
+   let released=false,incomplete=false;
+   for(let t=prior.time+.020;t<=r.time+.020;t+=step/rate){const frame=frameAt(t,shortCount);if(!frame){incomplete=true;break;}if(power(frame)<limit){released=true;break;}}
+   if(released||incomplete)continue;
+   return {duplicate:true,reason:'observed-family-same-attack',previousTime:prior.time,frequency,earlyPower:first,bodyPower:last,preAttackPower:old,partners,continuity:{clock,phaseError,earlySlope,lateSlope}};
+  }
+  return no('no-shared-native-attack');
+ }
+
  sourceBirthIdentity(proof){
   if(!proof?.ok||proof.missingFundamental===true)return {h1:false};
   const direct=w=>w&&Array.isArray(w.parts)&&Number.isFinite(w.parts[0])&&Number.isFinite(w.total)&&w.total>0?w.parts[0]/w.total:null;
@@ -415,7 +466,13 @@ class EchoAttribution {
     continue;
    }
    const lifetime=this.sourceFamilyLifetimeAllowed(job,r);job.familyDebug.push({lifetime,time:r.time,frequency:r.frequency});
-   if(!lifetime.allow)continue;
+   if(!lifetime.allow){
+    // A verified chord voice owns its sounding lifetime even when the chord
+    // already supplied its one rhythm point. A later batch must not recover
+    // the merged voice as another attack; an actual release still rearms it.
+    if(lifetime.reason==='observed-family-same-attack')this.recordSourceFamilyLifetime(r);
+    continue;
+   }
    this.recordSourceFamilyLifetime(r);emitted.push(r.time);
    const {familyCandidates,...message}=job.message;
    this.accepted++;this.lastDecision={time:r.time,reason:'instrument'};
