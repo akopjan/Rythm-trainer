@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="instrument-profiles-v27">
+<meta name="rhythm-trainer-version" content="compact-analysis-v28">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -30,6 +30,10 @@
 @media(max-width:480px){.chart-caption{gap:6px}.chart-caption .legend{gap:6px}.duration-display{font-size:10px;gap:4px}.duration-label-long{display:none}}
 .metronome-control{display:flex;align-items:center;gap:6px;white-space:nowrap}.transport .metronome-control input[type=range]{width:72px;max-width:72px;height:16px}.metronome-control output{font-size:11px;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
 @media(max-width:720px){.transport .metronome-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 4px;max-width:100%;width:136px}.transport .metronome-control .check{font-size:11px;gap:4px}.transport .metronome-control input[type=range]{grid-column:1/-1;width:100%;max-width:136px;height:14px}.metronome-control output{grid-column:2;grid-row:1;font-size:10px;min-width:26px}}
+/* Keep live timing statistics beside the chart heading. */
+.results-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px}.results-head h2{white-space:nowrap}.analysis-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-width:0}.analysis-metric{min-width:0;line-height:1.2}.metric-label{display:block;font-size:10px;color:var(--muted)}.metric-value{display:block;font-size:14px;font-weight:650;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1.35}.metric-value small{font-size:10px;font-weight:400;color:var(--muted)}.metric-count{display:block;font-size:9px;color:var(--muted);white-space:normal}.results-head .chart-actions{margin-left:0}.results-head .detection-counts{gap:8px}.results-head .detection-count{min-width:0;gap:3px}.results-head .detection-count span{font-size:10px}.results-head .detection-count strong{font-size:12px}
+@media(max-width:1040px){.results-head{grid-template-columns:minmax(0,1fr) auto;row-gap:5px}.results-head h2{grid-column:1;grid-row:1}.results-head .chart-actions{grid-column:2;grid-row:1}.analysis-metrics{grid-column:1;grid-row:2}.results-head .detection-counts{grid-column:2;grid-row:2;justify-content:flex-end}}
+@media(max-width:720px){.analysis-metrics{grid-column:1/-1;gap:8px}.results-head .detection-counts{grid-column:1/-1;grid-row:3;justify-content:flex-start;gap:15px}.metric-label{min-height:2.4em}.metric-value{font-size:14px}.results-head .chart-actions{gap:5px}.results-head .tolerance{font-size:11px;gap:3px}.results-head .tolerance input{width:42px;height:26px}.results-head .chart-actions .quiet{font-size:11px;padding:4px 7px}}
 </style>
 </head>
 <body>
@@ -51,19 +55,19 @@
 <div class="seq-foot"><span>Нажимайте клетки, чтобы менять рисунок.</span><span id="position">Такт 1 / 1</span></div>
 </section>
 <section class="analysis-panel" aria-labelledby="results-title">
-<div class="results-head"><h2 id="results-title">Анализ игры</h2><div id="detection-counts" class="detection-counts" aria-label="Распознавание звуков"><div class="detection-count"><span>Найдено</span><strong id="detection-candidates">0</strong></div><div class="detection-count"><span>Подтверждено</span><strong id="detection-accepted">0</strong></div><div class="detection-count"><span>Отсеяно</span><strong id="detection-rejected">0</strong></div></div><div class="chart-actions"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><button class="quiet" id="reset">Сбросить</button></div></div>
+<div class="results-head"><h2 id="results-title">Анализ игры</h2><div class="analysis-metrics" role="group" aria-label="Точность игры">
+<div class="analysis-metric" role="group" title="Средняя ошибка по модулю: среднее |отклонение от сетки|" aria-label="Средняя ошибка по модулю"><span class="metric-label">Средняя |ошибка|</span><strong class="metric-value" id="mae">— <small>мс</small></strong></div>
+<div class="analysis-metric" role="group" title="Разброс: среднее |отклонение от медианы|" aria-label="Разброс"><span class="metric-label">Разброс</span><strong class="metric-value" id="spread">— <small>мс</small></strong></div>
+<div class="analysis-metric" role="group" title="В допуске: доля обнаруженных атак в пределах выбранного допуска" aria-label="В допуске"><span class="metric-label">В допуске</span><strong class="metric-value" id="accuracy">— <small>%</small></strong><span class="metric-count" id="hit-count">0 из 0 атак</span></div>
+<div class="analysis-metric" role="group" title="Медиана |ошибки|: типичное расстояние от линии сетки" aria-label="Медиана модуля ошибки"><span class="metric-label">Медиана |ошибки|</span><strong class="metric-value" id="median-abs">— <small>мс</small></strong></div>
+</div><div id="detection-counts" class="detection-counts" aria-label="Распознавание звуков"><div class="detection-count"><span>Найдено</span><strong id="detection-candidates">0</strong></div><div class="detection-count"><span>Подтверждено</span><strong id="detection-accepted">0</strong></div><div class="detection-count"><span>Отсеяно</span><strong id="detection-rejected">0</strong></div></div><div class="chart-actions"><label class="tolerance">Допуск ±<input type="number" id="tolerance" min="1" max="100" value="30" inputmode="numeric">мс</label><button class="quiet" id="reset">Сбросить</button></div></div>
 <div class="chart-wrap"><div id="chart-playhead" class="timeline-playhead" hidden aria-hidden="true"></div><canvas id="chart" tabindex="0" role="img" aria-label="Отклонения атак от ближайших позиций сетки. Выше нуля — позже, ниже — раньше."></canvas><div class="empty-chart" id="empty">Начните играть — здесь появятся точки атак.</div></div>
 <div class="chart-caption"><div class="legend"><span><i style="--c:var(--blue)"></i>Раньше</span><span><i style="--c:var(--green)"></i>В допуске</span><span><i style="--c:var(--red)"></i>Позже</span></div><label class="check duration-display" title="Выключено — только точки атак. Включено — точки с палочками длительности; измеряются новые ноты. При перекрытии нот длительность может быть недоступна."><input id="show-note-durations" type="checkbox"><span>Длительности<span class="duration-label-long"> нот</span></span><span id="duration-legend" class="sr-only" hidden>Палочка — звучание</span></label><span class="last-hit" id="last-hit">Последние 6 циклов · каждая атака — точка</span></div>
 </section>
 </div>
 <div class="secondary-panels">
 <details class="secondary-panel" id="statistics-panel"><summary>Статистика и анализ</summary><div class="panel-content">
-<div class="accuracy-controls"><label class="check"><input id="reference-sync" type="checkbox" checked>Задержка по рисунку</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю по медиане и пересчитывает ошибки каждого такта">Нормализовать</button></div><div class="stats">
-<div class="stat"><div class="stat-label">Средняя ошибка по модулю</div><div class="stat-value" id="mae">— <small>мс</small></div><div class="stat-sub">Среднее |отклонение от сетки|</div></div>
-<div class="stat"><div class="stat-label">Разброс</div><div class="stat-value" id="spread">— <small>мс</small></div><div class="stat-sub">Среднее |отклонение от медианы|</div></div>
-<div class="stat"><div class="stat-label">В допуске</div><div class="stat-value" id="accuracy">— <small>%</small></div><div class="stat-sub" id="hit-count">0 атак</div></div>
-<div class="stat"><div class="stat-label">Медиана |ошибки|</div><div class="stat-value" id="median-abs">— <small>мс</small></div><div class="stat-sub">Типичное расстояние от линии сетки</div></div>
-</div>
+<div class="accuracy-controls"><label class="check"><input id="reference-sync" type="checkbox" checked>Задержка по рисунку</label><label class="check"><input id="auto-normalize" type="checkbox" checked>Автонормализация</label><button class="quiet" id="normalize" title="Центрирует всю историю по медиане и пересчитывает ошибки каждого такта">Нормализовать</button></div>
 <div class="bar-results" aria-labelledby="bar-title">
 <div class="bar-head"><h3 id="bar-title">Ошибка по тактам</h3><button class="quiet" id="show-all-bars" hidden>Все такты</button></div>
 <p id="bar-problem" class="bar-problem">Пока нет сыгранных атак для сравнения.</p>
