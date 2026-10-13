@@ -103,6 +103,13 @@ if (sanitize) {
     return {ok: settings.bars === 1 && settings.beats === 4 && settings.division === 8 && settings.inputMode === 'sustained', settings};
   });
 
+  for (const inputMode of ['guitar', 'piano']) {
+    check(`The ${inputMode} profile survives a settings snapshot`, () => {
+      const settings = sanitize({inputMode, threshold: -46});
+      return {ok: settings.inputMode === inputMode && settings.threshold === -46, settings};
+    });
+  }
+
   check('Resolution selectors do not coerce string values from malformed JSON', () => {
     const settings = sanitize({bars: '2', beats: '3', division: '16'});
     return {ok: settings.bars === 1 && settings.beats === 4 && settings.division === 8, bars: settings.bars, beats: settings.beats, division: settings.division};

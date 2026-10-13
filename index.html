@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rhythm-trainer-version" content="chord-attack-v26">
+<meta name="rhythm-trainer-version" content="instrument-profiles-v27">
 <meta name="description" content="Локальный тренажёр точности ритма: секвенсор, микрофон и отклонения в миллисекундах.">
 <title>Ритм — тренажёр точности</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M7 22V13m6 9V7m6 15v-6m6 6V10' stroke='%23ef7848' stroke-width='3'/%3E%3C/svg%3E">
@@ -28,6 +28,8 @@
 /* Keep note display control in the existing single-line graph caption. */
 .chart-caption{flex-wrap:nowrap;gap:10px}.chart-caption .legend{flex-wrap:nowrap;gap:10px;flex-shrink:0}.duration-display{flex-shrink:0;font-size:11px;gap:5px}.chart-caption .last-hit{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 @media(max-width:480px){.chart-caption{gap:6px}.chart-caption .legend{gap:6px}.duration-display{font-size:10px;gap:4px}.duration-label-long{display:none}}
+.metronome-control{display:flex;align-items:center;gap:6px;white-space:nowrap}.transport .metronome-control input[type=range]{width:72px;max-width:72px;height:16px}.metronome-control output{font-size:11px;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+@media(max-width:720px){.transport .metronome-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 4px;max-width:100%;width:136px}.transport .metronome-control .check{font-size:11px;gap:4px}.transport .metronome-control input[type=range]{grid-column:1/-1;width:100%;max-width:136px;height:14px}.metronome-control output{grid-column:2;grid-row:1;font-size:10px;min-width:26px}}
 </style>
 </head>
 <body>
@@ -40,9 +42,9 @@
 <label class="field">Размер<select id="signature"><option value="4" selected>4/4</option><option value="3">3/4</option></select></label>
 <label class="field">Такты<select id="bars"><option value="1">1 такт</option><option value="2">2 такта</option></select></label>
 <label class="field">Сетка<select id="division"><option value="4">1/4</option><option value="8" selected>1/8</option><option value="16">1/16</option></select></label>
-<div class="checks"><label class="check"><input type="checkbox" id="click">Метроном</label><label class="check"><input type="checkbox" id="mic" checked>Микрофон</label></div>
+<div class="checks"><div class="metronome-control"><label class="check"><input type="checkbox" id="click">Метроном</label><input id="click-volume" type="range" min="0" max="100" value="100" aria-label="Громкость метронома" title="Громкость метронома"><output id="click-volume-value" for="click-volume">100%</output></div><label class="check"><input type="checkbox" id="mic" checked>Микрофон</label></div>
 </section>
-<div class="status"><span id="status" role="status" aria-live="polite">Нажмите Start, чтобы начать.</span><button type="button" class="quiet" id="filter-setup" aria-describedby="filter-setup-help" title="Во время настройки не играйте на баяне" disabled>Настроить фильтр</button><span id="filter-setup-help" class="sr-only">Во время настройки не играйте на баяне.</span><div class="audio-meters"><div class="audio-meter-row"><span class="mic-label" title="Весь звук, который слышит микрофон">Вход</span><div class="mic-meter" role="meter" aria-label="Уровень микрофона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter"></div></div></div><div class="audio-meter-row"><span class="mic-label" title="Звук, который получает распознавание">На анализ</span><div class="mic-meter filtered-meter" role="meter" aria-label="Уровень звука, поступающего в распознавание" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-active="false"><div id="filtered-meter"></div></div></div><span class="meter-state" id="filtered-meter-status">Фильтр выключен</span></div></div>
+<div class="status"><span id="status" role="status" aria-live="polite">Нажмите Start, чтобы начать.</span><button type="button" class="quiet" id="filter-setup" aria-describedby="filter-setup-help" title="Во время настройки не играйте на инструменте" disabled>Настроить фильтр</button><span id="filter-setup-help" class="sr-only">Во время настройки не играйте на инструменте.</span><div class="audio-meters"><div class="audio-meter-row"><span class="mic-label" title="Весь звук, который слышит микрофон">Вход</span><div class="mic-meter" role="meter" aria-label="Уровень микрофона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter"></div></div></div><div class="audio-meter-row"><span class="mic-label" title="Звук, который получает распознавание">На анализ</span><div class="mic-meter filtered-meter" role="meter" aria-label="Уровень звука, поступающего в распознавание" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-active="false"><div id="filtered-meter"></div></div></div><span class="meter-state" id="filtered-meter-status">Фильтр выключен</span></div></div>
 <section class="rhythm-panel" aria-labelledby="seq-title">
 <div class="section-head"><h2 id="seq-title">Ритм</h2><div class="seq-actions"><small id="step-count">8 шагов</small><button class="quiet" id="basic-pattern" title="Бочка, малый и щелчок; метроном выключен">Базовый ритм</button><button class="quiet" id="clear-pattern">Очистить</button></div></div>
 <div class="sequencer" id="rhythm-scroll"><div id="sequencer" class="seq-grid"></div><div id="rhythm-playhead" class="timeline-playhead" hidden aria-hidden="true"></div></div>
@@ -80,12 +82,11 @@
 <details class="secondary-panel" id="sound-panel"><summary>Настройки звука</summary><div class="panel-content">
 <div class="advanced">
 
-<div><label class="field">Инструмент<select id="input-mode"><option value="sustained" selected>Баян / мелодический инструмент</option><option value="percussive">Ударные / хлопки</option></select></label><p>Для баяна учитываем плавное начало и смену нот.</p></div>
+<div><label class="field">Инструмент<select id="input-mode" aria-describedby="instrument-hint"><option value="sustained" selected>Баян / мелодический инструмент</option><option value="guitar">Гитара</option><option value="piano">Фортепьяно</option><option value="percussive">Ударные / хлопки</option></select></label><p id="instrument-hint">Для баяна учитываем плавное начало и смену нот.</p></div>
 <div><label class="field">Громкость ритма <output id="volume-value">55%</output><input id="volume" type="range" min="0" max="100" value="55"></label><p>Тихий ритм меньше попадает в микрофон.</p></div>
 <div><label class="field">Порог атаки <output id="threshold-value">−48 dB</output><input id="threshold" type="range" min="-65" max="-15" value="-48"></label><p>Ложные атаки — поднимите порог. Тихие удары пропадают — снизьте.</p></div>
 <div><label class="field">Поправка задержки, мс<input id="latency" type="number" min="-300" max="500" value="0" step="0.001"></label><p>Автонормализация подбирает небольшой остаточный сдвиг по медиане минимум 9 атак. Подстройка ограничена окрестностью выбранной доли; аппаратную задержку отдельно отслеживаем по звуку рисунка. Если рисунок не слышен или неоднозначен, сохраняем прежнюю привязку. Автоцентрирование учитывает и задержку устройства, и устойчивое смещение вашей игры. «Нормализовать» вручную пересчитывает всю историю; автоматическая подстройка сохраняет прошлые такты после начального подбора.</p></div>
 </div>
-<div class="echo-row"><label class="field">Громкость метронома <output id="click-volume-value">100%</output><input id="click-volume" type="range" min="0" max="100" value="100"></label><p>Метроном управляется переключателем сверху и звучит по четвертным долям. Барабаны звучат только в включённых клетках.</p></div>
 <div class="echo-row"><button id="measure-latency">Измерить задержку</button><p id="latency-info">8 щелчков без вашей игры. Микрофон должен слышать колонки или один поднесённый к нему наушник. Используйте то же аудиоустройство, что и при тренировке: возьмём медиану задержек услышанных щелчков и покажем среднее абсолютное отклонение.</p></div>
 <div class="echo-row"><button id="calibrate">Калибровка для колонок</button><p id="echo-info">Сначала найдём задержку, затем запомним 3 цикла без вашей игры. В паузах профиль обновляется автоматически.</p></div>
 <div class="echo-row"><button id="export-settings">Настройки в файл</button><p id="settings-info">Настройки сохраняются в cookies; для локального HTML — в хранилище браузера. Файл можно сохранить как резервную копию.</p></div>
@@ -97,8 +98,8 @@
 <details class="secondary-panel technical-panel" id="recordings-panel"><summary>Технические записи</summary><div class="panel-content">
 <section class="sample-panel" aria-labelledby="sample-title">
 <div class="section-head"><h2 id="sample-title">Записи для проверки</h2></div>
-<p class="sample-help">Сначала запишите 8 секунд только ритма, без баяна — эта запись настроит фильтр. Затем можно играть и записать 2 минуты игры под тот же рисунок. Для длинного рисунка используйте «Калибровка». Кнопка записи сама запустит тренажёр, если он остановлен.</p>
-<div class="sample-actions"><button type="button" id="sample-without">Запись без баяна · 8 с</button><button type="button" id="sample-with">Запись с баяном · 2 мин</button><button type="button" id="sample-stop" disabled>Остановить запись</button><button type="button" id="sample-save" disabled>Скачать записи</button></div>
+<p class="sample-help">Сначала запишите 8 секунд только ритма, без инструмента — эта запись настроит фильтр. Затем можно играть и записать 2 минуты игры под тот же рисунок. Для длинного рисунка используйте «Калибровка». Кнопка записи сама запустит тренажёр, если он остановлен.</p>
+<div class="sample-actions"><button type="button" id="sample-without">Запись без инструмента · 8 с</button><button type="button" id="sample-with">Запись с инструментом · 2 мин</button><button type="button" id="sample-stop" disabled>Остановить запись</button><button type="button" id="sample-save" disabled>Скачать записи</button></div>
 <p id="sample-status" class="sample-status" role="status" aria-live="polite">Записей пока нет.</p>
 <div id="sample-list" class="sample-list"></div>
 <p class="sample-help sample-storage">Готовые записи можно прослушать здесь. «Скачать записи» сохраняет один архив со звуком, рисунком и показаниями фильтра в папку загрузок компьютера. Записи хранятся в этом браузере и не отправляются на сервер.</p>
@@ -2691,10 +2692,99 @@ class SustainedOnset {
  }
 }
 
+// GENERATED_STRUCK_STRING_BEGIN
+// Causal pluck/hammer onset front end. Positive spectral growth uses the
+// previous spectrum's frequency-neighbour maximum to suppress moving partials
+// (the SuperFlux principle). One small FFT per 256 samples, no pitch search.
+// These are attack profiles, not classifiers or instrument sound generators.
+class StruckStringOnset {
+ constructor(rate,emit){
+  this.rate=rate;this.emit=emit;this.n=2048;this.hop=256;
+  this.ring=new Float32Array(this.n);this.real=new Float32Array(this.n);this.imag=new Float32Array(this.n);
+  this.previous=new Float32Array(this.n/2+1);this.magnitude=new Float32Array(this.n/2+1);
+  this.window=new Float32Array(this.n);this.reverse=new Uint16Array(this.n);
+  this.cos=new Float32Array(this.n/2);this.sin=new Float32Array(this.n/2);
+  for(let i=0;i<this.n;i++){this.window[i]=.5-.5*Math.cos(2*Math.PI*i/(this.n-1));let x=i,r=0;for(let b=0;b<11;b++){r=(r<<1)|(x&1);x>>=1;}this.reverse[i]=r;}
+  for(let i=0;i<this.n/2;i++){this.cos[i]=Math.cos(2*Math.PI*i/this.n);this.sin[i]=-Math.sin(2*Math.PI*i/this.n);}
+  this.configure('guitar');
+ }
+ configure(mode){
+  this.mode=mode==='piano'?'piano':'guitar';
+  // Guitar strings can start sequentially within one stroke; piano hammer
+  // attacks need a shorter group so repeated key strikes remain eligible.
+  this.group=this.mode==='guitar'?.085:.040;
+  this.riseLimit=this.mode==='guitar'?.06:.08;
+  this.releaseLimit=this.mode==='guitar'?.035:.045;
+  this.slowSeconds=this.mode==='guitar'?.040:.028;
+  this.reset();
+ }
+ reset(){
+  this.ring.fill(0);this.previous.fill(0);this.cursor=0;this.total=0;this.baseTime=null;this.nextTime=null;
+  this.fast=0;this.slow=0;this.pending=null;this.lastHit=-Infinity;this.flux=0;this.fluxFloor=0;
+  this.armed=true;this.quietSince=null;this.lastFluxTime=-Infinity;this.lastSpectralRise=-Infinity;
+ }
+ spectrum(time,gate){
+  const n=this.n,re=this.real,im=this.imag;
+  for(let i=0;i<n;i++){re[this.reverse[i]]=this.ring[(this.cursor+i)%n]*this.window[i];im[i]=0;}
+  for(let size=2;size<=n;size*=2){const half=size/2,stride=n/size;for(let base=0;base<n;base+=size)for(let j=0;j<half;j++){
+   const a=base+j,b=a+half,k=j*stride,vr=re[b]*this.cos[k]-im[b]*this.sin[k],vi=re[b]*this.sin[k]+im[b]*this.cos[k];
+   re[b]=re[a]-vr;im[b]=im[a]-vi;re[a]+=vr;im[a]+=vi;
+  }}
+  const first=Math.max(1,Math.ceil((this.mode==='piano'?28:60)*n/this.rate)),last=Math.min(n/2-1,Math.floor(11000*n/this.rate));
+  let positive=0,total=0;
+  for(let k=first-1;k<=last+1;k++)this.magnitude[k]=Math.hypot(re[k],im[k]);
+  for(let k=first;k<=last;k++){
+   const magnitude=this.magnitude[k],prior=Math.max(this.previous[k-1],this.previous[k],this.previous[k+1]);
+   positive+=Math.max(0,magnitude-prior);total+=magnitude;
+  }
+  const flux=total>1e-8?positive/total:0,oldFlux=this.flux;
+  this.flux=flux;this.lastFluxTime=time;
+  const limit=Math.max(this.riseLimit,this.fluxFloor*2.5+.035);
+  const strong=flux>limit&&this.fast>gate;
+  if(flux<this.releaseLimit)this.fluxFloor+=(flux-this.fluxFloor)*.06;
+  if(flux<this.releaseLimit){
+   if(this.quietSince===null)this.quietSince=time;
+   if(time-this.quietSince>=.012)this.armed=true;
+  }else this.quietSince=null;
+  // A spectral candidate must have a new rising edge. This avoids reporting
+  // successive string/partial maxima of the same still-rising attack.
+  const spectralEdge=strong&&oldFlux<=limit&&(flux>.15||this.fast>this.slow*.90);
+  if(strong&&(this.pending||spectralEdge&&this.armed)){
+   const message=this.pending||{time:Math.max(this.baseTime,time-n/(2*this.rate)),level:this.fast};
+   if(message.time-this.lastHit>=this.group){
+    this.lastHit=message.time;this.armed=false;
+    this.emit({type:'onset',time:message.time,level:message.level,inputProfile:this.mode,source:'struck-string'});
+   }
+   this.pending=null;this.lastSpectralRise=time;
+  }
+  this.previous.set(this.magnitude);
+ }
+ process(samples,t,level,gate){
+  if(this.nextTime!==null&&Math.abs(t-this.nextTime)>.03)this.reset();
+  if(this.baseTime===null)this.baseTime=t;
+  this.nextTime=t+samples.length/this.rate;
+  const duration=samples.length/this.rate;
+  this.fast+=(level-this.fast)*(1-Math.exp(-duration/.003));
+  this.slow+=(level-this.slow)*(1-Math.exp(-duration/this.slowSeconds));
+  const energyRise=this.fast>gate&&this.fast>this.slow*1.4&&this.fast-this.slow>gate*.25;
+  if(energyRise&&t-this.lastHit>=this.group&&this.armed&&!this.pending){
+   let first=0;while(first<samples.length&&Math.abs(samples[first])<=gate)first++;
+   this.pending={time:t+Math.min(first,samples.length-1)/this.rate,level};
+  }
+  if(this.pending){this.pending.level=Math.max(this.pending.level,level);if(t-this.pending.time>.048)this.pending=null;}
+  for(let i=0;i<samples.length;i++){
+   this.ring[this.cursor]=samples[i];this.cursor=(this.cursor+1)%this.n;this.total++;
+   if(this.total>=this.n&&this.total%this.hop===0)this.spectrum(this.baseTime+this.total/this.rate,gate);
+  }
+ }
+}
+
+// GENERATED_STRUCK_STRING_END
+
 class LegacyRhythmDetector {
- constructor(rate,emit){this.rate=rate;this.emit=emit;this.referenceEnabled=false;this.referenceId=null;this.reference=new ReferenceEcho(rate,m=>this.emit({...m,id:this.referenceId}));this.attribution=new EchoAttribution(rate,m=>this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'}));this.probe=null;this.mode='percussive';this.sustained=new SustainedOnset(rate,m=>this.onset(m));this.low=0;this.mid=0;this.prevX=0;this.hp=0;this.envelope=0;this.floor=.0002;this.lastHit=-10;this.lastMeter=0;this.threshold=.0126;this.active=false;this.profile=null;this.training=false;this.alphaLow=1-Math.exp(-2*Math.PI*250/rate);this.alphaMid=1-Math.exp(-2*Math.PI*2500/rate);}
+ constructor(rate,emit){this.rate=rate;this.emit=emit;this.referenceEnabled=false;this.referenceId=null;this.reference=new ReferenceEcho(rate,m=>this.emit({...m,id:this.referenceId}));this.attribution=new EchoAttribution(rate,m=>this.emit({...m,id:this.referenceId,isolated:true,source:'instrument'}));this.probe=null;this.mode='percussive';this.sustained=new SustainedOnset(rate,m=>this.onset(m));this.struckString=new StruckStringOnset(rate,m=>this.onset(m));this.low=0;this.mid=0;this.prevX=0;this.hp=0;this.envelope=0;this.floor=.0002;this.lastHit=-10;this.lastMeter=0;this.threshold=.0126;this.active=false;this.profile=null;this.training=false;this.alphaLow=1-Math.exp(-2*Math.PI*250/rate);this.alphaMid=1-Math.exp(-2*Math.PI*2500/rate);}
  onset(m,gate=this.currentGate||this.threshold){if(this.referenceEnabled)this.attribution.queue(m,gate);else this.emit(m);}
- configure(m){if(m.type==='backing-state')this.reference.setOptions({backing:m.backing});if(m.type==='reference-sync'){this.referenceEnabled=m.enabled===true;this.referenceId=m.id;this.reference.reset();this.reference.setOptions({backing:m.backing,routed:m.routed,threshold:this.threshold});this.attribution.reset();}if(m.type==='measure-latency'){this.probe=new LatencyProbe(this.rate,this.emit,m);this.referenceEnabled=false;this.active=false;}if(m.type==='mode'){this.mode=m.value==='sustained'?'sustained':'percussive';this.sustained.reset();}if(m.type==='arm'){this.reference.reset();this.attribution.reset();this.probe=null;this.start=m.start;this.duration=m.duration;this.active=true;this.envelope=0;this.sustained.reset();this.floor=.0002;this.lastHit=-10;this.profile=null;this.training=false;}if(m.type==='threshold'){this.threshold=m.value;this.reference.setOptions({threshold:m.value});}if(m.type==='invalidate'){this.profile=null;this.training=false;}if(m.type==='calibrate'){this.start=m.start;this.duration=m.duration;this.bins=Math.ceil(this.duration*this.rate/128);this.peaks=new Float32Array(this.bins*3);this.training=true;this.profile=null;this.active=true;this.envelope=0;this.sustained.reset();this.floor=.0002;this.lastHit=-10;}}
+ configure(m){if(m.type==='backing-state')this.reference.setOptions({backing:m.backing});if(m.type==='reference-sync'){this.referenceEnabled=m.enabled===true;this.referenceId=m.id;this.reference.reset();this.reference.setOptions({backing:m.backing,routed:m.routed,threshold:this.threshold});this.attribution.reset();}if(m.type==='measure-latency'){this.probe=new LatencyProbe(this.rate,this.emit,m);this.referenceEnabled=false;this.active=false;}if(m.type==='mode'){this.mode=['sustained','guitar','piano'].includes(m.value)?m.value:'percussive';this.sustained.reset();this.struckString.configure(this.mode);}if(m.type==='arm'){this.reference.reset();this.attribution.reset();this.probe=null;this.start=m.start;this.duration=m.duration;this.active=true;this.envelope=0;this.sustained.reset();this.struckString.reset();this.floor=.0002;this.lastHit=-10;this.profile=null;this.training=false;}if(m.type==='threshold'){this.threshold=m.value;this.reference.setOptions({threshold:m.value});}if(m.type==='invalidate'){this.profile=null;this.training=false;}if(m.type==='calibrate'){this.start=m.start;this.duration=m.duration;this.bins=Math.ceil(this.duration*this.rate/128);this.peaks=new Float32Array(this.bins*3);this.training=true;this.profile=null;this.active=true;this.envelope=0;this.sustained.reset();this.struckString.reset();this.floor=.0002;this.lastHit=-10;}}
  process(samples,t,reference){
   if(!samples.length)return;
   const capture=samples;
@@ -2711,15 +2801,16 @@ class LegacyRhythmDetector {
    if(loop<3){if(loop>=1){const k=Math.min(this.bins-1,Math.floor(phase/this.duration*this.bins));for(let j=0;j<3;j++)this.peaks[k*3+j]=Math.max(this.peaks[k*3+j],bands[j]);}return;}
    const learned=this.peaks;
    this.profile=new Float32Array(learned.length);for(let k=0;k<this.bins;k++)for(let j=0;j<3;j++){let peak=0;for(let d=-2;d<=2;d++)peak=Math.max(peak,learned[((k+d+this.bins)%this.bins)*3+j]);this.profile[k*3+j]=peak;}
-   this.training=false;this.envelope=0;this.sustained.reset();this.emit({type:'calibrated'});return;
+   this.training=false;this.envelope=0;this.sustained.reset();this.struckString.reset();this.emit({type:'calibrated'});return;
   }
   // Subtract band energy, not amplitudes, so a new simultaneous attack can survive.
   // A small learned-echo margin absorbs block-phase variation; this remains a heuristic.
   if(this.profile&&!this.referenceEnabled){const k=Math.min(this.bins-1,Math.floor(phase/this.duration*this.bins));bands=bands.map((v,j)=>Math.sqrt(Math.max(0,v*v-this.profile[k*3+j]**2*1.02)));}
   const level=Math.sqrt(bands.reduce((s,x)=>s+x*x,0));
-  if(this.referenceEnabled){const isolation=this.reference.analysisInfo();if(!isolation.ready&&!isolation.canAudit){this.envelope=0;this.sustained.reset();return;}}
+  if(this.referenceEnabled){const isolation=this.reference.analysisInfo();if(!isolation.ready&&!isolation.canAudit){this.envelope=0;this.sustained.reset();this.struckString.reset();return;}}
   this.currentGate=Math.max(this.threshold,Math.min(this.floor*3,this.threshold*1.5));
   if(this.mode==='sustained'){if(level<this.threshold*.5)this.floor+=(level-this.floor)*.004;this.sustained.process(samples,t,level,Math.max(this.threshold,Math.min(this.floor*3,this.threshold*1.5)));return;}
+  if(this.mode==='guitar'||this.mode==='piano'){if(level<this.threshold*.5)this.floor+=(level-this.floor)*.004;this.struckString.process(samples,t,level,this.currentGate);return;}
   this.floor+=(Math.min(level,this.floor*2+.0001)-this.floor)*.004;
   const gate=Math.max(this.threshold,this.floor*3);
   const novelty=level-this.envelope;
@@ -3068,7 +3159,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    const r=this.reference,linearTrusted=r.cancelReady&&r.modelCeiling<=.03;
    // A filtered block arrives later than its source samples. Source attribution
    // audits those source samples, while the score keeps its onset timestamp.
-   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(this.mode==='sustained'||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,waveformReady:linearTrusted,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
+   this.attribution.queue({...message,spectralCheck:Boolean(r.options.backing&&!r.noEchoProof&&(!linearTrusted||this.mode==='sustained'||this.background?.ready)),toneCheck:Boolean(r.options.backing&&!r.noEchoProof&&(['sustained','guitar','piano'].includes(this.mode)||!linearTrusted&&!this.background?.ready)),profileReady:this.background?.ready===true,waveformReady:linearTrusted,captureTime:Number.isFinite(this.auditTime)?this.auditTime:undefined},gate);
   }else this.emit(message);
  }
  configure(m){
@@ -3336,7 +3427,7 @@ function sanitizeSettings(data){
  const flag=(key,fallback)=>typeof d[key]==='boolean'?d[key]:fallback;
  const choice=(key,options,fallback)=>options.includes(d[key])?d[key]:fallback;
  const storedPattern=Array.isArray(d.pattern)?d.pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>r===0?i%16===0||i%16===8:r===1?i%16===4||i%16===12:r===2?i%2===0:false));
- return {version:1,bpm:numeric('bpm',30,280,100),bars:choice('bars',[1,2],1),beats:choice('beats',[3,4],4),division:choice('division',[4,8,16],8),mic:flag('mic',true),click:flag('click',false),autoNormalize:flag('autoNormalize',true),showNoteDurations:flag('showNoteDurations',false),referenceSync:flag('referenceSync',true),inputMode:choice('inputMode',['sustained','percussive'],'sustained'),volume:numeric('volume',0,100,55),clickVolume:numeric('clickVolume',0,100,100),threshold:numeric('threshold',-65,-15,-48),latency:numeric('latency',-300,500,0),tolerance:numeric('tolerance',1,100,30),pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>storedPattern[r]?.[i]===true)),trackEnabled:Array.from({length:4},(_,i)=>typeof d.trackEnabled?.[i]==='boolean'?d.trackEnabled[i]:true),trackVolumes:Array.from({length:4},(_,i)=>typeof d.trackVolumes?.[i]==='number'&&Number.isFinite(d.trackVolumes[i])?Math.min(100,Math.max(0,d.trackVolumes[i])):100)};
+ return {version:1,bpm:numeric('bpm',30,280,100),bars:choice('bars',[1,2],1),beats:choice('beats',[3,4],4),division:choice('division',[4,8,16],8),mic:flag('mic',true),click:flag('click',false),autoNormalize:flag('autoNormalize',true),showNoteDurations:flag('showNoteDurations',false),referenceSync:flag('referenceSync',true),inputMode:choice('inputMode',['sustained','guitar','piano','percussive'],'sustained'),volume:numeric('volume',0,100,55),clickVolume:numeric('clickVolume',0,100,100),threshold:numeric('threshold',-65,-15,-48),latency:numeric('latency',-300,500,0),tolerance:numeric('tolerance',1,100,30),pattern:Array.from({length:4},(_,r)=>Array.from({length:32},(_,i)=>storedPattern[r]?.[i]===true)),trackEnabled:Array.from({length:4},(_,i)=>typeof d.trackEnabled?.[i]==='boolean'?d.trackEnabled[i]:true),trackVolumes:Array.from({length:4},(_,i)=>typeof d.trackVolumes?.[i]==='number'&&Number.isFinite(d.trackVolumes[i])?Math.min(100,Math.max(0,d.trackVolumes[i])):100)};
 }
 const settingsKey='rhythm-trainer.settings.v1';let settingsTimer=null,settingsDirty=false,settingsWritable=null,settingsSavedTo=null,lastSettingsWrite=0;
 function captureSettings(){return sanitizeSettings({version:1,bpm:state.bpm,bars:state.bars,beats:state.beats,division:state.division,mic:$('mic').checked,click:$('click').checked,autoNormalize:$('auto-normalize').checked,showNoteDurations:$('show-note-durations').checked,referenceSync:$('reference-sync').checked,inputMode:$('input-mode').value,volume:Number($('volume').value),clickVolume:Number($('click-volume').value),threshold:Number($('threshold').value),latency:Number($('latency').value),tolerance:Number($('tolerance').value),pattern,trackEnabled:state.trackEnabled,trackVolumes:state.trackVolumes});}
@@ -3373,7 +3464,7 @@ function applySettings(data){
  for(const [key,id] of [['mic','mic'],['click','click'],['autoNormalize','auto-normalize'],['showNoteDurations','show-note-durations'],['referenceSync','reference-sync']])$(id).checked=s[key];
  state.bpm=s.bpm;state.bars=s.bars;state.beats=s.beats;state.division=s.division;state.trackEnabled=[...s.trackEnabled];state.trackVolumes=[...s.trackVolumes];
  pattern.forEach((row,r)=>row.splice(0,32,...s.pattern[r]));
- $('volume-value').textContent=s.volume+'%';$('click-volume-value').textContent=s.clickVolume+'%';$('threshold-value').textContent=s.threshold+' dB';
+ $('volume-value').textContent=s.volume+'%';$('click-volume-value').textContent=s.clickVolume+'%';$('threshold-value').textContent=s.threshold+' dB';updateInstrumentInfo();
  clearResults();renderGrid();setControls();$('position').textContent=`Такт 1 / ${state.bars}`;
 }
 function loadSavedSettings(){
@@ -3407,7 +3498,7 @@ function updateFilterSetupControls(){
  const button=$('filter-setup'),help=$('filter-setup-help');if(!button)return;
  const noBacking=!hasAudibleBacking()||state.running&&state.isolation?.status==='clear';
  button.disabled=!state.running||!$('mic').checked||filterSetupBusy()||noBacking||state.filteredLevel?.active===true;
- if(help)help.textContent=state.calibrating?'Не играйте на баяне до завершения настройки.':sampleRecorderState.active?.kind==='without'?'Запоминаем ритм из записи. Пока не играйте на баяне.':state.filteredLevel?.active===true?'Фильтр настроен для текущего запуска.':noBacking?'Без слышимого фона колонок настройка не нужна.':'Для игры через динамики настройте фильтр. Во время настройки не играйте на баяне.';
+ if(help)help.textContent=state.calibrating?'Не играйте на инструменте до завершения настройки.':sampleRecorderState.active?.kind==='without'?'Запоминаем ритм из записи. Пока не играйте на инструменте.':state.filteredLevel?.active===true?'Фильтр настроен для текущего запуска.':noBacking?'Без слышимого фона колонок настройка не нужна.':'Для игры через динамики настройте фильтр. Во время настройки не играйте на инструменте.';
 }
 function prepareInputStatus(){
  if(!hasAudibleBacking()||state.isolation?.status==='clear')return 'Слушаем микрофон. Играйте в выбранную сетку.';
@@ -3478,7 +3569,7 @@ function sampleRecordIdentity(record){return record?JSON.stringify([record.kind,
 async function sampleDelete(record){
  if(sampleRecorderState.deleting||sampleRecorderState.exporting||sampleRecorderState.active||sampleRecorderState.pending)return;
  if(sampleRecorderState.records.get(record.kind)!==record){sampleRenderList();sampleSetStatus('Список записей обновился. Выберите запись ещё раз.');return;}
- const label=`${record.kind.startsWith('with-')||record.kind==='with'?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${sampleRecordDate(record)}`;
+ const label=`${record.kind.startsWith('with-')||record.kind==='with'?'С инструментом':'Без инструмента'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${sampleRecordDate(record)}`;
  if(!window.confirm(`Удалить запись «${label}» из этого браузера?
 Будут удалены звук микрофона, звук ритма и диагностика этой записи. Скачанные файлы останутся.`))return;
  const identity=sampleRecordIdentity(record);sampleRecorderState.deleting=true;++sampleRecorderState.generation;sampleRecorderControls();sampleSetStatus('Удаляем выбранную запись…');
@@ -3513,8 +3604,8 @@ function sampleRenderList(){
  const list=$('sample-list');if(!list)return;list.replaceChildren();
  const records=sampleSortedRecords();for(const record of records){const kind=record.kind,item=document.createElement('div'),label=document.createElement('p'),button=document.createElement('button'),withBayan=kind==='with'||kind==='with-error',failed=kind.endsWith('-error');
   const uncertain=record.metadata.timingReliable===false,partial=record.metadata.incomplete??failed;
-  label.textContent=`${withBayan?'С баяном':'Без баяна'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${sampleRecordDate(record)}${record===records[0]&&Number.isFinite(sampleRecordTime(record))?' · Последняя':''}${uncertain?' · временные метки нестабильны':''}${record.metadata.hasGaps?' · запись с пропусками: '+(record.metadata.missingSamples/record.metadata.sampleRate*1000).toFixed(1)+' мс':''}${partial?' · неполная запись'+(record.metadata.captureError?' · '+sampleErrorLabel(record.metadata.captureError):''):''}${record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
-  item.append(label);if(record.metadata.samples!==0){const player=document.createElement('audio');player.controls=true;player.preload='metadata';player.setAttribute('aria-label',withBayan?'Запись микрофона с баяном':'Запись микрофона без баяна');player.addEventListener('play',()=>{if(state.running)stop();});const url=URL.createObjectURL(record.mic);sampleRecorderState.objectURLs.push(url);player.src=url;item.append(player);}button.type='button';button.textContent=failed?'Скачать запись и диагностику (ZIP)':'Скачать эту запись (ZIP)';button.addEventListener('click',()=>sampleDownload([record]));item.append(button);const remove=document.createElement('button');remove.type='button';remove.textContent='Удалить';remove.setAttribute('aria-label',`Удалить запись ${withBayan?'с баяном':'без баяна'} от ${sampleRecordDate(record)}`);remove.addEventListener('click',()=>sampleDelete(record));item.append(remove);list.append(item);
+  label.textContent=`${withBayan?'С инструментом':'Без инструмента'} · ${record.metadata.durationSeconds.toFixed(1)} с · ${sampleRecordDate(record)}${record===records[0]&&Number.isFinite(sampleRecordTime(record))?' · Последняя':''}${uncertain?' · временные метки нестабильны':''}${record.metadata.hasGaps?' · запись с пропусками: '+(record.metadata.missingSamples/record.metadata.sampleRate*1000).toFixed(1)+' мс':''}${partial?' · неполная запись'+(record.metadata.captureError?' · '+sampleErrorLabel(record.metadata.captureError):''):''}${record.metadata.samples===0?' Звук не получен; сохранена диагностика.':''}`;
+  item.append(label);if(record.metadata.samples!==0){const player=document.createElement('audio');player.controls=true;player.preload='metadata';player.setAttribute('aria-label',withBayan?'Запись микрофона с инструментом':'Запись микрофона без инструмента');player.addEventListener('play',()=>{if(state.running)stop();});const url=URL.createObjectURL(record.mic);sampleRecorderState.objectURLs.push(url);player.src=url;item.append(player);}button.type='button';button.textContent=failed?'Скачать запись и диагностику (ZIP)':'Скачать эту запись (ZIP)';button.addEventListener('click',()=>sampleDownload([record]));item.append(button);const remove=document.createElement('button');remove.type='button';remove.textContent='Удалить';remove.setAttribute('aria-label',`Удалить запись ${withBayan?'с инструментом':'без инструмента'} от ${sampleRecordDate(record)}`);remove.addEventListener('click',()=>sampleDelete(record));item.append(remove);list.append(item);
  }
  sampleRecorderControls();
 }
@@ -3557,7 +3648,7 @@ function sampleClockSummary(recording,message){
 function sampleReceive(recording,message){
  if(sampleRecorderState.active!==recording||recording.finished)return;
  if(message.type==='error'){sampleClockSummary(recording,message);sampleCaptureFailure(recording,message);return;}
- if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на баяне. Осталось 120 с.':'Запоминаем фон — баян пока не играйте. Осталось 8 с.');return;}
+ if(message.type==='started'){recording.startFrame=message.startFrame;sampleBackgroundStart(recording);sampleSetStatus(recording.kind==='with'?'Запись идёт — играйте на инструменте. Осталось 120 с.':'Запоминаем фон — пока не играйте на инструменте. Осталось 8 с.');return;}
  if(message.type==='clock-boundary'){
   if(!Number.isInteger(message.offset)||message.offset!==recording.count||!Number.isInteger(message.expectedFrame)||!Number.isInteger(message.actualFrame)||message.deltaFrames!==message.actualFrame-message.expectedFrame||message.deltaFrames===0){sampleCaptureFailure(recording,{...message,reason:'clock-boundary-invalid'});return;}
   recording.clockBoundaryCount=(recording.clockBoundaryCount||0)+1;recording.clockBoundaries??=[];
@@ -3567,7 +3658,7 @@ function sampleReceive(recording,message){
  }
  if(message.type==='chunk'){
   const mic=message.mic,reference=message.reference;if(!(mic instanceof Float32Array)||!(reference instanceof Float32Array)||mic.length!==reference.length||message.offset!==recording.count||recording.count+mic.length>recording.limit){sampleCaptureFailure(recording,{reason:'chunk-order',offset:message.offset,inputLength:mic?.length,referenceLength:reference?.length});return;}
-  recording.mic.push(mic);recording.reference.push(reference);recording.count+=mic.length;sampleClockSummary(recording,message);if(recording.count-(recording.progressAt||0)>=recording.sampleRate/4||recording.count===recording.limit){recording.progressAt=recording.count;const remaining=Math.max(0,(recording.limit-recording.count)/recording.sampleRate);sampleSetStatus(`Запись ${recording.kind==='with'?'с баяном':'без баяна'}: ${Math.ceil(remaining)} с осталось. ${recording.kind==='with'?'Играйте.':'Не играйте на баяне.'}${recording.clockBoundaryCount?' Временные метки нестабильны, запись продолжается.':''}`);}return;
+  recording.mic.push(mic);recording.reference.push(reference);recording.count+=mic.length;sampleClockSummary(recording,message);if(recording.count-(recording.progressAt||0)>=recording.sampleRate/4||recording.count===recording.limit){recording.progressAt=recording.count;const remaining=Math.max(0,(recording.limit-recording.count)/recording.sampleRate);sampleSetStatus(`Запись ${recording.kind==='with'?'с инструментом':'без инструмента'}: ${Math.ceil(remaining)} с осталось. ${recording.kind==='with'?'Играйте.':'Не играйте на инструменте.'}${recording.clockBoundaryCount?' Временные метки нестабильны, запись продолжается.':''}`);}return;
  }
  if(message.type==='done'){
   if(message.samples!==recording.count){sampleCaptureFailure(recording,{...message,reason:'transfer-incomplete'});return;}
@@ -3588,7 +3679,7 @@ function sampleBackgroundFinish(recording,reason){
 function acceptSampleBackgroundResult(message){
  if(message.id!==state.token||!state.running||message.captureId!==sampleRecorderState.backgroundCaptureId)return;
  sampleRecorderState.backgroundResult=message;
- $('echo-info').textContent=message.ready?'Фон из записи без баяна запомнен. Теперь можно играть.':message.reason==='declared-needs-two-cycles'?'Для этого длинного рисунка нужна кнопка «Калибровка»: не играйте до её завершения.':'Фон не удалось подтвердить. Повторите «Запись без баяна» или нажмите «Калибровка», не играя на инструменте.';
+ $('echo-info').textContent=message.ready?'Фон из записи без инструмента запомнен. Теперь можно играть.':message.reason==='declared-needs-two-cycles'?'Для этого длинного рисунка нужна кнопка «Калибровка»: не играйте до её завершения.':'Фон не удалось подтвердить. Повторите «Запись без инструмента» или нажмите «Калибровка», не играя на инструменте.';
 }
 function sampleCaptureFailure(recording,message){
  const details={reason:typeof message.reason==='string'?message.reason.slice(0,80):'unknown',mode:recording.metadata.captureMode||'unknown',receivedSamples:recording.count};
@@ -3611,7 +3702,7 @@ async function sampleFinish(recording,reason,errorText=''){
  const metadata={...recording.metadata,startFrame:recording.startFrame,startContextTime:Number.isFinite(recording.startFrame)?recording.startFrame/recording.sampleRate:null,endContextTime:timingReliable&&Number.isFinite(recording.startFrame)?(recording.startFrame+recording.count)/recording.sampleRate:null,lastObservedSourceEndTime:Number.isFinite(recording.lastSourceEndFrame)?recording.lastSourceEndFrame/recording.sampleRate:null,samples:recording.count,durationSeconds:recording.count/recording.sampleRate,stopReason:reason,completed,incomplete:!completed,timelineComplete:completed,timingReliable,clockBoundaryCount:recording.clockBoundaryCount||0,clockBoundaries,clockBoundariesDropped:recording.clockBoundariesDropped||0,clockMetadataTruncatedAt:recording.clockMetadataTruncatedAt??null,sourceSegments,sourceSegmentsComplete:!(recording.clockBoundariesDropped||0),sampleOrderNote:'WAVs contain paired PCM in received-sample order. Clock changes do not insert silence or remove samples. Source segments map observed clock values, not verified physical time. Absolute beat alignment across boundaries is uncertain.',hasGaps:false,gaps:[],missingSamples:timingReliable?0:null,recordedSamples:recording.count,gapEncoding:null,captureError:recording.captureError||null,unflushedTailPossible:reason==='capture-error'||reason==='trainer-stop'||reason==='manual-interrupted'||reason==='audio-interrupted',referenceMissingSamples:recording.referenceMissingSamples??null,missingReferenceNote:'An inactive master-bus input is represented by zeros and counted; it can mean silence between backing sounds. Null means the worklet final counter was not received.',diagnostics:recording.diagnostics,diagnosticLatest:recording.diagnosticLatest,diagnosticsDropped:recording.diagnosticsDropped};
  const warning=recording.captureError?(errorText||sampleErrorLabel(recording.captureError)):!timingReliable?'Временные метки нестабильны. '+(completed?'Вся запись сохранена.':'Полученная часть записи сохранена.'):'',record={kind:recording.kind+(failed?'-error':''),mic:sampleWav(join(recording.mic),recording.sampleRate),reference:sampleWav(join(recording.reference),recording.sampleRate),metadata};sampleRecorderState.records.set(record.kind,record);sampleRenderList();if(failed)sampleSetStatus(`${warning} Нажмите «Скачать записи».`);
  const statusGeneration=sampleRecorderState.generation;const mayUpdateStatus=()=>sampleRecorderState.generation===statusGeneration&&!sampleRecorderState.active&&!sampleRecorderState.pending&&sampleRecorderState.records.get(record.kind)===record;
- try{await sampleStore(record);if(mayUpdateStatus())sampleSetStatus(failed?`${warning} ${recording.count?'Полученный звук и диагностика сохранены':'Звук не получен; диагностика сохранена'} в этом браузере. Нажмите «Скачать записи».`:`${record.kind==='with'?'Запись с баяном':'Запись без баяна'} сохранена в этом браузере. ${sampleRecorderState.records.has('with')&&sampleRecorderState.records.has('without')?'Обе записи готовы — нажмите «Скачать записи» и сообщите в чате, что ZIP скачан.':'Можно записать второй образец или скачать этот.'}`);}catch(error){if(mayUpdateStatus())sampleSetStatus(`${failed?warning+' ':''}Запись доступна до закрытия страницы. Скачайте её сейчас: ${error.message}`);}
+ try{await sampleStore(record);if(mayUpdateStatus())sampleSetStatus(failed?`${warning} ${recording.count?'Полученный звук и диагностика сохранены':'Звук не получен; диагностика сохранена'} в этом браузере. Нажмите «Скачать записи».`:`${record.kind==='with'?'Запись с инструментом':'Запись без инструмента'} сохранена в этом браузере. ${sampleRecorderState.records.has('with')&&sampleRecorderState.records.has('without')?'Обе записи готовы — нажмите «Скачать записи» и сообщите в чате, что ZIP скачан.':'Можно записать второй образец или скачать этот.'}`);}catch(error){if(mayUpdateStatus())sampleSetStatus(`${failed?warning+' ':''}Запись доступна до закрытия страницы. Скачайте её сейчас: ${error.message}`);}
 }
 async function startSampleRecording(kind){
  if(!['with','without'].includes(kind)||sampleRecorderState.pending||sampleRecorderState.active||sampleRecorderState.deleting)return;
@@ -3644,7 +3735,7 @@ async function startSampleRecording(kind){
   recording.node.onprocessorerror=()=>sampleReceive(recording,{type:'error',reason:'processor-error',expectedFrame:recording.expectedSourceFrame??null,samples:recording.count,startFrame:recording.startFrame,endFrame:recording.lastSourceEndFrame??null});recording.silent=ctx.createGain();recording.silent.gain.value=0;recording.node.connect(recording.silent);recording.silent.connect(ctx.destination);sampleRecorderState.active=recording;sampleRecorderState.pending=false;
   if(recording.merger){recording.micSource.connect(recording.merger,0,0);recording.renderSource.connect(recording.merger,0,1);recording.merger.connect(recording.node);}else{recording.micSource.connect(recording.node,0,0);recording.renderSource.connect(recording.node,0,1);}
   recording.watchdog=setTimeout(()=>{if(sampleRecorderState.active===recording){sampleFinish(recording,'audio-interrupted');sampleSetStatus('Поток звука прервался. Доступная часть сохранена; повторите запись.');}},(duration+5)*1000);
-  sampleRecorderControls();sampleSetStatus(kind==='with'?'Запись началась — играйте на баяне 2 минуты.':'Запись началась — 8 секунд не играйте на баяне. Ритм звучит.');
+  sampleRecorderControls();sampleSetStatus(kind==='with'?'Запись началась — играйте на инструменте 2 минуты.':'Запись началась — 8 секунд не играйте на инструменте. Ритм звучит.');
  }catch(error){if(recording)sampleDisconnect(recording);if(sampleRecorderState.active===recording)sampleRecorderState.active=null;if(generation===sampleRecorderState.generation){sampleRecorderState.pending=false;sampleSetStatus(`Запись не началась: ${error.message}`);sampleRecorderControls();}}
 }
 function stopSampleRecording(reason='manual'){
@@ -3695,12 +3786,12 @@ function updateDetectionInfo(){
   const dropText=detectionDropText(reason);
   message=dropText?'Начало не подтверждено: '+dropText:reason==='instrument'?'Ноты распознаются.':reason==='speaker'?'Начало найдено, но звук похож на барабаны или метроном.':reason==='tone-unconfirmed'?'Начало найдено, но нота пока не подтверждена.':reason==='held-tone'?'Нота продолжается: нового начала нет.':'Начало слишком тихое для выбранного порога.';
  }else if(d.level<d.gate)message='После фильтра звук ниже порога распознавания.';
- else message=d.mode==='percussive'?'Звук слышен. Ищем начало удара.':'Звук слышен. Ищем начало или смену ноты.';
+ else message=({percussive:'Звук слышен. Ищем начало удара.',guitar:'Звук слышен. Ищем щипок или бой.',piano:'Звук слышен. Ищем удар по клавише.'})[d.mode]||'Звук слышен. Ищем начало или смену ноты.';
  target.textContent=message;
 }
 function acceptDetection(m){
  const old=state.detection;
- if(!state.running||state.pending||state.measuring||m.id!==state.token||!Number.isFinite(m.time)||m.time<=old.time||!['sustained','percussive'].includes(m.mode)||!Number.isFinite(m.level)||m.level<0||!Number.isFinite(m.gate)||m.gate<0||![null,'calibration','reference','learning'].includes(m.pausedReason))return;
+ if(!state.running||state.pending||state.measuring||m.id!==state.token||!Number.isFinite(m.time)||m.time<=old.time||!['sustained','guitar','piano','percussive'].includes(m.mode)||!Number.isFinite(m.level)||m.level<0||!Number.isFinite(m.gate)||m.gate<0||![null,'calibration','reference','learning'].includes(m.pausedReason))return;
  if(!['candidates','accepted','rejected'].every(key=>Number.isSafeInteger(m[key])&&m[key]>=old[key])||m.accepted+m.rejected>m.candidates)return;
  const pending=m.pending===undefined?m.candidates-m.accepted-m.rejected:m.pending;
  if(!Number.isSafeInteger(pending)||pending<0||pending>m.candidates)return;
@@ -4011,7 +4102,7 @@ async function connectMic(myContext,myStream){
  sendDSP({type:'mode',value:$('input-mode').value});sendDSP({type:'threshold',value:10**(Number($('threshold').value)/20)});
  return fallbackUsed;
 }
-async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});if(token!==state.token)return;const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление, которое может подавлять звук баяна. Используйте браузер с доступом к необработанному микрофону.');fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${analysisWorker?'Микрофон обрабатывается отдельно от ритма.':fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();sendDSP({type:'note-durations',enabled:$('show-note-durations').checked});if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(prepareInputStatus()):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
+async function start(calibrate=false){if(state.running||state.pending||state.measuring)return;const token=++state.token;state.pending=true;setControls();setStatus($('mic').checked?'Ожидаем разрешение микрофона…':'Подготовка звука…');try{const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('В этом браузере нет Web Audio API. Откройте файл в современном Chrome, Edge, Firefox или Safari.');const ctx=new AudioContextClass({latencyHint:'interactive'});context=ctx;await ctx.resume();if(token!==state.token)return;master=ctx.createGain();master.gain.value=Number($('volume').value)/100*.75;master.connect(ctx.destination);let fallbackUsed=false;if($('mic').checked){if(!navigator.mediaDevices?.getUserMedia)throw new Error('Микрофон недоступен. Откройте этот HTML-файл напрямую в браузере с поддержкой getUserMedia или отключите микрофон.');const micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});if(token!==state.token){micStream.getTracks().forEach(t=>t.stop());return;}stream=micStream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{if(token===state.token&&(state.running||state.pending)){stop();setStatus('Микрофон отключён. Проверьте устройство и нажмите Start.',true);}});if(token!==state.token)return;const echo=track.getSettings().echoCancellation;if(echo===true||typeof echo==='string')throw new Error('Браузер не отключил эхоподавление, которое может подавлять звук инструмента. Используйте браузер с доступом к необработанному микрофону.');fallbackUsed=await connectMic(ctx,stream);if(token!==state.token)return;if(track.readyState==='ended')throw new Error('Микрофон отключён во время запуска. Подключите его и нажмите Start.');const settings=track.getSettings();$('audio-info').textContent=`Эхоподавление браузера: ${(settings.echoCancellation===true||typeof settings.echoCancellation==='string')?'включено':settings.echoCancellation===false?'выключено':'статус не сообщается'}. ${analysisWorker?'Микрофон обрабатывается отдельно от ритма.':fallbackUsed?'Резервный анализ: точность ниже при нагрузке на страницу.':'Анализ в AudioWorklet.'} Частота ${ctx.sampleRate/1000} кГц. Задержку можно измерить по щелчкам метронома кнопкой «Измерить задержку» или задать вручную.`;}trackGains=[0,1,2,3].map(row=>{const gain=ctx.createGain();gain.gain.value=state.trackEnabled[row]?state.trackVolumes[row]/100:0;gain.connect(master);return gain;});clickGain=ctx.createGain();clickGain.gain.value=Number($('click-volume').value)/100;clickGain.connect(master);buffers=[0,1,2,3].map(t=>makeSound(t));clickBuffers=[makeSound(4),makeSound(4,true)];resetReference();resetIsolation();resetBackground();resetFilteredMeter();resetDetection();clearResults();state.pending=false;state.running=true;state.epoch=ctx.currentTime+.25;state.readyTime=state.epoch;state.next=0;sendDSP({type:'arm',start:state.epoch,duration:cycleDuration()});prepareReference();sendDSP({type:'note-durations',enabled:$('show-note-durations').checked});if(calibrate)beginCalibration();setControls();if(!calibrate)setStatus($('mic').checked?(prepareInputStatus()):'Ритм звучит. Нажимайте Пробел, чтобы проверить точность.');schedule();scheduler=setInterval(schedule,25);animate();if(!$('mic').checked)$('chart').focus({preventScroll:true});ctx.onstatechange=()=>{if(state.running&&ctx.state!=='running'){stop();setStatus('Звук приостановлен браузером. Нажмите Start для новой сессии.',true);}};}catch(e){if(token!==state.token)return;const messages={NotAllowedError:'Доступ к микрофону не разрешён. Разрешите его в браузере или отключите «Микрофон» и нажмите Start.',NotFoundError:'Микрофон не найден. Подключите его или отключите «Микрофон».',NotReadableError:'Не удалось открыть микрофон. Возможно, он занят другой программой.'};stop();setStatus(messages[e.name]||e.message||'Не удалось запустить звук.',true);}}
 function stop(){finishDurationDisplay();stopSampleRecording('trainer-stop');const wasMeasuring=state.measuring;if(state.running&&context)state.lastBar=Math.max(state.lastBar,Math.floor((audibleTime()-state.epoch)/(60/state.bpm*state.beats)));if(state.running&&context)state.stoppedCycle=Math.max(0,Math.floor((audibleTime()-state.epoch)/cycleDuration()));state.token++;state.running=false;state.pending=false;state.calibrating=false;state.measuring=false;resetFilteredMeter();resetDetection();analysisWorker?.close();analysisWorker=null;clearInterval(scheduler);cancelAnimationFrame(raf);scheduler=null;raf=null;stream?.getTracks().forEach(t=>t.stop());stream=null;activeSources.forEach(s=>{try{s.stop();s.disconnect();}catch{}});activeSources.clear();if(processor){if(processor.port)processor.port.onmessage=null;processor.onaudioprocess=null;processor.disconnect();}source?.disconnect();referenceMerger?.disconnect();referenceMerger=null;referenceAvailable=false;silent?.disconnect();trackGains.forEach(gain=>gain.disconnect());trackGains=[];clickGain?.disconnect();clickGain=null;master?.disconnect();processor=null;source=null;silent=null;master=null;fallback=null;const old=context;context=null;if(old){old.onstatechange=null;old.close().catch(()=>{});}state.drawStep=-1;document.querySelectorAll('.current').forEach(el=>el.classList.remove('current'));$('meter').style.width='0%';$('meter').parentElement.setAttribute('aria-valuenow','0');setControls();setStatus('Остановлено. Результаты сохранены на экране.');$('echo-info').textContent='Для новой сессии с колонками выполните калибровку.';if(wasMeasuring)$('latency-info').textContent='Замер отменён. Прежняя поправка сохранена.';drawChart();updateBarStats();flushSettings();}
 function beginCalibration(){if(!state.running||!processor||!$('mic').checked||filterSetupBusy()||!hasAudibleBacking())return;state.calibrating=true;state.calibrationWaiting=true;clearResults();/* Start training on the next complete loop; first loop settles AEC. */const cycle=cycleDuration();const start=state.epoch+Math.max(0,Math.ceil((context.currentTime-state.epoch)/cycle))*cycle;state.calibrationEnd=start+3*cycle;state.readyTime=state.calibrationEnd;sendDSP({type:'calibrate',start,duration:cycle});setControls();}
 const durationEvents=new Map();let durationPaint=null;
@@ -4331,7 +4422,8 @@ $('mic').addEventListener('change',()=>{resetAdaptive(false);setControls();saveS
 $('reference-sync').addEventListener('change',()=>{if(state.running||state.pending||state.measuring)return;resetReference();resetAdaptive(false);setControls();saveSettings();});
 $('auto-normalize').addEventListener('change',()=>{resetAdaptive();setControls();saveSettings();});
 $('show-note-durations').addEventListener('change',()=>{sendDSP({type:'note-durations',enabled:$('show-note-durations').checked});saveSettings();drawChart();});
-$('input-mode').addEventListener('change',()=>{$('threshold').value=$('input-mode').value==='sustained'?-48:-38;$('threshold-value').textContent=$('threshold').value+' dB';saveSettings();});
+function updateInstrumentInfo(){const hints={sustained:'Для баяна учитываем плавное начало и смену нот.',guitar:'Щипок или бой считаем одной атакой; затухание струны не добавляет точек.',piano:'Учитываем удар по клавише, аккорды и повторные ноты.',percussive:'Учитываем начало удара или хлопка.'};$('instrument-hint').textContent=hints[$('input-mode').value]||hints.sustained;}
+$('input-mode').addEventListener('change',()=>{$('threshold').value=({sustained:-48,guitar:-46,piano:-46,percussive:-38})[$('input-mode').value]??-48;$('threshold-value').textContent=$('threshold').value+' dB';updateInstrumentInfo();saveSettings();});
 $('click').addEventListener('change',()=>{invalidateEcho();saveSettings();});
 $('click-volume').addEventListener('input',()=>{$('click-volume-value').textContent=$('click-volume').value+'%';if(clickGain&&context)clickGain.gain.setTargetAtTime(Number($('click-volume').value)/100,context.currentTime,.015);invalidateEcho();saveSettings();});
 $('volume').addEventListener('input',()=>{const value=Number($('volume').value);$('volume-value').textContent=value+'%';if(master)master.gain.setTargetAtTime(value/100*.75,context.currentTime,.015);invalidateEcho();saveSettings();});

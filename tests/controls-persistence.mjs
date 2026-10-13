@@ -114,7 +114,7 @@ for(const referenceSync of [false,true]){
 for(const referenceSync of [false,true])for(const reportedEcho of [true,'all']){
   await check(`Startup rejects browser-reported echo processing ${String(reportedEcho)} with delay tracking ${referenceSync?'enabled':'disabled'}`,async()=>{
     const app=createApp(storageDouble(),{actualEchoCancellation:reportedEcho});app.api.applySettings({mic:true,referenceSync});await app.api.start();
-    return {ok:app.mediaRequests.length===1&&app.mediaRequests[0].audio.echoCancellation===false&&app.constraintChanges.length===0&&!app.api.state.running&&!app.api.state.pending&&app.mediaTracks[0].readyState==='ended'&&app.contexts[0].state==='closed'&&app.el('status').textContent.includes('Браузер не отключил эхоподавление, которое может подавлять звук баяна'),referenceSync,reportedEcho,status:app.el('status').textContent};
+    return {ok:app.mediaRequests.length===1&&app.mediaRequests[0].audio.echoCancellation===false&&app.constraintChanges.length===0&&!app.api.state.running&&!app.api.state.pending&&app.mediaTracks[0].readyState==='ended'&&app.contexts[0].state==='closed'&&app.el('status').textContent.includes('Браузер не отключил эхоподавление, которое может подавлять звук инструмента'),referenceSync,reportedEcho,status:app.el('status').textContent};
   });
 }
 for(const referenceSync of [false,true]){
@@ -128,6 +128,16 @@ await check('First launch restores the complete drum groove with the metronome o
   const app = createApp(), snapshot = app.api.captureSettings();
   return {ok: JSON.stringify(snapshot.pattern) === JSON.stringify(presetPattern()) && snapshot.click === false && snapshot.trackEnabled.every(Boolean) && app.doc.querySelectorAll('.step').length === 32, selectedDrumCells: snapshot.pattern.flat().filter(Boolean).length, metronome: snapshot.click};
 });
+
+for (const mode of ['guitar', 'piano']) {
+  await check(`Selecting ${mode} updates its sensitivity and preserves the profile after reload`, async () => {
+    const storage = storageDouble(), first = createApp(storage);
+    first.el('input-mode').value = mode;await first.el('input-mode').fire('change');
+    const selected = first.api.captureSettings(), hint = first.el('instrument-hint').textContent;
+    first.api.flushSettings();const second = createApp(storage);
+    return {ok: selected.inputMode === mode && selected.threshold === -46 && Boolean(hint) && second.el('input-mode').value === mode && second.api.captureSettings().inputMode === mode && second.el('instrument-hint').textContent === hint, mode, hint};
+  });
+}
 
 await check('Note duration stems remain optional for a fresh app and legacy snapshots', async () => {
   const first = createApp(), legacy = createApp(storageDouble({[settingsKey]: JSON.stringify({version: 1, bpm: 126})}));
