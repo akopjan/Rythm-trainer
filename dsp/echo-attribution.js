@@ -137,6 +137,14 @@ class EchoAttribution {
   this.pending.push({message:{...message},signalTime:Number.isFinite(message.captureTime)?Math.min(this.baseTime+this.total/this.rate,message.captureTime):this.baseTime+this.total/this.rate,queuedSourceTime:this.baseTime+this.total/this.rate,gate:Number.isFinite(gate)&&gate>0?gate:.004});
   this.timing.peak=Math.max(this.timing.peak,this.pending.length);
  }
+ nativeSourceTrusted(job){
+  // A routed, observed silent render has no echo dictionary to learn. It is
+  // safe to verify a short first note before the active-backing audit warms
+  // up, provided the render tail has drained. This grants only source trust;
+  // independent harmonic evidence and native attack proof are still required.
+  const silent=this.meta.ready===true&&this.meta.reason==='backing-silent'&&this.meta.referencePresent===true&&this.meta.renderRecent===false;
+  return job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true||silent;
+ }
  accept(job){
   if(this.familyBounds(job)){this.beginFamilyVerification(job);return;}
   const lowProof=this.lowPeriodicSourceProof(job);
@@ -147,7 +155,7 @@ class EchoAttribution {
   const ownEvidence=job.evidenceSnapshot?job.evidenceSnapshot.own:typeof this.meta.instrumentEvidence==='function'&&this.meta.instrumentEvidence(job.message.time),knownInstrument=job.message?.profileReady===true&&ownEvidence;
   // Source projection can verify an independent rise before a long-term
   // profile exists. The exception below also requires a stable residual tone.
-  const knownPeriodicSource=ownEvidence&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
+  const knownPeriodicSource=ownEvidence&&this.nativeSourceTrusted(job);
   const tonalEvidence=job.evidenceSnapshot?job.evidenceSnapshot.tonal:this.meta.renderRecent===true&&typeof this.meta.tonalEvidence==='function'&&this.meta.tonalEvidence(job.message.time);
   let confirmed=true;
   if(job.message?.toneCheck===true){
@@ -206,6 +214,15 @@ class EchoAttribution {
  }
  familyNativePrefilter(view){
   if(view.evidenceSnapshot?.own!==true)return false;
+  // A real release between short repetitions can be shorter than the long
+  // baseline windows. Verify the current native body before those windows
+  // accidentally identify the preceding note as this candidate's source.
+  // The silence witness alone admits nothing; the same phase/family proof
+  // and the later lifetime/echo checks still have to pass.
+  if(this.observedNativeRelease(view)){
+   const local=this.shortBodyFamilyProof(view);
+   if(local.ok){view.releasedBodyProof={...local,observedNativeRelease:true};return true;}
+  }
   const rate=this.rate,count=Math.floor(.064*rate),requested=view.message.frequency;
   const floor=Math.max(1e-16,view.gate*view.gate*.012),radius=Math.max(6,requested*.02);
   const coprime=(a,b)=>{while(b){const r=a%b;a=b;b=r;}return a===1;};
@@ -230,10 +247,22 @@ class EchoAttribution {
   }
   return false;
  }
+ observedNativeRelease(view){
+  if(view.evidenceSnapshot?.own!==true||!this.nativeSourceTrusted(view)||!view.y||!Number.isFinite(view.eventIndex))return false;
+  const count=Math.round(.008*this.rate),hop=Math.max(1,Math.round(.004*this.rate)),quiet=Math.max(1e-16,view.gate*view.gate*.01);
+  let sounded=false,silent=0;
+  for(let start=view.eventIndex-Math.round(.10*this.rate);start<=view.eventIndex;start+=hop){
+   const frame=this.highNativeFrame(view,start,count);if(!frame)return false;
+   if(frame.total>quiet*25){sounded=true;silent=0;}
+   else if(frame.total<quiet){silent+=hop;if(sounded&&silent>=Math.round(.008*this.rate))return true;}
+   else silent=0;
+  }
+  return false;
+ }
  // Supplementary only: batchFamilyProof calls this after all existing native
  // proofs fail. An existing successful proof/time must be returned verbatim.
  shortBodyFamilyProof(view){
-  const own=view.evidenceSnapshot?.own===true,known=own&&(view.message?.profileReady===true||view.message?.waveformReady===true||this.meta.canAudit===true);
+  const own=view.evidenceSnapshot?.own===true,known=own&&this.nativeSourceTrusted(view);
   if(!known||!view.message?.familyProposal||view.message.source!=='periodic'||!view.y)return {ok:false,reason:'unproven-short-source'};
   this.shortBodyVerifier??=new PhaseVerifiedShortNativeFamilyProof(this.rate,(frame,frequency)=>this.highNativePower(frame,frequency),false,(frame,frequency)=>this.highNativePhase(frame,frequency));
   this.shortBodyVerifier.useImmutableSamples(view.y);
@@ -245,6 +274,7 @@ class EchoAttribution {
  }
 
  batchFamilyProof(view){
+  if(view.releasedBodyProof?.ok)return view.releasedBodyProof;
   const f=view.message.frequency;
   let proof=this.computeShortPeriodicSourceProof(view);view.familyBatchAuditShort=proof;
   if(!proof.ok&&typeof this.weakNativeFamilyProof==='function')proof=this.weakNativeFamilyProof(view);
@@ -470,13 +500,13 @@ class EchoAttribution {
     // A verified chord voice owns its sounding lifetime even when the chord
     // already supplied its one rhythm point. A later batch must not recover
     // the merged voice as another attack; an actual release still rearms it.
-    if(lifetime.reason==='observed-family-same-attack')this.recordSourceFamilyLifetime(r);
+    if(lifetime.reason==='observed-family-same-attack'||lifetime.continuousFamilyObservation===true)this.recordSourceFamilyLifetime(r,lifetime.continuousFamilyObservation===true);
     continue;
    }
    this.recordSourceFamilyLifetime(r);emitted.push(r.time);
    const {familyCandidates,...message}=job.message;
    this.accepted++;this.lastDecision={time:r.time,reason:'instrument'};
-   const scored=this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'periodic',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:this.sourceBirthIdentity(r.proof)});
+   const scored=this.emit({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'periodic',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:this.sourceBirthIdentity(r.proof),observedNativeRelease:r.proof?.observedNativeRelease===true});
    if(scored===false)supplementalBlocked.push({r,reason:'global60-only'});
   }
   if(typeof this.publishNativeSupplemental==='function')for(const candidate of supplementalBlocked){
@@ -491,8 +521,11 @@ class EchoAttribution {
  // second articulation. Only the same native fundamental is considered;
  // added upper voices and other pitches are not folded into a lower family.
  sourceFamilyLifetimeAllowed(job,r){
-  if((this.sourceFamilyLifetimes??[]).some(p=>Math.abs(p.time-r.time)<.060&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35))return {allow:false,reason:'native-family-already-emitted'};
-  const previous=(this.sourceFamilyLifetimes??[]).filter(p=>p.time<r.time&&r.time-p.time<=.32&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35).sort((a,b)=>b.time-a.time)[0];
+  // A continuity observation can own the same verified body without having
+  // scored a point. A separately proven release and fresh native body may
+  // rearm it; another proposal of that held body may not become a timbre hit.
+  if((this.sourceFamilyLifetimes??[]).some(p=>!(p.continuityObservation===true&&r.proof?.observedNativeRelease===true)&&Math.abs(p.time-r.time)<.060&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35))return {allow:false,reason:'native-family-already-emitted'};
+  const previous=(this.sourceFamilyLifetimes??[]).filter(p=>p.time<r.time&&r.time-p.time<=.40&&Math.abs(1200*Math.log2(p.frequency/r.frequency))<35).sort((a,b)=>b.time-a.time)[0];
   if(!previous)return {allow:true,reason:'new-family'};
   const rate=this.rate,count=Math.floor(Math.max(.006,Math.min(.012,4/r.frequency))*rate),half=(count-1)/2,frequency=r.frequency;
   const frameAt=t=>this.highNativeFrame(job,Math.round((t-this.baseTime)*rate)-job.start-half,count);
@@ -500,18 +533,56 @@ class EchoAttribution {
   if(!prior||!next)return {allow:true,reason:'continuity-history-unavailable'};
   const priorPower=this.highNativePower(prior,frequency),nextPower=this.highNativePower(next,frequency),limit=Math.min(priorPower,nextPower)*.12;
   if(!(limit>Math.max(1e-16,job.gate*job.gate*.0005)))return {allow:true,reason:'continuity-family-too-weak'};
-  const step=Math.max(1,Math.round(.004*rate));let valley=0,minimum=Infinity;
+  // Detuned reed voices can cancel H1 for several milliseconds while a
+  // measured partner still sounds. A release must quiet the same native
+  // family together, rather than treating one beating partial as a note-off.
+  // Only partners present in both confirmed bodies enter this check; new
+  // upper voices and unrelated roots remain separate lifetime hypotheses.
+  const floor=Math.max(1e-16,job.gate*job.gate*.012),carriers=[{harmonic:1,limit}];
+  const bodies=[previous.time,r.time].map(time=>[.020,.036,.052,.068].map(offset=>frameAt(time+offset)));
+  if(bodies.some(frames=>frames.some(frame=>!frame)))return {allow:true,reason:'continuity-history-unavailable'};
+  for(const harmonic of [2,3]){
+   if(frequency*harmonic>rate*.45)continue;
+   // A body can itself coincide with a partner's beat minimum. Confirm its
+   // presence over several already observed slices of each measured body.
+   const [before,after]=bodies.map(frames=>Math.max(...frames.map(frame=>this.highNativePower(frame,frequency*harmonic))));
+   if(before>Math.max(floor,priorPower*.012)&&after>Math.max(floor,nextPower*.012))carriers.push({harmonic,limit:Math.min(before,after)*.12});
+  }
+  const step=Math.max(1,Math.round(.004*rate));let valley=0,fundamentalValley=0,fundamentalRearmed=false,minimum=Infinity;
   for(let t=previous.time+.016;t<=r.time+.004;t+=step/rate){
    const frame=frameAt(t);if(!frame)return {allow:true,reason:'continuity-history-unavailable'};
    const value=this.highNativePower(frame,frequency);minimum=Math.min(minimum,value);
-   if(value<limit)valley+=step;else valley=0;
+   if(value<limit)fundamentalValley+=step;else fundamentalValley=0;
+   if(fundamentalValley>=Math.round(.008*rate))fundamentalRearmed=true;
+   const released=value<limit&&carriers.slice(1).every(carrier=>this.highNativePower(frame,frequency*carrier.harmonic)<carrier.limit);
+   if(released)valley+=step;else valley=0;
    if(valley>=Math.round(.008*rate))return {allow:true,reason:'native-family-rearmed',minimum,limit,previousTime:previous.time};
   }
-  return {allow:false,reason:'native-family-still-active',minimum,limit,previousTime:previous.time};
+  // A verified later body advances only the continuity observation. It adds
+  // no rhythm point, and a subsequent measured release still rearms the root.
+  const beating=fundamentalRearmed&&carriers.length>=2?this.sourceFamilyBeatingContinuation(job,r):null;
+  return {allow:false,reason:beating?.continuous?'native-family-beating-continuation':'native-family-still-active',minimum,limit,previousTime:previous.time,continuousFamilyObservation:true,carrierHarmonics:carriers.map(carrier=>carrier.harmonic),...(beating?.continuous?{continuity:beating}: {})};
  }
- recordSourceFamilyLifetime(r){
+ // A beat recovery can change harmonic balance enough to resemble a timbre
+ // attack. Only veto that exception when the disappearing H1 recovers with
+ // the same measured native phase clock and the family never released above.
+ sourceFamilyBeatingContinuation(job,r){
+  const rate=this.rate,frequency=r.frequency,count=Math.floor(.032*rate),no=reason=>({continuous:false,reason});
+  if(!r.proof?.ok||!job.y||frequency*.032<4)return no('no-native-beating-body');
+  const index=job.message?.familyCandidates?.findIndex(q=>q.time===r.q?.time&&q.frequency===r.q?.frequency),snapshot=index>=0?job.familyEvidenceSnapshots?.[index]:job.evidenceSnapshot;
+  if(snapshot?.own!==true)return no('no-owned-beating-body');
+  const frames=[-.020,.020,.060].map(offset=>this.highNativeFrame(job,Math.round((r.time+offset-this.baseTime)*rate)-job.start-Math.floor(count/2),count));
+  if(frames.some(frame=>!frame))return no('beating-history-incomplete');
+  const floor=Math.max(1e-16,job.gate*job.gate*.012),powers=frames.map(frame=>this.highNativePower(frame,frequency));
+  if(powers.some(power=>power<=floor))return no('beating-phase-unmeasured');
+  const phases=frames.map(frame=>this.highNativePhase(frame,frequency)),wrap=value=>Math.atan2(Math.sin(value),Math.cos(value));
+  const clock=frequency+wrap(phases[2]-phases[1]-2*Math.PI*frequency*.040)/(2*Math.PI*.040),phaseError=wrap(phases[1]-phases[0]-2*Math.PI*clock*.040);
+  if(Math.abs(clock-frequency)>Math.max(4,frequency*.012)||Math.abs(phaseError)>.45)return no('beating-phase-discontinuity');
+  return {continuous:true,reason:'native-h1-phase-recovery',clock,phaseError,powers};
+ }
+ recordSourceFamilyLifetime(r,continuityObservation=false){
   this.sourceFamilyLifetimes??=[];this.sourceFamilyLifetimes=this.sourceFamilyLifetimes.filter(p=>r.time-p.time<2.5);
-  this.sourceFamilyLifetimes.push({time:r.time,frequency:r.frequency});
+  this.sourceFamilyLifetimes.push({time:r.time,frequency:r.frequency,continuityObservation:continuityObservation===true});
  }
 
  harmonicFamilyRise(job){
@@ -663,7 +734,7 @@ class EchoAttribution {
  // supplying a new attack; optional H4 supports reed timbres with weak H2/H3.
  computeShortPeriodicSourceProof(job){
  const frequency=job.message?.frequency,rate=this.rate,count=Math.floor(.032*rate);
- const own=job.evidenceSnapshot?.own===true,known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true);
+ const own=job.evidenceSnapshot?.own===true,known=own&&this.nativeSourceTrusted(job);
  if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(frequency)||frequency<80||frequency>Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2))return {ok:false,reason:'unproven-source'};
  const early=job.eventIndex-Math.round(.140*rate),late=job.eventIndex+Math.round(.020*rate);
  const frame=start=>this.highNativeFrame(job,start,count),energy=window=>{if(!window)return null;const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?this.highNativePower(window,frequency*h):0),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total)};};
@@ -688,7 +759,7 @@ class EchoAttribution {
  computeLowPeriodicSourceProof(job){
  const preserved=job.familyBatchAuditShort??this.computeShortPeriodicSourceProof(job);if(preserved.ok)return preserved;
  const requested=job.message?.frequency,rate=this.rate,count=Math.floor(.032*rate),longCount=Math.floor(.064*rate),halfExtra=Math.round(.016*rate),limit=job.eventIndex;
- const own=job.evidenceSnapshot?.own===true,known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ const own=job.evidenceSnapshot?.own===true,known=own&&this.nativeSourceTrusted(job),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
  if(!known||job.message?.source!=='periodic'||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-source'};
  const frames=new Map(),powers=new WeakMap();
  const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!frames.has(key))frames.set(key,this.highNativeFrame(job,start,n));return frames.get(key);},nativePower=(window,frequency)=>{let values=powers.get(window);if(!values){values=new Map();powers.set(window,values);}if(!values.has(frequency))values.set(frequency,this.highNativePower(window,frequency));return values.get(frequency);},energy=(window,frequency)=>{if(!window)return null;const parts=[1,2,3,4].map(h=>frequency*h<=rate*.45?nativePower(window,frequency*h):0),sum=parts.reduce((a,b)=>a+b,0);return {parts,sum,total:window.total,fraction:2*sum/Math.max(1e-20,window.total),fundamentalFraction:parts[0]/Math.max(1e-20,window.total)};};
@@ -748,7 +819,7 @@ class EchoAttribution {
  weakNativeFamilyProof(job){
 function preservedBatchWeakProof(job){
  const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
- const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ const known=own&&this.nativeSourceTrusted(job),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
  if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
  const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
  const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
@@ -805,7 +876,7 @@ function preservedBatchWeakProof(job){
 function supplementalShapeReleaseProof(job){
 function sealedShapeWeakProof(job){
  const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
- const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ const known=own&&this.nativeSourceTrusted(job),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
  if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
  const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
  const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
@@ -867,7 +938,7 @@ function sealedShapeWeakProof(job){
 
 function releasePairsWeakProof(job){
  const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
- const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ const known=own&&this.nativeSourceTrusted(job),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
  if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
  const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
  const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
@@ -940,7 +1011,7 @@ function releasePairsWeakProof(job){
 function supplementalValidBodyProof(job){
 function earliestValidBodyCore(job){
  const rate=this.rate,requested=job.message?.frequency,own=job.evidenceSnapshot?.own===true;
- const known=own&&(job.message?.profileReady===true||job.message?.waveformReady===true||this.meta.canAudit===true),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
+ const known=own&&this.nativeSourceTrusted(job),maximum=Math.min(job.message?.familyBatchAudit?3300:1400,rate*.45/2);
  if(!known||job.message?.source!=='periodic'||!job.message.familyProposal||!job.y||!Number.isFinite(requested)||requested<80||requested>maximum)return {ok:false,reason:'unproven-weak-family'};
  const count=Math.floor(.064*rate),shortCount=Math.floor(.032*rate),limit=job.eventIndex,floor=Math.max(1e-16,job.gate*job.gate*.012),cache=new Map();
  const frame=(start,n=count)=>{start=Math.round(start);const key=start+':'+n;if(!cache.has(key))cache.set(key,this.highNativeFrame(job,start,n));return cache.get(key);};
@@ -1204,7 +1275,17 @@ ordinaryInstrumentTone(job,upper=false){
   // Backdated spectral callbacks need capture history around their actual
   // scoring timestamp, rather than only the later callback observation.
   const family=this.familyBounds(job);
-  job.start=Math.max(0,Math.floor((family?family.first-this.baseTime-.32:Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?(job.message.frequency<=1400?.32:.16):.024))*this.rate));job.length=this.captureEnd(job)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
+  let sourceStart=family?family.first-this.baseTime-.40:Math.min(job.signalTime,job.message.time)-this.baseTime-(job.message.source==='periodic'?(job.message.frequency<=1400?.32:.16):.024);
+  if(family){
+   // A proposal may be refined 320 ms earlier than its FFT timestamp. Retain
+   // the closest verified same-root body when that body would otherwise be
+   // cropped off this audit. This is bounded past PCM, not extra lookahead.
+   for(const q of job.message.familyCandidates){
+    const prior=(this.sourceFamilyLifetimes??[]).filter(p=>p.time<q.time&&q.time-p.time<=.72&&Math.abs(1200*Math.log2(p.frequency/q.frequency))<35).sort((a,b)=>b.time-a.time)[0];
+    if(prior)sourceStart=Math.min(sourceStart,prior.time-this.baseTime+.008);
+   }
+  }
+  job.start=Math.max(0,Math.floor(sourceStart*this.rate));job.length=this.captureEnd(job)-job.start;job.eventIndex=Math.max(0,Math.min(job.length,Math.round((job.message.time-this.baseTime)*this.rate)-job.start));
   if(job.start+job.length>this.total){this.drop(job,'capture-window-incomplete',{stage:'prepare'});return false;}
   if(job.start<this.total-this.size){this.drop(job,'history-unavailable',{stage:'prepare'});return false;}
   job.y=new Float32Array(job.length);job.low=new Float32Array(Math.ceil(job.length/this.stride));job.original=0;

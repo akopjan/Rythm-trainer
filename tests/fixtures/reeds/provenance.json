@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "scope": "Three selected acoustic accordion clips for onset regression; no verified bayan",
+  "limitations": [
+    "Both instruments are accordions. Neither primary source confirms bayan.",
+    "Clip montage labels and envelope proxy positions do not establish physical keypress timestamps.",
+    "Cellini assets are publicly exposed MP3 previews, not original download files; lossy codec may smear transients.",
+    "Source files already edited, original attack preroll unknown.",
+    "The Hohner note label D5 is retained from source filenames, not a claim of scientific pitch octave."
+  ],
+  "transforms": "No start trimming, attack shaping or pitch shift. Decode/downmix/resample using ffmpeg for Cellini; see Hohner upstream manifest. Per-clip linear scaling to mono peak 0.6, 50 ms terminal fade, digital silent preroll 250 ms, zero padding.",
+  "fixtures": [
+    {
+      "id": "accordion-Cellini-bass-D-single",
+      "path": "accordion-Cellini-bass-D-single.wav",
+      "sha256": "1457f4e4fc84182159b5dc80b33fefcdc40f853f63d5bc691e4b1e383606cb13",
+      "source_page_url": "https://freesound.org/people/Miles_Thompson/sounds/560791/",
+      "source_asset_url": "https://cdn.freesound.org/previews/560/560791_12390108-hq.mp3",
+      "source_asset_sha256": "4967baf4800073a09361d972d6365573446399ec1b882469bb7dd91b41797f02",
+      "source_title": "Accordion Bass Long D.m4a",
+      "source_creator": "Miles_Thompson",
+      "source_uploaded_date": "2021-02-27",
+      "source_instrument": "Cellini Accordion",
+      "is_verified_bayan": false,
+      "license": "CC0 1.0 Universal public domain dedication",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_verification": "CC0 link on each original Freesound sound page, HTML snapshot retained",
+      "downloaded_original": false,
+      "download_format": "Public HQ MP3 preview, not original upload; decoded using ffmpeg to 48k mono PCM16",
+      "decoded_source_duration_seconds": 3.264,
+      "source_trim_start_seconds": 0,
+      "source_trim_end_seconds": 3.264,
+      "added_preroll_seconds": 0.25,
+      "duration_seconds": 3.75,
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "pcm_bits": 16,
+      "gain": 4.47636612021858,
+      "end_fade_seconds": 0.05,
+      "expected_clip_start_seconds": [
+        0.25
+      ],
+      "acoustic_onset_proxy_seconds": [
+        0.335
+      ],
+      "proxy_definition": "First 5 ms RMS window exceeding 6% of peak RMS, after 250 ms added digital silence. Operational acoustic envelope estimate; not physical keypress truth.",
+      "source_description": "Author describes minor/major chords as staccato, long as sustained portion; source recordings are already trimmed. MP3 lossy preview may add temporal smearing."
+    },
+    {
+      "id": "accordion-Cellini-minor-D-single",
+      "path": "accordion-Cellini-minor-D-single.wav",
+      "sha256": "aa2e4bfb26a7e1f7736c18338458198c41bd048adc839a39d8a41501b4955622",
+      "source_page_url": "https://freesound.org/people/Miles_Thompson/sounds/560796/",
+      "source_asset_url": "https://cdn.freesound.org/previews/560/560796_12390108-hq.mp3",
+      "source_asset_sha256": "257ef7925ce550d39cde641c372047b398cb57acc243835aea290f2f4b9aa0b8",
+      "source_title": "Accordion Minor D.mp3",
+      "source_creator": "Miles_Thompson",
+      "source_uploaded_date": "2021-02-27",
+      "source_instrument": "Cellini Accordion",
+      "is_verified_bayan": false,
+      "license": "CC0 1.0 Universal public domain dedication",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_verification": "CC0 link on each original Freesound sound page, HTML snapshot retained",
+      "downloaded_original": false,
+      "download_format": "Public HQ MP3 preview, not original upload; decoded using ffmpeg to 48k mono PCM16",
+      "decoded_source_duration_seconds": 0.32116666666666666,
+      "source_trim_start_seconds": 0,
+      "source_trim_end_seconds": 0.32116666666666666,
+      "added_preroll_seconds": 0.25,
+      "duration_seconds": 3,
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "pcm_bits": 16,
+      "gain": 2.360734870317003,
+      "end_fade_seconds": 0.05,
+      "expected_clip_start_seconds": [
+        0.25
+      ],
+      "acoustic_onset_proxy_seconds": [
+        0.26
+      ],
+      "proxy_definition": "First 5 ms RMS window exceeding 6% of peak RMS, after 250 ms added digital silence. Operational acoustic envelope estimate; not physical keypress truth.",
+      "source_description": "Author describes minor/major chords as staccato, long as sustained portion; source recordings are already trimmed. MP3 lossy preview may add temporal smearing."
+    },
+    {
+      "id": "accordion-HN-D5-single",
+      "path": "accordion-HN-D5-single.wav",
+      "source_member": "Button Accordion HN D5.wav",
+      "source_sha256": "75728b97300911ff3e5def3238fe315dafd195b366bed62676585c58d3863e8b",
+      "source_sample_rate_hz": 44100,
+      "source_channels": 2,
+      "source_length_seconds": 1.9561224489795919,
+      "source_pcm_dtype": "int16",
+      "source_label": "D5",
+      "source_is_sampler_edited": true,
+      "instrument": "Hohner button accordion (model and chromatic/diatonic system not stated)",
+      "is_verified_bayan": false,
+      "duration_seconds": 3,
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "pcm_bits": 16,
+      "added_preroll_seconds": 0.25,
+      "source_trim_start_seconds": 0,
+      "source_trim_end_seconds": 1.9561224489795919,
+      "gain": 0.6298412108781581,
+      "end_fade_seconds": 0.05,
+      "expected_clip_start_seconds": [
+        0.25
+      ],
+      "acoustic_onset_proxy_seconds": [
+        0.27993197278911564
+      ],
+      "proxy_definition": "First 5 ms RMS window exceeding 6% of peak RMS; an operational envelope proxy, NOT a physical keypress label. Lower notes begin sounding at the source file boundary.",
+      "sha256": "265769abfe19175c4abe7e6b067feeda7fff364502bca812522ff979512ba548",
+      "source_page_url": "https://freepats.zenvoid.org/Organ/accordion.html",
+      "source_repository_url": "https://github.com/freepats/button-accordion-HN",
+      "source_archive_url": "https://github.com/freepats/button-accordion-HN/releases/download/2024-03-29/ButtonAccordionHN-SFZ%2BWAV-20240329.7z",
+      "source_creator": "Jeff Stauffer; processing michael02022",
+      "license": "CC0 1.0 Universal public domain dedication",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    }
+  ],
+  "included_license_file": "LICENSE-CC0.txt",
+  "evaluation_scope": "Single acoustic attack clips. The digital silence and gain changes do not provide physical keypress timing; the onset positions are operational envelope proxies."
+}

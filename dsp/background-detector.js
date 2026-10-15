@@ -19,6 +19,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   const referenceFail=this.reference.fail.bind(this.reference);
   this.reference.fail=(status,time,reason,hold)=>{this.observeDelayJump(time,reason);return referenceFail(status,time,reason,hold);};
   this.periodic=new PeriodicNoteOnset(rate,m=>this.onset(m));this.highPeriodic=new HighPeriodicNoteOnset(rate,m=>this.onset(m));this.familyOnset=new MultiHarmonicFamilyOnset(rate,2048,m=>this.onset(m));this.lastFamilyFrameTime=-Infinity;this.acceptedTimes=[];this.acceptedSourceBirths=[];this.supplementalBirths=[];this.candidateCount=0;this.scoredCount=0;this.rejectedCount=0;this.lastDetectionEmit=-Infinity;
+  this.resetSourceAttackOwnership();
   const lifetime=this.attribution.sourceFamilyLifetimeAllowed.bind(this.attribution);
   this.attribution.sourceFamilyLifetimeAllowed=(job,r)=>{
    const existing=lifetime(job,r);if(!existing.allow||this.mode!=='sustained')return existing;
@@ -33,6 +34,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.attribution.emit=m=>{
    if(this.mode==='sustained'&&!m.familyProposal)return false;
    if(this.hasPublishedSourceAlias(m))return false;
+   if(this.hasPublishedSourceAttack(m))return false;
    if(this.mode==='sustained'&&this.acceptedTimes.some(time=>Math.abs(time-m.time)<.060))return false;
    // A supplement can arrive before its primary harmonic. Apply the same
    // harmonic duplicate rule in this reverse order, without merging unrelated
@@ -46,6 +48,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   this.attribution.publishNativeSupplemental=(job,r,parents,blockedBy)=>{
    const a=this.attribution,identity=a.sourceBirthIdentity(r.proof),current={time:r.time,birth:r.q.time,frequency:r.frequency,native:true,identity,captureTime:job.message.captureTime??null};
    const no=reason=>({accepted:false,reason,blockedBy});
+   if(this.hasPublishedSourceAttack({source:'periodic',time:r.time,frequency:r.frequency,originalFamilyTime:r.q.time,captureTime:job.message.captureTime,sourceVerified:true,familyProposal:true,observedNativeRelease:r.proof?.observedNativeRelease===true}))return no('source-attack-already-published');
    if(this.hasPublishedSourceAlias({time:r.time,frequency:r.frequency,originalFamilyTime:r.q.time,captureTime:job.message.captureTime,nativeBirthIdentity:identity,source:'periodic',sourceVerified:true,familyProposal:true}))return no('source-alias-already-published');
    if(!identity.h1)return no('new-body-h1-unmeasured');
    const nativePhase=a.supplementalNativePhase(job,r);if(!nativePhase.ok)return {...no(nativePhase.reason),nativePhase};
@@ -63,9 +66,51 @@ class RhythmDetector extends LegacyRhythmDetector {
    const {familyCandidates,...message}=job.message;
    this.supplementalBirths.push(current);while(this.supplementalBirths.length>64)this.supplementalBirths.shift();
    this.scoredCount++;
-   this.publishInstrumentNote({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
+   this.publishInstrumentNote({...message,time:r.time,frequency:r.frequency,level:r.q.level,source:'instrument',familyProposal:true,sourceVerified:true,originalFamilyTime:r.q.time,nativeBirthIdentity:identity,observedNativeRelease:r.proof?.observedNativeRelease===true,supplemental:true,blockedBy,id:this.referenceId,isolated:true});
    return {accepted:true,blockedBy,nativePhase,nativePeaks};
   };
+ }
+ // A single source attack can grow several native pitch families at different
+ // speeds. A front-end rise identifies the shared action only: it never admits
+ // a family, changes its measured time or supplies instrument evidence.
+ resetSourceAttackOwnership(){this.sourceAttackCues=[];this.sourcePitchCues=[];this.sourceAttackOwners=[];this.sourceAttackSerial=0;}
+ observeSourceAttackCue(m){
+  if(this.mode!=='sustained'||m.familyProposal===true||!Number.isFinite(m.time))return;
+  if(m.source==='periodic'){
+   if(Number.isFinite(m.frequency)){this.sourcePitchCues.push({time:m.time,frequency:m.frequency});while(this.sourcePitchCues.length>128)this.sourcePitchCues.shift();}
+   return;
+  }
+  const fast=this.sustained.fast,slow=this.sustained.slow;
+  // Falling spectral tails are not fresh attacks. A spectral rise near equal
+  // fast/slow energy remains useful even without a large loudness jump.
+  if(!Number.isFinite(fast)||!Number.isFinite(slow)||fast<slow*.90)return;
+  this.sourceAttackCues.push({time:m.time,id:++this.sourceAttackSerial});while(this.sourceAttackCues.length>128)this.sourceAttackCues.shift();
+ }
+ sourceAttackWitness(m){
+  if(this.mode!=='sustained'||m.familyProposal!==true||m.sourceVerified!==true||!Number.isFinite(m.originalFamilyTime)||!Number.isFinite(m.captureTime)||!Number.isFinite(m.time))return null;
+  for(let i=this.sourceAttackCues.length-1;i>=0;i--){
+   const q=this.sourceAttackCues[i],birth=m.originalFamilyTime;
+   const preceded=q.time<=birth+1/this.rate&&birth-q.time<=.280;
+   const nearFuture=q.time>birth&&q.time-birth<=.032&&Math.abs(m.time-q.time)<=.060;
+   // An old long-window proof must not claim the cue of the following note.
+   if((preceded||nearFuture)&&m.time>=q.time-.024&&m.time-q.time<=.240)return q;
+  }
+  return null;
+ }
+ hasPublishedSourceAttack(m){
+  if(m.source!=='periodic')return false;
+  const cue=this.sourceAttackWitness(m);if(!cue)return false;
+  const prior=this.sourceAttackOwners.find(p=>p.cue.id===cue.id&&Math.abs(p.birth-m.originalFamilyTime)<=.180&&Math.abs(p.time-cue.time)<=.240);if(!prior)return false;
+  if(m.observedNativeRelease===true)return false;
+  const cents=(x,y)=>Math.abs(1200*Math.log2(x/y));
+  // Quiet legato can change pitch without a fresh energy rise. Preserve that
+  // independent proposal, but not the integer-harmonic flips of a held body.
+  if(this.sourcePitchCues.some(p=>cents(p.frequency,m.frequency)<=35&&Math.abs(p.time-m.time)<=.080&&cents(prior.frequency,m.frequency)>85&&!this.attribution.sourceBirthHarmonic(prior.frequency,m.frequency,8)))return false;
+  return true;
+ }
+ rememberPublishedSourceAttack(m){
+  const cue=this.sourceAttackWitness(m);if(!cue)return;
+  this.sourceAttackOwners.push({time:m.time,birth:m.originalFamilyTime,frequency:m.frequency,cue});while(this.sourceAttackOwners.length>128)this.sourceAttackOwners.shift();
  }
  // A weak fundamental and its harmonic can receive different refined times
  // from one source observation. Merge only that shared native event; distinct
@@ -79,6 +124,7 @@ class RhythmDetector extends LegacyRhythmDetector {
    Math.abs(p.time-m.time)<=.25&&this.attribution.sourceBirthHarmonic(p.frequency,m.frequency,8));
  }
  publishInstrumentNote(message){
+  this.rememberPublishedSourceAttack(message);
   if(!this.durationEnabled){this.emit(message);return;}
   this.noteDurations.accept(message,durationId=>this.emit({...message,durationId}));
  }
@@ -90,7 +136,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }
  }
  clearConfirmedAnchor(revokeProfile=false){
-  if(revokeProfile){this.familyOnset?.reset();this.lastFamilyFrameTime=-Infinity;}
+  if(revokeProfile){this.familyOnset?.reset();this.lastFamilyFrameTime=-Infinity;this.resetSourceAttackOwnership();}
   this.confirmedAnchor=null;this.provenMatchFloor=this.reference.matches||0;this.delayJumpEvidence=null;
   if(revokeProfile&&this.background)this.background.beginCalibration({epoch:this.start||0,duration:this.duration||2.4,backing:this.reference.options.backing,oversubtraction:4});
  }
@@ -116,6 +162,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   return this.confirmedAnchor;
  }
  onset(message,gate=this.currentGate||this.threshold){
+  this.observeSourceAttackCue(message);
   if(this.mode==='sustained'&&(this.auditEnabled||this.referenceEnabled)&&this.reference.options.backing&&!this.reference.noEchoProof&&this.attribution.meta.canAudit===true&&message.familyProposal!==true)return;
   this.candidateCount++;
   if(this.auditEnabled||this.referenceEnabled){
@@ -126,6 +173,7 @@ class RhythmDetector extends LegacyRhythmDetector {
   }else this.emit(message);
  }
  configure(m){
+  if(['arm','reference-sync','mode','calibrate','invalidate'].includes(m.type))this.resetSourceAttackOwnership();
   if(m.type==='note-durations'){this.noteDurations.reset(this.referenceId,'display-toggle');this.durationEnabled=m.enabled===true;return;}
   if(['arm','reference-sync','mode','calibrate','invalidate','duration-reset'].includes(m.type))this.noteDurations.reset(m.type==='reference-sync'?m.id:this.referenceId,m.type);
   if(m.type==='duration-reset')return;
