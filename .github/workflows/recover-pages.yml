@@ -1,0 +1,21 @@
+name: Recover stalled Pages deployment
+on:
+  push:
+    branches: [codex/recover-pages-v30]
+permissions:
+  pages: write
+jobs:
+  cancel-stalled-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Cancel the timed-out deployment that blocks publication
+        env:
+          PAGES_RECOVERY_TOKEN: ${{ github.token }}
+          PAGES_CANCEL_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages/deployments/7ec93da9475749e91873cd319b5c022278e3379d/cancel
+        run: |
+          curl --fail-with-body --silent --show-error --location --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
+            --header 'X-GitHub-Api-Version: 2026-03-10' \
+            "${PAGES_CANCEL_URL}"
