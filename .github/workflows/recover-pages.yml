@@ -13,9 +13,20 @@ jobs:
         env:
           PAGES_RECOVERY_TOKEN: ${{ github.token }}
           PAGES_CANCEL_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages/deployments/7ec93da9475749e91873cd319b5c022278e3379d/cancel
+          PAGES_STATUS_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages/deployments/7ec93da9475749e91873cd319b5c022278e3379d
+          PAGES_STATE_FILE: /tmp/rhythm-pages-recovery-state.json
         run: |
           curl --fail-with-body --silent --show-error --location --request POST \
             --header 'Accept: application/vnd.github+json' \
             --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
             --header 'X-GitHub-Api-Version: 2026-03-10' \
             "${PAGES_CANCEL_URL}"
+          for attempt in 1 2 3; do
+            sleep 15
+            curl --fail-with-body --silent --show-error --location \
+              --header 'Accept: application/vnd.github+json' \
+              --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
+              --header 'X-GitHub-Api-Version: 2026-03-10' \
+              "${PAGES_STATUS_URL}" --output "${PAGES_STATE_FILE}"
+            python3 -c 'import json,os; print("::notice title=Pages recovery state::"+json.dumps(json.load(open(os.environ["PAGES_STATE_FILE"]))))'
+          done
