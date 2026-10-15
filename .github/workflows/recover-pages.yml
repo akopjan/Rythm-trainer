@@ -1,32 +1,28 @@
-name: Recover stalled Pages deployment
+name: Publish verified rhythm trainer
 on:
   push:
     branches: [codex/recover-pages-v30]
 permissions:
   pages: write
 jobs:
-  cancel-stalled-deployment:
+  request-verified-publication:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Cancel the timed-out deployment that blocks publication
+      - name: Read current Pages state and request the latest main build
         env:
           PAGES_RECOVERY_TOKEN: ${{ github.token }}
-          PAGES_CANCEL_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages/deployments/7ec93da9475749e91873cd319b5c022278e3379d/cancel
-          PAGES_STATUS_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages/deployments/7ec93da9475749e91873cd319b5c022278e3379d
-          PAGES_STATE_FILE: /tmp/rhythm-pages-recovery-state.json
+          PAGES_API_URL: https://api.github.com/repos/akopjan/Rythm-trainer/pages
         run: |
+          curl --fail-with-body --silent --show-error --location \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
+            --header 'X-GitHub-Api-Version: 2026-03-10' \
+            "${PAGES_API_URL}" --output /tmp/rhythm-pages-config.json
+          python3 -c 'import json; d=json.load(open("/tmp/rhythm-pages-config.json")); print("::notice title=Pages configuration::"+json.dumps({k:d.get(k) for k in ["status","build_type","source","html_url"]}))'
           curl --fail-with-body --silent --show-error --location --request POST \
             --header 'Accept: application/vnd.github+json' \
             --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
             --header 'X-GitHub-Api-Version: 2026-03-10' \
-            "${PAGES_CANCEL_URL}"
-          for attempt in 1 2 3; do
-            sleep 15
-            curl --fail-with-body --silent --show-error --location \
-              --header 'Accept: application/vnd.github+json' \
-              --header "Authorization: Bearer ${PAGES_RECOVERY_TOKEN}" \
-              --header 'X-GitHub-Api-Version: 2026-03-10' \
-              "${PAGES_STATUS_URL}" --output "${PAGES_STATE_FILE}"
-            python3 -c 'import json,os; print("::notice title=Pages recovery state::"+json.dumps(json.load(open(os.environ["PAGES_STATE_FILE"]))))'
-          done
+            "${PAGES_API_URL}/builds" --output /tmp/rhythm-pages-request.json
+          python3 -c 'import json; print("::notice title=Pages build request::"+json.dumps(json.load(open("/tmp/rhythm-pages-request.json"))))'
